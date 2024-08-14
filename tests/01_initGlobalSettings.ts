@@ -9,8 +9,15 @@ describe("wasabi-solana", () => {
   const program = anchor.workspace.WasabiSolana as Program<WasabiSolana>;
 
   it("Is initialized!", async () => {
-    // Add your test here.
-    const tx = await program.methods.initialize().rpc();
+    const tx = await program.methods
+      .initGlobalSettings({
+        feeWallet: program.provider.publicKey,
+        statuses: 3,
+      })
+      .accounts({
+        payer: program.provider.publicKey,
+      })
+      .rpc();
     console.log("Your transaction signature", tx);
   });
 });

@@ -1,3 +1,3 @@
-pub mod initialize;
+pub mod init_global_settings;
 
-pub use initialize::*;
+pub use init_global_settings::*;

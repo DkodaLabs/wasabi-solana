@@ -15,7 +15,7 @@ declare_id!("DVmp8rZQHYSAo2h2SsXERvd85ks8wNUvfw33jLVWc2DX");
 pub mod wasabi_solana {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        initialize::handler(ctx)
+    pub fn init_global_settings(ctx: Context<InitGlobalSettings>, args: InitGlobalSettingsArgs) -> Result<()> {
+        init_global_settings::handler(ctx, args)
     }
 }
