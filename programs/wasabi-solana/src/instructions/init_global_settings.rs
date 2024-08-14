@@ -21,10 +21,13 @@ pub struct InitGlobalSettings<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitGlobalSettingsArgs {
     fee_wallet: Pubkey,
-    statuses: u8,
+    statuses: u16,
 }
 
-pub fn handler(_ctx: Context<InitGlobalSettings>, _args: InitGlobalSettingsArgs) -> Result<()> {
-    todo!("Implement business logic");
+pub fn handler(ctx: Context<InitGlobalSettings>, args: InitGlobalSettingsArgs) -> Result<()> {
+    let global = &mut ctx.accounts.global_settings;
+
+    global.protocol_fee_wallet = args.fee_wallet;
+    global.statuses = args.statuses;
     Ok(())
 }
