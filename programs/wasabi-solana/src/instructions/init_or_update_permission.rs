@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{AuthorityStatus, Permission};
+use crate::{AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION};
 
 #[derive(Accounts)]
 pub struct InitOrUpdatePermission<'info> {
@@ -38,7 +38,25 @@ pub struct InitOrUpdatePermission<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitOrUpdatePermissionArgs {
     status: AuthorityStatus,
-    permissions: u8,
+    can_init_vaults: bool,
+    can_liquidate: bool,
+    can_cosign_swaps: bool,
+}
+
+impl InitOrUpdatePermissionArgs {
+  pub fn permissions_map(&self) -> u8 {
+    let mut res = 0;
+    if self.can_init_vaults {
+      res += INIT_VAULT_PERMISSION;
+    }
+    if self.can_liquidate {
+      res += LIQUIDATE_PERMISSION;
+    }
+    if self.can_cosign_swaps {
+      res += COSIGN_PERMISSION;
+    }
+    res
+  }
 }
 
 pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissionArgs) -> Result<()> {
@@ -46,7 +64,7 @@ pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissio
 
     permission.authority = ctx.accounts.new_authority.key();
     permission.is_super_authority = false;
-    permission.permissions_map = args.permissions;
+    permission.permissions_map = args.permissions_map();
     permission.status = args.status;
     Ok(())
 }

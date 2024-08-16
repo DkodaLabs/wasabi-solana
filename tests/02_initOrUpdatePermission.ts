@@ -11,7 +11,9 @@ describe("InitOrUpdatePermission", () => {
     );
     const tx = await superAdminProgram.methods
       .initOrUpdatePermission({
-        permissions: 3,
+        canCosignSwaps: false,
+        canInitVaults: true,
+        canLiquidate: true,
         status: {active: {}}
       })
       .accounts({

@@ -7,9 +7,9 @@ pub enum AuthorityStatus {
     Active,
 }
 
-const INIT_VAULT_PERMISSION: u8 = 0b00000001;
-const LIQUIDATE_PERMISSION: u8 = 0b00000010;
-const COSIGN_PERMISSION: u8 = 0b00000100;
+pub const INIT_VAULT_PERMISSION: u8 = 0b00000001;
+pub const LIQUIDATE_PERMISSION: u8 = 0b00000010;
+pub const COSIGN_PERMISSION: u8 = 0b00000100;
 
 #[account]
 pub struct Permission {
