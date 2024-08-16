@@ -50,6 +50,12 @@ pub struct InitLpVault<'info> {
   pub system_program: Program<'info, System>,
 }
 
-pub fn handler(_ctx: Context<InitLpVault>) -> Result<()> {
+pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
+  let lp_vault = &mut ctx.accounts.lp_vault;
+
+  lp_vault.asset = ctx.accounts.asset_mint.key();
+  lp_vault.vault = ctx.accounts.vault.key();
+  lp_vault.shares_mint = ctx.accounts.shares_mint.key();
+  lp_vault.total_assets = 0;
   Ok(())
 }
