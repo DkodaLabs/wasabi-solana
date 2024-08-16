@@ -21,18 +21,23 @@ pub struct Permission {
 }
 
 impl Permission {
+  /// True if the authority can grant permissions to other keys
+  pub fn can_create_permission(&self) -> bool {
+    self.is_super_authority
+  }
+
   /// True if the authority has permission to initialize vaults
   pub fn can_init_vault(&self) -> bool {
-    self.permissions_map & INIT_VAULT_PERMISSION == INIT_VAULT_PERMISSION
+    self.permissions_map & INIT_VAULT_PERMISSION == INIT_VAULT_PERMISSION || self.is_super_authority
   }
 
   /// True if the authority has permission to liquidate positions
   pub fn can_liquidate(&self) -> bool {
-    self.permissions_map & LIQUIDATE_PERMISSION == LIQUIDATE_PERMISSION
+    self.permissions_map & LIQUIDATE_PERMISSION == LIQUIDATE_PERMISSION || self.is_super_authority
   }
 
   /// True if the authority has permission to co-sign OpenPosition and ClosePosition instructions
   pub fn can_cosign(&self) -> bool {
-    self.permissions_map & COSIGN_PERMISSION == COSIGN_PERMISSION
+    self.permissions_map & COSIGN_PERMISSION == COSIGN_PERMISSION || self.is_super_authority
   }
 }

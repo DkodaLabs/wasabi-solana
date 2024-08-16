@@ -9,13 +9,20 @@ describe("wasabi-solana", () => {
 
   const program = anchor.workspace.WasabiSolana as Program<WasabiSolana>;
 
+  const superAdminKeypair = anchor.web3.Keypair.generate();
+
   it("Is initialized!", async () => {
     const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("global_settings")],
       program.programId,
     );
+    const [superAdminKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("super_admin")],
+      program.programId,
+    );
     const tx = await program.methods
       .initGlobalSettings({
+        superAdmin: superAdminKeypair.publicKey,
         feeWallet: program.provider.publicKey,
         statuses: 3,
       })
@@ -26,5 +33,11 @@ describe("wasabi-solana", () => {
     const globalSettingsAfter = await program.account.globalSettings.fetch(globalSettingsKey);
     assert.equal(globalSettingsAfter.protocolFeeWallet.toString(), program.provider.publicKey.toString());
     assert.equal(globalSettingsAfter.statuses, 3);
+    
+    const superAdminPermissionAfter = await program.account.permission.fetch(superAdminKey);
+    assert.ok(superAdminPermissionAfter.isSuperAuthority);
+    assert.equal(superAdminPermissionAfter.authority.toString(), superAdminKeypair.publicKey.toString());
+    assert.equal(JSON.stringify(superAdminPermissionAfter.status), JSON.stringify({active: {}}));
+    assert.equal(superAdminPermissionAfter.permissionsMap, 2**8 - 1);
   });
 });
