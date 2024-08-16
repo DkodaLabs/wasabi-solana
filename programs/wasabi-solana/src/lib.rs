@@ -21,4 +21,11 @@ pub mod wasabi_solana {
     ) -> Result<()> {
         init_global_settings::handler(ctx, args)
     }
+
+    pub fn init_or_update_permission(
+        ctx: Context<InitOrUpdatePermission>,
+        args: InitOrUpdatePermissionArgs,
+    ) -> Result<()> {
+        init_or_update_permission::handler(ctx, args)
+    }
 }

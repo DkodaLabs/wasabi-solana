@@ -2,14 +2,13 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
+import { superAdminProgram } from "./rootHooks";
 
 describe("wasabi-solana", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.WasabiSolana as Program<WasabiSolana>;
-
-  const superAdminKeypair = anchor.web3.Keypair.generate();
 
   it("Is initialized!", async () => {
     const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -22,7 +21,7 @@ describe("wasabi-solana", () => {
     );
     const tx = await program.methods
       .initGlobalSettings({
-        superAdmin: superAdminKeypair.publicKey,
+        superAdmin: superAdminProgram.provider.publicKey,
         feeWallet: program.provider.publicKey,
         statuses: 3,
       })
@@ -36,7 +35,7 @@ describe("wasabi-solana", () => {
     
     const superAdminPermissionAfter = await program.account.permission.fetch(superAdminKey);
     assert.ok(superAdminPermissionAfter.isSuperAuthority);
-    assert.equal(superAdminPermissionAfter.authority.toString(), superAdminKeypair.publicKey.toString());
+    assert.equal(superAdminPermissionAfter.authority.toString(), superAdminProgram.provider.publicKey.toString());
     assert.equal(JSON.stringify(superAdminPermissionAfter.status), JSON.stringify({active: {}}));
     assert.equal(superAdminPermissionAfter.permissionsMap, 2**8 - 1);
   });
