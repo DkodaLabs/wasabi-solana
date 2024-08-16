@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 
-use crate::{lp_vault, LpVault};
+use crate::{lp_vault_signer_seeds, LpVault};
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
@@ -42,6 +42,21 @@ impl<'info> Deposit<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)
     }
+
+    pub fn mint_shares_to_user(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = MintTo {
+            mint: self.shares_mint.to_account_info(),
+            to: self.owner_shares_account.to_account_info(),
+            authority: self.lp_vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
+        };
+        token::mint_to(cpi_ctx, amount)
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -54,11 +69,28 @@ pub fn handler(ctx: Context<Deposit>, args: DepositArgs) -> Result<()> {
     // transfer tokens from user's asset account
     ctx.accounts
         .transfer_token_from_owner_to_vault(args.amount)?;
-    // TODO: Mint share tokens to the user
+
+    // Mint share tokens to the user
+    let shares_supply = ctx.accounts.shares_mint.supply;
+    let shares_to_mint =  if shares_supply == 0 {
+      // TODO: Need to review this relative to the shares mint decimals and the assets decimals
+      args.amount
+    } else {
+      // shares to mint is (amount/total_assets) * shares_supply
+      shares_supply
+      .checked_mul(args.amount)
+      .expect("overflow")
+      .checked_div(shares_supply)
+      .expect("overflow")
+    };
+    ctx.accounts.mint_shares_to_user(shares_to_mint)?;
 
     // Update the LpVault for total assets deposited.
     let lp_vault = &mut ctx.accounts.lp_vault;
-    lp_vault.total_assets = lp_vault.total_assets.checked_add(args.amount).expect("overflow");
+    lp_vault.total_assets = lp_vault
+        .total_assets
+        .checked_add(args.amount)
+        .expect("overflow");
 
     Ok(())
 }

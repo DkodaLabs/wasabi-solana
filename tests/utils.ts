@@ -4,6 +4,7 @@ import {
   MintLayout,
   TOKEN_PROGRAM_ID,
   unpackAccount,
+  unpackMint,
 } from "@solana/spl-token";
 
 /**
@@ -57,5 +58,15 @@ export const getMultipleTokenAccounts = async (
   const accountInfos = await connection.getMultipleAccountsInfo(keys);
   return accountInfos.map((accountInfo, index) =>
     unpackAccount(keys[index], accountInfo),
+  );
+};
+
+export const getMultipleMintAccounts = async (
+  connection: web3.Connection,
+  keys: web3.PublicKey[],
+) => {
+  const accountInfos = await connection.getMultipleAccountsInfo(keys);
+  return accountInfos.map((accountInfo, index) =>
+    unpackMint(keys[index], accountInfo),
   );
 };

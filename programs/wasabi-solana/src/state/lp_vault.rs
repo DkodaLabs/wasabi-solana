@@ -2,6 +2,8 @@ use anchor_lang::prelude::*;
 
 #[account]
 pub struct LpVault {
+  /// Bump seed for the LpVault's PDA
+  pub bump: u8,
   /// The SPL Mint address of the token that sits in this vault
   pub asset: Pubkey,
   /// The SPL Token account that stores the unborrowed tokens

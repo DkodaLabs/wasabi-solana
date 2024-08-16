@@ -6,7 +6,7 @@ import {
   getAssociatedTokenAddress,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { getMultipleTokenAccounts } from "./utils";
+import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 
 describe("Deposit", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -43,10 +43,15 @@ describe("Deposit", () => {
       program.provider.publicKey,
       false,
     );
-    const [ownerTokenABefore, vaultABefore] = await getMultipleTokenAccounts(
-      program.provider.connection,
-      [tokenAAta, lpVault.vault],
-    );
+    const [[ownerTokenABefore, vaultABefore, ownerSharesBefore], [sharesMintBefore]] =
+      await Promise.all([
+        getMultipleTokenAccounts(program.provider.connection, [
+          tokenAAta,
+          lpVault.vault,
+          ownerSharesAccount,
+        ]),
+        getMultipleMintAccounts(program.provider.connection, [lpVault.sharesMint])
+      ]);
     await program.methods
       .deposit({ amount })
       .accounts({
@@ -57,13 +62,16 @@ describe("Deposit", () => {
       })
       .rpc();
 
-    const [[ownerTokenAAfter, vaultAAfter], lpVaultAfter] = await Promise.all([
-      getMultipleTokenAccounts(program.provider.connection, [
-        tokenAAta,
-        lpVault.vault,
-      ]),
-      program.account.lpVault.fetch(lpVaultKey),
-    ]);
+    const [[ownerTokenAAfter, vaultAAfter, ownerSharesAfter], lpVaultAfter, [sharesMintAfter]] =
+      await Promise.all([
+        getMultipleTokenAccounts(program.provider.connection, [
+          tokenAAta,
+          lpVault.vault,
+          ownerSharesAccount,
+        ]),
+        program.account.lpVault.fetch(lpVaultKey),
+        getMultipleMintAccounts(program.provider.connection, [lpVault.sharesMint])
+      ]);
 
     // Validate tokens were transfered from the user's account to the vault
     const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
@@ -77,7 +85,12 @@ describe("Deposit", () => {
     );
     assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
 
-    // TODO: Validate shares were minted to the user's account
-    assert.ok(false);
+    // Validate shares were minted to the user's account
+    const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
+    assert.equal(ownerSharesDiff, BigInt(amount.toString()));
+    const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
+    assert.equal(sharesSupplyDiff, BigInt(amount.toString()));
   });
+
+  // TODO: Write a case for another user depositing when shares already exist
 });

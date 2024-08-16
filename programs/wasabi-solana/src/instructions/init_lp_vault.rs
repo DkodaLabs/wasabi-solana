@@ -51,8 +51,9 @@ pub struct InitLpVault<'info> {
 }
 
 pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
-  let lp_vault = &mut ctx.accounts.lp_vault;
+  let lp_vault: &mut Account<LpVault> = &mut ctx.accounts.lp_vault;
 
+  lp_vault.bump = ctx.bumps.lp_vault;
   lp_vault.asset = ctx.accounts.asset_mint.key();
   lp_vault.vault = ctx.accounts.vault.key();
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
