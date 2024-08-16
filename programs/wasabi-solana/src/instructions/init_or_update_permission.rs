@@ -37,6 +37,7 @@ pub struct InitOrUpdatePermission<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitOrUpdatePermissionArgs {
+    status: AuthorityStatus,
     permissions: u8,
 }
 
@@ -46,6 +47,6 @@ pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissio
     permission.authority = ctx.accounts.new_authority.key();
     permission.is_super_authority = false;
     permission.permissions_map = args.permissions;
-    permission.status = AuthorityStatus::Active;
+    permission.status = args.status;
     Ok(())
 }

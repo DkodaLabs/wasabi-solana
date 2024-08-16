@@ -12,6 +12,7 @@ describe("InitOrUpdatePermission", () => {
     const tx = await superAdminProgram.methods
       .initOrUpdatePermission({
         permissions: 3,
+        status: {active: {}}
       })
       .accounts({
         payer: superAdminProgram.provider.publicKey,
