@@ -3,6 +3,7 @@ import {
   createInitializeMintInstruction,
   MintLayout,
   TOKEN_PROGRAM_ID,
+  unpackAccount,
 } from "@solana/spl-token";
 
 /**
@@ -47,4 +48,14 @@ export const createSimpleMint = async (
   );
 
   return { ixes, mint };
+};
+
+export const getMultipleTokenAccounts = async (
+  connection: web3.Connection,
+  keys: web3.PublicKey[],
+) => {
+  const accountInfos = await connection.getMultipleAccountsInfo(keys);
+  return accountInfos.map((accountInfo, index) =>
+    unpackAccount(keys[index], accountInfo),
+  );
 };
