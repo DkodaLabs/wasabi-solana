@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 pub mod constants;
 pub mod error;
 pub mod instructions;
+pub mod macros;
 pub mod state;
 
 pub use constants::*;
@@ -27,5 +28,18 @@ pub mod wasabi_solana {
         args: InitOrUpdatePermissionArgs,
     ) -> Result<()> {
         init_or_update_permission::handler(ctx, args)
+    }
+
+    #[access_control(InitLpVault::validate(&ctx))]
+    pub fn init_lp_vault(ctx: Context<InitLpVault>) -> Result<()> {
+        init_lp_vault::handler(ctx)
+    }
+
+    pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
+        deposit::handler(ctx, args)
+    }
+
+    pub fn wtihdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
+        withdraw::handler(ctx, args)
     }
 }
