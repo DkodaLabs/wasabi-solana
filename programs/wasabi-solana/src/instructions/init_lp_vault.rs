@@ -40,7 +40,7 @@ pub struct InitLpVault<'info> {
     seeds = [lp_vault.key().as_ref(), asset_mint.key().as_ref()],
     bump,
     mint::authority = lp_vault,
-    mint::decimals = 6,
+    mint::decimals = asset_mint.decimals,
 
   )]
   pub shares_mint: Account<'info, Mint>,
