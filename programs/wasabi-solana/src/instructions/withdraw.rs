@@ -20,7 +20,7 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()
         .transfer_token_from_vault_to_owner(token_transfer_amt)?;
 
     // Burn the shares
-    ctx.accounts.burn_shares_to_user(args.shares_amount)?;
+    ctx.accounts.burn_shares_from_user(args.shares_amount)?;
 
     // Update the LpVault for total assets withdrawn.
     let lp_vault = &mut ctx.accounts.lp_vault;

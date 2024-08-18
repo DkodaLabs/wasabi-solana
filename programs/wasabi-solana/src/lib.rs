@@ -30,6 +30,7 @@ pub mod wasabi_solana {
         init_or_update_permission::handler(ctx, args)
     }
 
+    #[access_control(InitLpVault::validate(&ctx))]
     pub fn init_lp_vault(ctx: Context<InitLpVault>) -> Result<()> {
         init_lp_vault::handler(ctx)
     }

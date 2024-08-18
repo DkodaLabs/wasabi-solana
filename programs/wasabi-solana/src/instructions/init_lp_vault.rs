@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount}};
 
-use crate::{LpVault, Permission};
+use crate::{error::ErrorCode, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct InitLpVault<'info> {
@@ -48,6 +48,12 @@ pub struct InitLpVault<'info> {
   pub token_program: Program<'info, Token>,
   pub associated_token_program: Program<'info, AssociatedToken>,
   pub system_program: Program<'info, System>,
+}
+impl<'info> InitLpVault<'info> {
+  pub fn validate(ctx: &Context<InitLpVault>) -> Result<()> {
+    require!(ctx.accounts.permission.can_init_vault(), ErrorCode::InvalidPermissions);
+    Ok(())
+  }
 }
 
 pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {

@@ -9,7 +9,7 @@ pub struct DepositOrWithdraw<'info> {
     pub owner: Signer<'info>,
 
     #[account(mut)]
-    /// The Owner's tokena account that holds the assets
+    /// The Owner's token account that holds the assets
     pub owner_asset_account: Account<'info, TokenAccount>,
 
     #[account(mut)]
@@ -58,7 +58,7 @@ impl<'info> DepositOrWithdraw<'info> {
         token::mint_to(cpi_ctx, amount)
     }
 
-    pub fn burn_shares_to_user(&self, amount: u64) -> Result<()> {
+    pub fn burn_shares_from_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Burn {
             mint: self.shares_mint.to_account_info(),
             from: self.owner_shares_account.to_account_info(),
