@@ -73,7 +73,6 @@ pub fn handler(ctx: Context<Deposit>, args: DepositArgs) -> Result<()> {
     // Mint share tokens to the user
     let shares_supply = ctx.accounts.shares_mint.supply;
     let shares_to_mint =  if shares_supply == 0 {
-      // TODO: Need to review this relative to the shares mint decimals and the assets decimals
       args.amount
     } else {
       // shares to mint is (amount/total_assets) * shares_supply
