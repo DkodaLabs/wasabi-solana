@@ -37,4 +37,8 @@ pub mod wasabi_solana {
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
+
+    pub fn wtihdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
+        withdraw::handler(ctx, args)
+    }
 }
