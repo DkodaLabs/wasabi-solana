@@ -4,7 +4,7 @@ use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
 use crate::{lp_vault_signer_seeds, LpVault};
 
 #[derive(Accounts)]
-pub struct Deposit<'info> {
+pub struct DepositOrWithdraw<'info> {
     /// The key of the user that owns the assets
     pub owner: Signer<'info>,
 
@@ -32,7 +32,7 @@ pub struct Deposit<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-impl<'info> Deposit<'info> {
+impl<'info> DepositOrWithdraw<'info> {
     pub fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.owner_asset_account.to_account_info(),
@@ -65,7 +65,7 @@ pub struct DepositArgs {
     amount: u64,
 }
 
-pub fn handler(ctx: Context<Deposit>, args: DepositArgs) -> Result<()> {
+pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
     // transfer tokens from user's asset account
     ctx.accounts
         .transfer_token_from_owner_to_vault(args.amount)?;

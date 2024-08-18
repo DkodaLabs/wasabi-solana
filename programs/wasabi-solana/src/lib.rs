@@ -34,7 +34,7 @@ pub mod wasabi_solana {
         init_lp_vault::handler(ctx)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, args: DepositArgs) -> Result<()> {
+    pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
 }
