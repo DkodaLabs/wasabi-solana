@@ -80,7 +80,7 @@ pub fn handler(ctx: Context<Deposit>, args: DepositArgs) -> Result<()> {
       shares_supply
       .checked_mul(args.amount)
       .expect("overflow")
-      .checked_div(shares_supply)
+      .checked_div(ctx.accounts.lp_vault.total_assets)
       .expect("overflow")
     };
     ctx.accounts.mint_shares_to_user(shares_to_mint)?;
