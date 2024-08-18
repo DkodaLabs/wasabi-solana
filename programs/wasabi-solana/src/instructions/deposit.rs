@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
 use crate::{lp_vault_signer_seeds, LpVault};
 
@@ -57,6 +57,31 @@ impl<'info> DepositOrWithdraw<'info> {
         };
         token::mint_to(cpi_ctx, amount)
     }
+
+    pub fn burn_shares_to_user(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Burn {
+            mint: self.shares_mint.to_account_info(),
+            from: self.owner_shares_account.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::burn(cpi_ctx, amount)
+    }
+
+    pub fn transfer_token_from_vault_to_owner(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.owner_asset_account.to_account_info(),
+            authority: self.lp_vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
+        };
+        token::transfer(cpi_ctx, amount)
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -72,15 +97,15 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()>
 
     // Mint share tokens to the user
     let shares_supply = ctx.accounts.shares_mint.supply;
-    let shares_to_mint =  if shares_supply == 0 {
-      args.amount
+    let shares_to_mint = if shares_supply == 0 {
+        args.amount
     } else {
-      // shares to mint is (amount/total_assets) * shares_supply
-      shares_supply
-      .checked_mul(args.amount)
-      .expect("overflow")
-      .checked_div(ctx.accounts.lp_vault.total_assets)
-      .expect("overflow")
+        // shares to mint is (amount/total_assets) * shares_supply
+        shares_supply
+            .checked_mul(args.amount)
+            .expect("overflow")
+            .checked_div(ctx.accounts.lp_vault.total_assets)
+            .expect("overflow")
     };
     ctx.accounts.mint_shares_to_user(shares_to_mint)?;
 
