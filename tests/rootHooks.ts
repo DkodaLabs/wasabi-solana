@@ -15,8 +15,11 @@ import {
 
 export let superAdminProgram: Program<WasabiSolana>;
 
-export let tokenMintA: web3.PublicKey;
-export let tokenMintB: web3.PublicKey;
+const tokenAKeypair = new web3.Keypair();
+const tokenBKeypair = new web3.Keypair();
+
+export const tokenMintA = tokenAKeypair.publicKey;
+export const tokenMintB = tokenBKeypair.publicKey;
 
 export const mochaHooks = {
   beforeAll: async () => {
@@ -27,31 +30,27 @@ export const mochaHooks = {
       new AnchorProvider(
         AnchorProvider.local().connection,
         new Wallet(web3.Keypair.generate()),
-        { commitment: "processed" },
-      ),
+        { commitment: "processed" }
+      )
     );
 
     await superAdminProgram.provider.connection.requestAirdrop(
       superAdminProgram.provider.publicKey!,
-      100_000_000_000,
+      100_000_000_000
     );
 
     const tx = new web3.Transaction();
-    const tokenAKeypair = new web3.Keypair();
-    tokenMintA = tokenAKeypair.publicKey;
     let { ixes: uIxes, mint: uMint } = await createSimpleMint(
       program.provider.publicKey,
       program.provider.connection,
       6,
-      tokenAKeypair,
+      tokenAKeypair
     );
-    const tokenBKeypair = new web3.Keypair();
-    tokenMintB = tokenBKeypair.publicKey;
     let { ixes: qIxes, mint: qMint } = await createSimpleMint(
       program.provider.publicKey,
       program.provider.connection,
       6,
-      tokenBKeypair,
+      tokenBKeypair
     );
     tx.add(...uIxes, ...qIxes);
     await program.provider.sendAndConfirm(tx, [uMint, qMint]);
@@ -61,13 +60,13 @@ export const mochaHooks = {
     const tokenAAta = await getAssociatedTokenAddress(
       tokenAKeypair.publicKey,
       program.provider.publicKey,
-      false,
+      false
     );
     const createAtaIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
       tokenAAta,
       program.provider.publicKey,
-      tokenAKeypair.publicKey,
+      tokenAKeypair.publicKey
     );
     mintTx.add(createAtaIx);
     const mintToIx = createMintToCheckedInstruction(

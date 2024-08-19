@@ -3,34 +3,34 @@ import { tokenMintA } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
   createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
 import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 
 describe("Deposit", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-  let lpVaultKey: anchor.web3.PublicKey;
+  const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+    program.programId
+  );
   let lpVault: anchor.IdlAccounts<WasabiSolana>["lpVault"];
   let ownerSharesAccount: anchor.web3.PublicKey;
+
   before(async () => {
-    [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-      program.programId,
-    );
     lpVault = await program.account.lpVault.fetch(lpVaultKey);
     // Create the user's shares mint accounts
     const tx = new anchor.web3.Transaction();
-    ownerSharesAccount = await getAssociatedTokenAddress(
+    ownerSharesAccount = getAssociatedTokenAddressSync(
       lpVault.sharesMint,
       program.provider.publicKey,
-      false,
+      false
     );
     const createAtaIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
       ownerSharesAccount,
       program.provider.publicKey,
-      lpVault.sharesMint,
+      lpVault.sharesMint
     );
     tx.add(createAtaIx);
     await program.provider.sendAndConfirm(tx);
@@ -38,10 +38,10 @@ describe("Deposit", () => {
 
   it("should have a successful initial deposit", async () => {
     const amount = new anchor.BN(1_000_000);
-    const tokenAAta = await getAssociatedTokenAddress(
+    const tokenAAta = getAssociatedTokenAddressSync(
       tokenMintA,
       program.provider.publicKey,
-      false,
+      false
     );
     const [
       [ownerTokenABefore, vaultABefore, ownerSharesBefore],
@@ -90,7 +90,7 @@ describe("Deposit", () => {
 
     // Validate the LpVault total assets was incremented properly
     const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
-      lpVault.totalAssets,
+      lpVault.totalAssets
     );
     assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
 
@@ -104,10 +104,10 @@ describe("Deposit", () => {
   // Case for another user depositing when shares already exist
   it("should have a successful second deposit", async () => {
     const amount = new anchor.BN(2_000_000);
-    const tokenAAta = await getAssociatedTokenAddress(
+    const tokenAAta = getAssociatedTokenAddressSync(
       tokenMintA,
       program.provider.publicKey,
-      false,
+      false
     );
     const [
       [ownerTokenABefore, vaultABefore, ownerSharesBefore],
@@ -162,7 +162,7 @@ describe("Deposit", () => {
 
     // Validate the LpVault total assets was incremented properly
     const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
-      lpVaultBefore.totalAssets,
+      lpVaultBefore.totalAssets
     );
     assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
 
