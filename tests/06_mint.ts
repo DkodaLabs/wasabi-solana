@@ -1,11 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
-import { tokenMintA } from "./rootHooks";
-import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
-import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
+import { WasabiSolana } from "../target/types/wasabi_solana";
+import { tokenMintA } from "./rootHooks";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 
-describe("Withdraw", () => {
+describe("Mint", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
@@ -16,6 +16,7 @@ describe("Withdraw", () => {
 
   before(async () => {
     lpVault = await program.account.lpVault.fetch(lpVaultKey);
+    // User's shares mint accounts were already created in `04_deposit.ts`
     ownerSharesAccount = getAssociatedTokenAddressSync(
       lpVault.sharesMint,
       program.provider.publicKey,
@@ -23,7 +24,7 @@ describe("Withdraw", () => {
     );
   });
 
-  it("should successfully withdraw", async () => {
+  it("Should mint a specified number of shares", async () => {
     const sharesAmount = new anchor.BN(1_000_000);
     const tokenAAta = getAssociatedTokenAddressSync(
       tokenMintA,
@@ -33,7 +34,6 @@ describe("Withdraw", () => {
     const [
       [ownerTokenABefore, vaultABefore, ownerSharesBefore],
       [sharesMintBefore],
-      lpVaultBefore,
     ] = await Promise.all([
       getMultipleTokenAccounts(program.provider.connection, [
         tokenAAta,
@@ -43,16 +43,21 @@ describe("Withdraw", () => {
       getMultipleMintAccounts(program.provider.connection, [
         lpVault.sharesMint,
       ]),
-      program.account.lpVault.fetch(lpVaultKey),
     ]);
 
-    const expectedTokenChange =
-      (BigInt(sharesAmount.toString()) *
-        BigInt(lpVaultBefore.totalAssets.toString())) /
-      sharesMintBefore.supply;
+    // calculate amount of tokens expected to be deposited based on
+    // current state.
+    const shareSupplyBefore = new anchor.BN(sharesMintBefore.supply.toString());
+    const expectedTokensIn =
+      sharesMintBefore.supply > BigInt(0)
+        ? lpVault.totalAssets
+            .mul(sharesAmount)
+            .add(shareSupplyBefore)
+            .div(shareSupplyBefore)
+        : sharesAmount;
 
     await program.methods
-      .wtihdraw({ sharesAmount })
+      .mint({ sharesAmount })
       .accounts({
         owner: program.provider.publicKey,
         ownerAssetAccount: tokenAAta,
@@ -76,26 +81,22 @@ describe("Withdraw", () => {
         lpVault.sharesMint,
       ]),
     ]);
+    // Validate shares were minted to the user's account
+    const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
+    assert.equal(ownerSharesDiff, BigInt(sharesAmount.toString()));
+    const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
+    assert.equal(sharesSupplyDiff, BigInt(sharesAmount.toString()));
 
     // Validate tokens were transfered from the user's account to the vault
     const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-    assert.equal(ownerADiff, expectedTokenChange);
+    assert.equal(-ownerADiff, BigInt(expectedTokensIn.toString()));
     const vaultADiff = vaultAAfter.amount - vaultABefore.amount;
-    assert.equal(-vaultADiff, expectedTokenChange);
+    assert.equal(vaultADiff, BigInt(expectedTokensIn.toString()));
 
-    // Validate the LpVault total assets was decremented properly
+    // Validate the LpVault total assets was incremented properly
     const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
       lpVault.totalAssets
     );
-    assert.equal(
-      BigInt(lpVaultAssetCountDiff.toString()),
-      -expectedTokenChange
-    );
-
-    // Validate shares were burned from the user's account
-    const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
-    assert.equal(ownerSharesDiff, BigInt(sharesAmount.neg().toString()));
-    const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
-    assert.equal(sharesSupplyDiff, BigInt(sharesAmount.neg().toString()));
+    assert.equal(lpVaultAssetCountDiff.toString(), expectedTokensIn.toString());
   });
 });
