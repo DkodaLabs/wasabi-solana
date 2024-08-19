@@ -47,11 +47,13 @@ describe("Mint", () => {
 
     // calculate amount of tokens expected to be deposited based on
     // current state.
+    const shareSupplyBefore = new anchor.BN(sharesMintBefore.supply.toString());
     const expectedTokensIn =
       sharesMintBefore.supply > BigInt(0)
         ? lpVault.totalAssets
             .mul(sharesAmount)
-            .div(new anchor.BN(sharesMintBefore.supply.toString()))
+            .add(shareSupplyBefore)
+            .div(shareSupplyBefore)
         : sharesAmount;
 
     await program.methods

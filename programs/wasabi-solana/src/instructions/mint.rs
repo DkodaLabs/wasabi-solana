@@ -17,11 +17,14 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
     let tokens_in = if shares_supply == 0 {
         args.shares_amount
     } else {
-        total_assets
+        (total_assets
             .checked_mul(args.shares_amount)
             .expect("overflow")
-            .checked_div(shares_supply)
-            .expect("overflow")
+            // round up by adding 1 unit of shares_supply
+            .checked_add(shares_supply)
+            .expect("overflow"))
+        .checked_div(shares_supply)
+        .expect("overflow")
     };
     ctx.accounts.transfer_token_from_owner_to_vault(tokens_in)?;
 
