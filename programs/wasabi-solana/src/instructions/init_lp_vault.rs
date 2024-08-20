@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount}};
 
-use crate::{error::ErrorCode, BasePool, LpVault, Permission};
+use crate::{error::ErrorCode, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct InitLpVault<'info> {
