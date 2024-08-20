@@ -4,29 +4,34 @@ use super::DepositOrWithdraw;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct WithdrawArgs {
-    pub shares_amount: u64,
+    pub amount: u64,
 }
 
 pub fn handler(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
     // Tansfer the tokens to the users
-    let token_transfer_amt = args
-        .shares_amount
-        .checked_mul(ctx.accounts.lp_vault.total_assets)
-        .expect("overflow")
-        .checked_div(ctx.accounts.shares_mint.supply)
-        .expect("overflow");
-    msg!("token_transfer_amt: {}", token_transfer_amt);
     ctx.accounts
-        .transfer_token_from_vault_to_owner(token_transfer_amt)?;
+        .transfer_token_from_vault_to_owner(args.amount)?;
+
+    let total_assets = ctx.accounts.lp_vault.total_assets;
+    let shares_supply = ctx.accounts.shares_mint.supply;
+
+    let shares_burn_amount = args
+        .amount
+        .checked_mul(shares_supply)
+        .expect("overflow")
+        .checked_add(total_assets)
+        .expect("overflow")
+        .checked_div(total_assets)
+        .expect("overflow");
 
     // Burn the shares
-    ctx.accounts.burn_shares_from_user(args.shares_amount)?;
+    ctx.accounts.burn_shares_from_user(shares_burn_amount)?;
 
     // Update the LpVault for total assets withdrawn.
     let lp_vault = &mut ctx.accounts.lp_vault;
     lp_vault.total_assets = lp_vault
         .total_assets
-        .checked_sub(token_transfer_amt)
+        .checked_sub(args.amount)
         .expect("underflow");
 
     Ok(())
