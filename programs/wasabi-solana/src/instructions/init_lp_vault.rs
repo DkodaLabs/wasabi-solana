@@ -22,7 +22,7 @@ pub struct InitLpVault<'info> {
     bump,
     space = 8 + std::mem::size_of::<LpVault>(),
   )]
-  pub lp_vault: Account<'info, LpVault>,
+  pub lp_vault: Box<Account<'info, LpVault>>,
 
   pub asset_mint: Account<'info, Mint>,
 
@@ -32,7 +32,7 @@ pub struct InitLpVault<'info> {
     associated_token::mint = asset_mint,
     associated_token::authority = lp_vault,
   )]
-  pub vault: Account<'info, TokenAccount>,
+  pub vault: Box<Account<'info, TokenAccount>>,
 
   #[account(
     init,
@@ -64,5 +64,6 @@ pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
   lp_vault.vault = ctx.accounts.vault.key();
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
   lp_vault.total_assets = 0;
+
   Ok(())
 }

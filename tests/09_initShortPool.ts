@@ -1,10 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 
-describe("InitLpVault", () => {
+describe("InitShortPool", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
 
   const [superAdminPermissionKey] =
@@ -13,35 +12,24 @@ describe("InitLpVault", () => {
       program.programId,
     );
 
-  it("should create the LP Vault", async () => {
+  it("should create the short pool", async () => {
     await superAdminProgram.methods
-      .initLpVault()
+      .initShortPool()
       .accounts({
         payer: superAdminProgram.provider.publicKey,
         permission: superAdminPermissionKey,
         assetMint: tokenMintA,
       })
       .rpc();
-    const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+    const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintA.toBuffer()],
       superAdminProgram.programId,
     );
-    const [sharesMint] = anchor.web3.PublicKey.findProgramAddressSync(
-      [lpVaultKey.toBuffer(), tokenMintA.toBuffer()],
-      superAdminProgram.programId,
-    );
-    const lpVaultAfter = await superAdminProgram.account.lpVault.fetch(lpVaultKey);
+    const shortPoolAfter = await superAdminProgram.account.basePool.fetch(shortPoolKey);
 
-    // Validate the LpVault state was set
-    assert.equal(lpVaultAfter.totalAssets.toNumber(), 0);
-    assert.equal(lpVaultAfter.asset.toString(), tokenMintA.toString());
-    const vaultAddress = getAssociatedTokenAddressSync(
-      tokenMintA,
-      lpVaultKey,
-      true,
-    );
-    assert.equal(lpVaultAfter.vault.toString(), vaultAddress.toString());
-    assert.equal(lpVaultAfter.sharesMint.toString(), sharesMint.toString());
+    // Validate short pool was created
+    assert.equal(shortPoolAfter.collateral.toString(), tokenMintA.toString());
+    assert.ok(!shortPoolAfter.isLongPool);
   });
 
   describe("non permissioned signer", () => {

@@ -35,6 +35,16 @@ pub mod wasabi_solana {
         init_lp_vault::handler(ctx)
     }
 
+    #[access_control(InitLongPool::validate(&ctx))]
+    pub fn init_long_pool(ctx: Context<InitLongPool>) -> Result<()> {
+        init_long_pool::handler(ctx)
+    }
+
+    #[access_control(InitShortPool::validate(&ctx))]
+    pub fn init_short_pool(ctx: Context<InitShortPool>) -> Result<()> {
+        init_short_pool::handler(ctx)
+    }
+
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
