@@ -43,7 +43,7 @@ pub mod wasabi_solana {
         mint::handler(ctx, args)
     }
 
-    pub fn wtihdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
-        withdraw::handler(ctx, args)
+    pub fn redeem(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
+        redeem::handler(ctx, args)
     }
 }

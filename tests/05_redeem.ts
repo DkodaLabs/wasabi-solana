@@ -5,7 +5,7 @@ import { assert } from "chai";
 import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-describe("Withdraw", () => {
+describe("Redeem", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
@@ -52,7 +52,7 @@ describe("Withdraw", () => {
       sharesMintBefore.supply;
 
     await program.methods
-      .wtihdraw({ sharesAmount })
+      .redeem({ sharesAmount })
       .accounts({
         owner: program.provider.publicKey,
         ownerAssetAccount: tokenAAta,
