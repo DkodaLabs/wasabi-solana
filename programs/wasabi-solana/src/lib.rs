@@ -50,4 +50,8 @@ pub mod wasabi_solana {
     pub fn redeem(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> {
         redeem::handler(ctx, args)
     }
+
+    pub fn donate(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
+        donate::handler(ctx, args)
+    }
 }
