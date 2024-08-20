@@ -45,24 +45,6 @@ pub struct InitLpVault<'info> {
   )]
   pub shares_mint: Account<'info, Mint>,
 
-  #[account(
-    init,
-    payer = payer,
-    seeds = [b"long_pool", asset_mint.key().as_ref()],
-    bump,
-    space = 8 + std::mem::size_of::<BasePool>(),
-  )]
-  pub long_pool: Account<'info, BasePool>,
-
-  #[account(
-    init,
-    payer = payer,
-    seeds = [b"short_pool", asset_mint.key().as_ref()],
-    bump,
-    space = 8 + std::mem::size_of::<BasePool>(),
-  )]
-  pub short_pool: Account<'info, BasePool>,
-
   pub token_program: Program<'info, Token>,
   pub associated_token_program: Program<'info, AssociatedToken>,
   pub system_program: Program<'info, System>,
@@ -83,12 +65,5 @@ pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
   lp_vault.total_assets = 0;
 
-  let long_pool = &mut ctx.accounts.long_pool;
-  long_pool.is_long_pool = true;
-  long_pool.collateral = ctx.accounts.asset_mint.key();
-
-  let short_pool = &mut ctx.accounts.short_pool;
-  short_pool.is_long_pool = false;
-  short_pool.collateral = ctx.accounts.asset_mint.key();
   Ok(())
 }
