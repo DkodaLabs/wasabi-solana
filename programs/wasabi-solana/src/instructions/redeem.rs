@@ -3,11 +3,11 @@ use anchor_lang::prelude::*;
 use super::DepositOrWithdraw;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct WithdrawArgs {
+pub struct RedeemArgs {
     pub shares_amount: u64,
 }
 
-pub fn handler(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
+pub fn handler(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> {
     // Tansfer the tokens to the users
     let token_transfer_amt = args
         .shares_amount
@@ -15,7 +15,6 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()
         .expect("overflow")
         .checked_div(ctx.accounts.shares_mint.supply)
         .expect("overflow");
-    msg!("token_transfer_amt: {}", token_transfer_amt);
     ctx.accounts
         .transfer_token_from_vault_to_owner(token_transfer_amt)?;
 

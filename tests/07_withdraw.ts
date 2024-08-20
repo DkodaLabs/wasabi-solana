@@ -5,7 +5,7 @@ import { assert } from "chai";
 import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
-describe("Redeem", () => {
+describe("Withdraw", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
@@ -13,6 +13,11 @@ describe("Redeem", () => {
   );
   let lpVault: anchor.IdlAccounts<WasabiSolana>["lpVault"];
   let ownerSharesAccount: anchor.web3.PublicKey;
+  const tokenAAta = getAssociatedTokenAddressSync(
+    tokenMintA,
+    program.provider.publicKey,
+    false
+  );
 
   before(async () => {
     lpVault = await program.account.lpVault.fetch(lpVaultKey);
@@ -23,13 +28,8 @@ describe("Redeem", () => {
     );
   });
 
-  it("should successfully redeem shares", async () => {
-    const sharesAmount = new anchor.BN(1_000_000);
-    const tokenAAta = getAssociatedTokenAddressSync(
-      tokenMintA,
-      program.provider.publicKey,
-      false
-    );
+  it("should successfully withdraw", async () => {
+    const tokenAmount = new anchor.BN(1_000_000);
     const [
       [ownerTokenABefore, vaultABefore, ownerSharesBefore],
       [sharesMintBefore],
@@ -46,13 +46,15 @@ describe("Redeem", () => {
       program.account.lpVault.fetch(lpVaultKey),
     ]);
 
-    const expectedTokenChange =
-      (BigInt(sharesAmount.toString()) *
-        BigInt(lpVaultBefore.totalAssets.toString())) /
-      sharesMintBefore.supply;
+    // expected to round up, since the program should favor burning
+    // more shares rather than less.
+    const expectedSharesBurned = tokenAmount
+      .mul(new anchor.BN(sharesMintBefore.supply.toString()))
+      .add(lpVaultBefore.totalAssets)
+      .div(lpVaultBefore.totalAssets);
 
     await program.methods
-      .redeem({ sharesAmount })
+      .withdraw({ amount: tokenAmount })
       .accounts({
         owner: program.provider.publicKey,
         ownerAssetAccount: tokenAAta,
@@ -79,9 +81,21 @@ describe("Redeem", () => {
 
     // Validate tokens were transfered from the user's account to the vault
     const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-    assert.equal(ownerADiff, expectedTokenChange);
+    assert.equal(ownerADiff, BigInt(tokenAmount.toString()));
     const vaultADiff = vaultAAfter.amount - vaultABefore.amount;
-    assert.equal(-vaultADiff, expectedTokenChange);
+    assert.equal(-vaultADiff, BigInt(tokenAmount.toString()));
+
+    // Validate shares were burned from the user's account
+    const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
+    assert.equal(
+      ownerSharesDiff,
+      BigInt(expectedSharesBurned.neg().toString())
+    );
+    const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
+    assert.equal(
+      sharesSupplyDiff,
+      BigInt(expectedSharesBurned.neg().toString())
+    );
 
     // Validate the LpVault total assets was decremented properly
     const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
@@ -89,13 +103,7 @@ describe("Redeem", () => {
     );
     assert.equal(
       BigInt(lpVaultAssetCountDiff.toString()),
-      -expectedTokenChange
+      -BigInt(tokenAmount.toString())
     );
-
-    // Validate shares were burned from the user's account
-    const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
-    assert.equal(ownerSharesDiff, BigInt(sharesAmount.neg().toString()));
-    const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
-    assert.equal(sharesSupplyDiff, BigInt(sharesAmount.neg().toString()));
   });
 });
