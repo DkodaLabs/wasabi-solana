@@ -6,7 +6,7 @@ use crate::LpVault;
 #[derive(Accounts)]
 pub struct Donate<'info> {
     /// The key of the address donating
-    pub payer: Signer<'info>,
+    pub owner: Signer<'info>,
 
     #[account(mut)]
     /// The Payer's token account that holds the assets
@@ -34,7 +34,7 @@ impl<'info> Donate<'info> {
         let cpi_accounts = Transfer {
             from: self.owner_asset_account.to_account_info(),
             to: self.vault.to_account_info(),
-            authority: self.payer.to_account_info(),
+            authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)
