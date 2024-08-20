@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount}};
 
-use crate::{error::ErrorCode, LpVault, Permission};
+use crate::{error::ErrorCode, BasePool, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct InitLpVault<'info> {
@@ -22,7 +22,7 @@ pub struct InitLpVault<'info> {
     bump,
     space = 8 + std::mem::size_of::<LpVault>(),
   )]
-  pub lp_vault: Account<'info, LpVault>,
+  pub lp_vault: Box<Account<'info, LpVault>>,
 
   pub asset_mint: Account<'info, Mint>,
 
@@ -32,7 +32,7 @@ pub struct InitLpVault<'info> {
     associated_token::mint = asset_mint,
     associated_token::authority = lp_vault,
   )]
-  pub vault: Account<'info, TokenAccount>,
+  pub vault: Box<Account<'info, TokenAccount>>,
 
   #[account(
     init,
@@ -44,6 +44,24 @@ pub struct InitLpVault<'info> {
 
   )]
   pub shares_mint: Account<'info, Mint>,
+
+  #[account(
+    init,
+    payer = payer,
+    seeds = [b"long_pool", asset_mint.key().as_ref()],
+    bump,
+    space = 8 + std::mem::size_of::<BasePool>(),
+  )]
+  pub long_pool: Account<'info, BasePool>,
+
+  #[account(
+    init,
+    payer = payer,
+    seeds = [b"short_pool", asset_mint.key().as_ref()],
+    bump,
+    space = 8 + std::mem::size_of::<BasePool>(),
+  )]
+  pub short_pool: Account<'info, BasePool>,
 
   pub token_program: Program<'info, Token>,
   pub associated_token_program: Program<'info, AssociatedToken>,
@@ -64,5 +82,13 @@ pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
   lp_vault.vault = ctx.accounts.vault.key();
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
   lp_vault.total_assets = 0;
+
+  let long_pool = &mut ctx.accounts.long_pool;
+  long_pool.is_long_pool = true;
+  long_pool.collateral = ctx.accounts.asset_mint.key();
+
+  let short_pool = &mut ctx.accounts.short_pool;
+  short_pool.is_long_pool = false;
+  short_pool.collateral = ctx.accounts.asset_mint.key();
   Ok(())
 }

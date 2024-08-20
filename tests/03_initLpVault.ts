@@ -26,13 +26,23 @@ describe("InitLpVault", () => {
       [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
       superAdminProgram.programId,
     );
+    const [longPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintA.toBuffer()],
+      superAdminProgram.programId,
+    );
+    const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintA.toBuffer()],
+      superAdminProgram.programId,
+    );
     const [sharesMint] = anchor.web3.PublicKey.findProgramAddressSync(
       [lpVaultKey.toBuffer(), tokenMintA.toBuffer()],
       superAdminProgram.programId,
     );
-    const lpVaultAfter = await superAdminProgram.account.lpVault.fetch(
-      lpVaultKey,
-    );
+    const [lpVaultAfter, longPoolAfter, shortPoolAfter] = await Promise.all([
+      superAdminProgram.account.lpVault.fetch(lpVaultKey),
+      superAdminProgram.account.basePool.fetch(longPoolKey),
+      superAdminProgram.account.basePool.fetch(shortPoolKey),
+    ]);
 
     // Validate the LpVault state was set
     assert.equal(lpVaultAfter.totalAssets.toNumber(), 0);
@@ -44,6 +54,14 @@ describe("InitLpVault", () => {
     );
     assert.equal(lpVaultAfter.vault.toString(), vaultAddress.toString());
     assert.equal(lpVaultAfter.sharesMint.toString(), sharesMint.toString());
+
+    // Validate long pool was created
+    assert.equal(longPoolAfter.collateral.toString(), tokenMintA.toString());
+    assert.ok(longPoolAfter.isLongPool);
+
+    // Validate long pool was created
+    assert.equal(shortPoolAfter.collateral.toString(), tokenMintA.toString());
+    assert.ok(!shortPoolAfter.isLongPool);
   });
 
   describe("non permissioned signer", () => {
