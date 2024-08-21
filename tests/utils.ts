@@ -44,7 +44,7 @@ export const createSimpleMint = async (
       mint.publicKey,
       decimals,
       mintAuthority ?? payer,
-      payer,
+      undefined,
       TOKEN_PROGRAM_ID,
     ),
   );

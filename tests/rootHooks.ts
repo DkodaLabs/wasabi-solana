@@ -5,7 +5,7 @@ import {
   web3,
   workspace,
 } from "@coral-xyz/anchor";
-import { CurveType, TokenSwap } from "@solana/spl-token-swap";
+import { CurveType, TokenSwap, TokenSwapLayout } from "@solana/spl-token-swap";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { createSimpleMint } from "./utils";
 import {
@@ -13,6 +13,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createInitializeAccount3Instruction,
   createMintToCheckedInstruction,
+  createMintToInstruction,
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -37,6 +38,10 @@ export const mochaHooks = {
     const lamportsForTokenAccount =
       await program.provider.connection.getMinimumBalanceForRentExemption(
         AccountLayout.span,
+      );
+    const lamportsForTokenSwapAccount =
+      await program.provider.connection.getMinimumBalanceForRentExemption(
+        TokenSwapLayout.span,
       );
 
     superAdminProgram = new Program(
@@ -158,10 +163,36 @@ export const mochaHooks = {
     initSwapSetupIxs.push(createPoolShareAtaIx);
 
     const initSwapSetupTx = new web3.Transaction().add(...initSwapSetupIxs);
-    console.log("swap pool setup");
-    await program.provider.sendAndConfirm(initSwapSetupTx, initSwapSetupSigners);
+    await program.provider.sendAndConfirm(
+      initSwapSetupTx,
+      initSwapSetupSigners,
+    );
 
     // TODO: Transfer initial tokens to the pool's tokenA and tokenB accounts
+    const initSwapIxes: web3.TransactionInstruction[] = [];
+    const mintToPoolIxA = createMintToInstruction(
+      tokenMintA,
+      swapTokenAccountAKeypair.publicKey,
+      program.provider.publicKey,
+      1_000_000_000,
+    );
+    initSwapIxes.push(mintToPoolIxA);
+    const mintToPoolIxB = createMintToInstruction(
+      tokenMintB,
+      swapTokenAccountBKeypair.publicKey,
+      program.provider.publicKey,
+      1_000_000_000,
+    );
+    initSwapIxes.push(mintToPoolIxB);
+    initSwapIxes.push(
+      web3.SystemProgram.createAccount({
+        fromPubkey: program.provider.publicKey,
+        newAccountPubkey: abSwapKey.publicKey,
+        space: TokenSwapLayout.span,
+        lamports: lamportsForTokenSwapAccount,
+        programId: TOKEN_SWAP_PROGRAM_ID,
+      }),
+    );
 
     const initPoolIx = TokenSwap.createInitSwapInstruction(
       abSwapKey,
@@ -183,8 +214,8 @@ export const mochaHooks = {
       BigInt(10_000),
       CurveType.ConstantProduct,
     );
-    const initSwapTx = new web3.Transaction().add(initPoolIx);
-    console.log("initializing pool");
-    await program.provider.sendAndConfirm(initSwapTx);
+    initSwapIxes.push(initPoolIx);
+    const initSwapTx = new web3.Transaction().add(...initSwapIxes);
+    await program.provider.sendAndConfirm(initSwapTx, [abSwapKey]);
   },
 };
