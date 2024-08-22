@@ -3,6 +3,8 @@ use anchor_spl::token::{Token, TokenAccount};
 
 use crate::{error::ErrorCode, LpVault, OpenPositionRequest};
 
+use super::{open_long_position_cleanup, OpenLongPositionCleanup};
+
 #[derive(Accounts)]
 pub struct OpenLongPositionSetup<'info> {
     #[account(mut)]
@@ -42,19 +44,30 @@ pub struct OpenLongPositionArgs {
     pub min_amount_out: u64,
 }
 
+pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
+  let preimage = format!("{}:{}", namespace, name);
+  let mut sighash = [0u8; 8];
+  sighash.copy_from_slice(
+      &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
+  );
+  sighash
+}
+
 /// This should only be ran on setup
 pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Result<()> {
     let current_index = sysvar::instructions::load_current_index_checked(sysvar_info)? as usize;
+    let open_long_position_cleanup_hash = OpenLongPositionCleanup::get_hash();
 
     // Validate there are no previous setup instructions
     for ixn_idx in 0..current_index {
         let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
         if crate::ID == ixn.program_id {
-            return Err(ErrorCode::InvalidTransaction.into());
+            return Err(ErrorCode::UnpermittedIx.into());
         }
     }
 
     let mut post_current_idx = 1usize;
+    let mut has_cleanup_ix = false;
     // Check that any ixns after are whitelisted programs
     loop {
         let ixn = sysvar::instructions::load_instruction_at_checked(
@@ -66,11 +79,17 @@ pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Resul
         } else {
             let ixn_unwrapped = ixn.unwrap();
             if crate::ID == ixn_unwrapped.program_id {
-                // TODO: Check that there is a cleanup instruction
+                // Check that there is a cleanup instruction
+                if ixn_unwrapped.data[0..8] == open_long_position_cleanup_hash {
+                  has_cleanup_ix = true;
+                }
             }
             // TODO: Check against whitelisted programs
             post_current_idx = post_current_idx.checked_add(1).expect("overflow");
         }
+    }
+    if !has_cleanup_ix {
+      return Err(ErrorCode::MissingCleanup.into());
     }
 
     Ok(())

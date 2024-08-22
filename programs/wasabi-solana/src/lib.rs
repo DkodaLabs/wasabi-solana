@@ -68,4 +68,8 @@ pub mod wasabi_solana {
     pub fn open_long_position_setup(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
         open_long_position_setup::handler(ctx, args)
     }
+
+    pub fn open_long_position_cleanup(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
+        open_long_position_cleanup::handler(ctx)
+    }
 }

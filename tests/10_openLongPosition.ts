@@ -21,20 +21,27 @@ describe("OpenLongPosition", () => {
   describe("with more than one setup IX", () => {
     it("should fail", async () => {
       try {
-        const setupIxBuilder = await program.methods
+        const setupIx = await program.methods
           .openLongPositionSetup({ minAmountOut: new anchor.BN(1_000) })
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
-          });
-        const setupIx = await setupIxBuilder.instruction();
-        await setupIxBuilder.preInstructions([setupIx]).rpc();
+          })
+          .instruction();
+        await program.methods
+          .openLongPositionCleanup()
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+          })
+          .preInstructions([setupIx, setupIx])
+          .rpc();
         assert.ok(false);
       } catch (err) {
         const regex = /already in use/;
         const match = err.toString().match(regex);
-        if (match[0]) {
+        if (match) {
           assert.ok(true);
         } else {
           assert.ok(false);
@@ -48,7 +55,11 @@ describe("OpenLongPosition", () => {
       try {
         await program.methods
           .openLongPositionSetup({ minAmountOut: new anchor.BN(1_000) })
-          .accounts({})
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            lpVault: lpVaultKey,
+          })
           .rpc();
       } catch (err) {
         if (err instanceof anchor.AnchorError) {
