@@ -64,4 +64,8 @@ pub mod wasabi_solana {
     pub fn donate(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
         donate::handler(ctx, args)
     }
+
+    pub fn open_long_position_setup(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
+        open_long_position_setup::handler(ctx, args)
+    }
 }
