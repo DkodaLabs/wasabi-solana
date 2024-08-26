@@ -21,8 +21,15 @@ describe("OpenLongPosition", () => {
   describe("with more than one setup IX", () => {
     it("should fail", async () => {
       try {
+        const now = (new Date().getTime() / 1_000)
         const setupIx = await program.methods
-          .openLongPositionSetup({ minAmountOut: new anchor.BN(1_000) })
+          .openLongPositionSetup({
+            minTargetAmount: new anchor.BN(1_900),
+            downPayment: new anchor.BN(1_000),
+            principal: new anchor.BN(1_000),
+            currency: tokenMintA,
+            expiration: new anchor.BN(now + 3_600)
+          })
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
@@ -53,8 +60,15 @@ describe("OpenLongPosition", () => {
   describe("without cleanup IX", () => {
     it("should fail", async () => {
       try {
+        const now = (new Date().getTime() / 1_000)
         await program.methods
-          .openLongPositionSetup({ minAmountOut: new anchor.BN(1_000) })
+          .openLongPositionSetup({
+            minTargetAmount: new anchor.BN(1_900),
+            downPayment: new anchor.BN(1_000),
+            principal: new anchor.BN(1_000),
+            currency: tokenMintA,
+            expiration: new anchor.BN(now + 3_600)
+          })
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,

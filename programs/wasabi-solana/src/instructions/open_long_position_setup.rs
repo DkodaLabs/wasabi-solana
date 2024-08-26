@@ -38,10 +38,30 @@ pub struct OpenLongPositionSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 
+impl<'info> OpenLongPositionSetup<'info> {
+  pub fn validate(_ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
+    let now = Clock::get()?.unix_timestamp;
+
+    if now > args.expiration {
+      return Err(ErrorCode::PositionReqExpired.into())
+    }
+    // TODO: Valdiate the parameters and accounts
+    Ok(())
+  }
+}
+
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct OpenLongPositionArgs {
-    /// The minimum amount required when swapping
-    pub min_amount_out: u64,
+    /// The minimum amount out required when swapping
+    pub min_target_amount: u64,
+    /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
+    pub down_payment: u64,
+    /// The total principal amount to be borrowed for the position.
+    pub principal: u64,
+    /// The address of the currency to be paid for the position.
+    pub currency: Pubkey,
+    /// The timestamp when this position request expires.
+    pub expiration: i64,
 }
 
 pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
@@ -96,10 +116,8 @@ pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Resul
 }
 
 pub fn handler(ctx: Context<OpenLongPositionSetup>, _args: OpenLongPositionArgs) -> Result<()> {
+  // Validate TX only has only one setup IX and has one following cleanup IX 
     transaction_introspecation_validation(&ctx.accounts.sysvar_info)?;
-    // TODO: Validate TX only has one setup IX
-    // TODO: Validate TX only has one cleanup IX and it comes after this instruction
-    // TODO: Valdiate the parameters and accounts
     // TODO: Borrow from the LP Vault
     // TODO: Consolidate the tokens into the user's token account (token transfer)
     Ok(())

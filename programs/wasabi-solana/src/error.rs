@@ -8,4 +8,6 @@ pub enum ErrorCode {
     UnpermittedIx, // 6001
     #[msg("Missing cleanup ix")]
     MissingCleanup, // 6002
+    #[msg("Expired")]
+    PositionReqExpired, // 6003
 }
