@@ -1,15 +1,16 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::{error::ErrorCode, LpVault, OpenPositionRequest};
+use crate::{error::ErrorCode, lp_vault_signer_seeds, LpVault, OpenPositionRequest};
 
-use super::{open_long_position_cleanup, OpenLongPositionCleanup};
+use super::OpenLongPositionCleanup;
 
 #[derive(Accounts)]
 pub struct OpenLongPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
+    #[account(mut)]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Account<'info, TokenAccount>,
     /// The LP Vault that the user will borrow from
@@ -17,6 +18,7 @@ pub struct OpenLongPositionSetup<'info> {
       has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
+    #[account(mut)]
     /// The LP Vault's token account.
     pub vault: Account<'info, TokenAccount>,
 
@@ -39,15 +41,30 @@ pub struct OpenLongPositionSetup<'info> {
 }
 
 impl<'info> OpenLongPositionSetup<'info> {
-  pub fn validate(_ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
-    let now = Clock::get()?.unix_timestamp;
+    pub fn validate(_ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
 
-    if now > args.expiration {
-      return Err(ErrorCode::PositionReqExpired.into())
+        if now > args.expiration {
+            return Err(ErrorCode::PositionReqExpired.into());
+        }
+        // TODO: Valdiate the parameters and accounts
+        Ok(())
     }
-    // TODO: Valdiate the parameters and accounts
-    Ok(())
-  }
+
+    pub fn transfer_user_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.owner_currency_account.to_account_info(),
+            authority: self.lp_vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
+        };
+        token::transfer(cpi_ctx, amount)
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -65,12 +82,12 @@ pub struct OpenLongPositionArgs {
 }
 
 pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
-  let preimage = format!("{}:{}", namespace, name);
-  let mut sighash = [0u8; 8];
-  sighash.copy_from_slice(
-      &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
-  );
-  sighash
+    let preimage = format!("{}:{}", namespace, name);
+    let mut sighash = [0u8; 8];
+    sighash.copy_from_slice(
+        &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
+    );
+    sighash
 }
 
 /// This should only be ran on setup
@@ -101,7 +118,7 @@ pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Resul
             if crate::ID == ixn_unwrapped.program_id {
                 // Check that there is a cleanup instruction
                 if ixn_unwrapped.data[0..8] == open_long_position_cleanup_hash {
-                  has_cleanup_ix = true;
+                    has_cleanup_ix = true;
                 }
             }
             // TODO: Check against whitelisted programs
@@ -109,17 +126,19 @@ pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Resul
         }
     }
     if !has_cleanup_ix {
-      return Err(ErrorCode::MissingCleanup.into());
+        return Err(ErrorCode::MissingCleanup.into());
     }
 
     Ok(())
 }
 
-pub fn handler(ctx: Context<OpenLongPositionSetup>, _args: OpenLongPositionArgs) -> Result<()> {
-  // Validate TX only has only one setup IX and has one following cleanup IX 
+pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
+    // Validate TX only has only one setup IX and has one following cleanup IX
     transaction_introspecation_validation(&ctx.accounts.sysvar_info)?;
-    // TODO: Borrow from the LP Vault
-    // TODO: Consolidate the tokens into the user's token account (token transfer)
+
+    // Borrow from LP Vault
+    ctx.accounts
+        .transfer_user_borrow_amount_from_vault(args.principal)?;
     // TODO: Cache data on the `open_position_request` account
     Ok(())
 }
