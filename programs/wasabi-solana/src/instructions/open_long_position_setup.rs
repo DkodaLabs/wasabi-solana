@@ -1,7 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::{error::ErrorCode, lp_vault_signer_seeds, LpVault, OpenPositionRequest};
+use crate::{
+    error::ErrorCode, lp_vault_signer_seeds, open_position_request, LpVault, OpenPositionRequest,
+};
 
 use super::OpenLongPositionCleanup;
 
@@ -136,9 +138,15 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     // Validate TX only has only one setup IX and has one following cleanup IX
     transaction_introspecation_validation(&ctx.accounts.sysvar_info)?;
 
+    // Cache data on the `open_position_request` account
+    let open_position_request = &mut ctx.accounts.open_position_request;
+    open_position_request.min_amount_out = args.min_target_amount;
+    open_position_request.swap_cache.source_bal_before = ctx.accounts.vault.amount;
+    open_position_request.swap_cache.destination_bal_before =
+        ctx.accounts.owner_currency_account.amount;
+
     // Borrow from LP Vault
     ctx.accounts
         .transfer_user_borrow_amount_from_vault(args.principal)?;
-    // TODO: Cache data on the `open_position_request` account
     Ok(())
 }
