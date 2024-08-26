@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
 
-use crate::{lp_vault_signer_seeds, LpVault};
+use crate::{events::Deposit, lp_vault_signer_seeds, LpVault};
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct DepositOrWithdraw<'info> {
     /// The key of the user that owns the assets
@@ -115,6 +116,13 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()>
         .total_assets
         .checked_add(args.amount)
         .expect("overflow");
+
+    emit!(Deposit {
+        sender: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner.key(),
+        assets: args.amount,
+        shares: shares_to_mint,
+    });
 
     Ok(())
 }
