@@ -120,5 +120,6 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, _args: OpenLongPositionArgs)
     transaction_introspecation_validation(&ctx.accounts.sysvar_info)?;
     // TODO: Borrow from the LP Vault
     // TODO: Consolidate the tokens into the user's token account (token transfer)
+    // TODO: Cache data on the `open_position_request` account
     Ok(())
 }
