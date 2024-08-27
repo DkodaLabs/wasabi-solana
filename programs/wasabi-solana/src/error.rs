@@ -14,4 +14,6 @@ pub enum ErrorCode {
     MinTokensNotMet, // 6004
     #[msg("Swap amount limit was exceeded")]
     SwapAmountExceeded, // 6005
+    #[msg("Invalid pool")]
+    InvalidPool, // 6006
 }

@@ -36,6 +36,12 @@ impl<'info> OpenLongPositionCleanup<'info> {
     }
 
     pub fn validate(&self) -> Result<()> {
+        // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
+        if self.long_pool.key() != self.open_position_request.pool_key {
+            return Err(ErrorCode::InvalidPool.into());
+        }
+
+        // Validate owner receives at least the minimum amount of token being swapped to.
         let destination_balance_diff = self
             .collateral_vault
             .amount
@@ -46,6 +52,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
+        // Validate owner does not spend more tokens than requested.
         let source_balance_diff = self
             .open_position_request
             .swap_cache
@@ -63,7 +70,5 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
 pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
-    // TODO: Validate the swap exchanged the correct amount of tokens
-    // TODO: Transfer the tokens to the long_pool
     Ok(())
 }

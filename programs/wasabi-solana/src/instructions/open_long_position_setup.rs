@@ -158,6 +158,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         .down_payment
         .checked_add(args.principal)
         .expect("overflow");
+    open_position_request.pool_key = ctx.accounts.long_pool.key();
     open_position_request.swap_cache.source_bal_before = ctx.accounts.owner_currency_account.amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
 
