@@ -1,9 +1,23 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { tokenMintA } from "./rootHooks";
+import {
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  abSwapKey,
+  poolFeeAccount,
+  poolMint,
+  superAdminProgram,
+  swapTokenAccountA,
+  swapTokenAccountB,
+  TOKEN_SWAP_PROGRAM_ID,
+  tokenMintA,
+  tokenMintB,
+} from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
+import { TokenSwap } from "@solana/spl-token-swap";
 
 describe("OpenLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -16,8 +30,32 @@ describe("OpenLongPosition", () => {
     program.provider.publicKey,
     false
   );
+  const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintB.toBuffer()],
+    program.programId
+  );
+  const longPoolBVaultKey = getAssociatedTokenAddressSync(
+    tokenMintB,
+    longPoolBKey,
+    true
+  );
 
-  before(async () => {});
+  before(async () => {
+    // Create LongPool for `tokenMintB` as that will be the collateral held.
+    const [superAdminPermissionKey] =
+      anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("super_admin")],
+        program.programId
+      );
+    await superAdminProgram.methods
+      .initLongPool()
+      .accounts({
+        payer: superAdminProgram.provider.publicKey,
+        permission: superAdminPermissionKey,
+        assetMint: tokenMintB,
+      })
+      .rpc();
+  });
 
   describe("with more than one setup IX", () => {
     it("should fail", async () => {
@@ -91,18 +129,23 @@ describe("OpenLongPosition", () => {
       const now = new Date().getTime() / 1_000;
 
       const lpVault = await program.account.lpVault.fetch(lpVaultKey);
-      const [lpVaultBefore] = await getMultipleTokenAccounts(
-        program.provider.connection,
-        [lpVault.vault]
-      );
+      const [lpVaultBefore, ownerTokenABefore, longPoolBVaultBefore] =
+        await getMultipleTokenAccounts(program.provider.connection, [
+          lpVault.vault,
+          ownerTokenA,
+          longPoolBVaultKey,
+        ]);
 
+      const downPayment = new anchor.BN(1_000);
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
+      const swapAmount = downPayment.add(principal);
+      const minimumAmountOut = new anchor.BN(1_900);
 
       const setupIx = await program.methods
         .openLongPositionSetup({
           minTargetAmount: new anchor.BN(1_900),
-          downPayment: new anchor.BN(1_000),
+          downPayment,
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
@@ -113,25 +156,58 @@ describe("OpenLongPosition", () => {
           lpVault: lpVaultKey,
         })
         .instruction();
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        program.provider.publicKey,
+        ownerTokenA,
+        swapTokenAccountA,
+        swapTokenAccountB,
+        longPoolBVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintA,
+        tokenMintB,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(swapAmount.toString()),
+        BigInt(minimumAmountOut.toString())
+      );
       await program.methods
         .openLongPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenA,
         })
-        .preInstructions([setupIx])
-        .rpc();
+        .preInstructions([setupIx, swapIx])
+        .rpc({ skipPreflight: true });
 
-      const [lpVaultAfter] = await getMultipleTokenAccounts(
-        program.provider.connection,
-        [lpVault.vault]
-      );
+      const [lpVaultAfter, ownerTokenAAfter, longPoolBVaultAfter] =
+        await getMultipleTokenAccounts(program.provider.connection, [
+          lpVault.vault,
+          ownerTokenA,
+          longPoolBVaultKey,
+        ]);
 
       // Assert vault balance decreased by Principal
       assert.equal(
-        lpVaultBefore.amount,
-        lpVaultAfter.amount + BigInt(principal.toString())
+        lpVaultAfter.amount,
+        lpVaultBefore.amount - BigInt(principal.toString())
       );
+      // Assert user balance decreased by downpayment
+      assert.equal(
+        ownerTokenAAfter.amount,
+        ownerTokenABefore.amount - BigInt(downPayment.toString())
+      );
+      // Assert collateral vault balance has increased
+      assert.isTrue(longPoolBVaultAfter.amount > longPoolBVaultBefore.amount);
     });
   });
 });

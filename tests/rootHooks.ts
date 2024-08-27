@@ -19,29 +19,35 @@ import {
 } from "@solana/spl-token";
 
 export const TOKEN_SWAP_PROGRAM_ID = new web3.PublicKey(
-  "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP",
+  "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP"
 );
 
 export let superAdminProgram: Program<WasabiSolana>;
 
 const tokenAKeypair = web3.Keypair.generate();
 const tokenBKeypair = web3.Keypair.generate();
+const swapTokenAccountAKeypair = web3.Keypair.generate();
+const swapTokenAccountBKeypair = web3.Keypair.generate();
 
 export const tokenMintA = tokenAKeypair.publicKey;
 export const tokenMintB = tokenBKeypair.publicKey;
 
-export let abSwapKey = web3.Keypair.generate();
+export const abSwapKey = web3.Keypair.generate();
+export const swapTokenAccountA = swapTokenAccountAKeypair.publicKey;
+export const swapTokenAccountB = swapTokenAccountBKeypair.publicKey;
+export let poolMint: web3.PublicKey;
+export let poolFeeAccount: web3.PublicKey;
 
 export const mochaHooks = {
   beforeAll: async () => {
     const program = workspace.WasabiSolana as Program<WasabiSolana>;
     const lamportsForTokenAccount =
       await program.provider.connection.getMinimumBalanceForRentExemption(
-        AccountLayout.span,
+        AccountLayout.span
       );
     const lamportsForTokenSwapAccount =
       await program.provider.connection.getMinimumBalanceForRentExemption(
-        TokenSwapLayout.span,
+        TokenSwapLayout.span
       );
 
     superAdminProgram = new Program(
@@ -49,13 +55,13 @@ export const mochaHooks = {
       new AnchorProvider(
         AnchorProvider.local().connection,
         new Wallet(web3.Keypair.generate()),
-        { commitment: "processed" },
-      ),
+        { commitment: "processed" }
+      )
     );
 
     await superAdminProgram.provider.connection.requestAirdrop(
       superAdminProgram.provider.publicKey!,
-      100_000_000_000,
+      100_000_000_000
     );
 
     const tx = new web3.Transaction();
@@ -63,13 +69,13 @@ export const mochaHooks = {
       program.provider.publicKey,
       program.provider.connection,
       6,
-      tokenAKeypair,
+      tokenAKeypair
     );
     let { ixes: qIxes, mint: qMint } = await createSimpleMint(
       program.provider.publicKey,
       program.provider.connection,
       6,
-      tokenBKeypair,
+      tokenBKeypair
     );
     tx.add(...uIxes, ...qIxes);
     await program.provider.sendAndConfirm(tx, [uMint, qMint]);
@@ -79,13 +85,13 @@ export const mochaHooks = {
     const tokenAAta = await getAssociatedTokenAddress(
       tokenAKeypair.publicKey,
       program.provider.publicKey,
-      false,
+      false
     );
     const createAtaIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
       tokenAAta,
       program.provider.publicKey,
-      tokenAKeypair.publicKey,
+      tokenAKeypair.publicKey
     );
     mintTx.add(createAtaIx);
     const mintToIx = createMintToCheckedInstruction(
@@ -93,7 +99,7 @@ export const mochaHooks = {
       tokenAAta,
       program.provider.publicKey,
       1_000_000_000 * Math.pow(10, 6),
-      6,
+      6
     );
     mintTx.add(mintToIx);
     await program.provider.sendAndConfirm(mintTx);
@@ -103,9 +109,8 @@ export const mochaHooks = {
     const initSwapSetupSigners: web3.Signer[] = [];
     const [swapAuthority] = web3.PublicKey.findProgramAddressSync(
       [abSwapKey.publicKey.toBuffer()],
-      TOKEN_SWAP_PROGRAM_ID,
+      TOKEN_SWAP_PROGRAM_ID
     );
-    const swapTokenAccountAKeypair = web3.Keypair.generate();
     initSwapSetupIxs.push(
       web3.SystemProgram.createAccount({
         fromPubkey: program.provider.publicKey,
@@ -113,16 +118,15 @@ export const mochaHooks = {
         space: AccountLayout.span,
         lamports: lamportsForTokenAccount,
         programId: TOKEN_PROGRAM_ID,
-      }),
+      })
     );
     initSwapSetupSigners.push(swapTokenAccountAKeypair);
     const initSwapTokenAccountAIx = createInitializeAccount3Instruction(
       swapTokenAccountAKeypair.publicKey,
       tokenMintA,
-      swapAuthority,
+      swapAuthority
     );
     initSwapSetupIxs.push(initSwapTokenAccountAIx);
-    const swapTokenAccountBKeypair = web3.Keypair.generate();
     initSwapSetupIxs.push(
       web3.SystemProgram.createAccount({
         fromPubkey: program.provider.publicKey,
@@ -130,42 +134,44 @@ export const mochaHooks = {
         space: AccountLayout.span,
         lamports: lamportsForTokenAccount,
         programId: TOKEN_PROGRAM_ID,
-      }),
+      })
     );
     initSwapSetupSigners.push(swapTokenAccountBKeypair);
     const initSwapTokenAccountBIx = createInitializeAccount3Instruction(
       swapTokenAccountBKeypair.publicKey,
       tokenMintB,
-      swapAuthority,
+      swapAuthority
     );
     initSwapSetupIxs.push(initSwapTokenAccountBIx);
-    let { ixes: initPoolMintIxes, mint: poolMint } = await createSimpleMint(
+    let { ixes: initPoolMintIxes, mint: _poolMint } = await createSimpleMint(
       program.provider.publicKey,
       program.provider.connection,
       6,
       undefined,
       undefined,
-      swapAuthority,
+      swapAuthority
     );
+    poolMint = _poolMint.publicKey;
     initSwapSetupIxs.push(...initPoolMintIxes);
-    initSwapSetupSigners.push(poolMint);
+    initSwapSetupSigners.push(_poolMint);
     const ownerPoolShareAta = await getAssociatedTokenAddress(
-      poolMint.publicKey,
+      _poolMint.publicKey,
       program.provider.publicKey,
-      false,
+      false
     );
+    poolFeeAccount = ownerPoolShareAta;
     const createPoolShareAtaIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
       ownerPoolShareAta,
       program.provider.publicKey,
-      poolMint.publicKey,
+      _poolMint.publicKey
     );
     initSwapSetupIxs.push(createPoolShareAtaIx);
 
     const initSwapSetupTx = new web3.Transaction().add(...initSwapSetupIxs);
     await program.provider.sendAndConfirm(
       initSwapSetupTx,
-      initSwapSetupSigners,
+      initSwapSetupSigners
     );
 
     // TODO: Transfer initial tokens to the pool's tokenA and tokenB accounts
@@ -174,14 +180,14 @@ export const mochaHooks = {
       tokenMintA,
       swapTokenAccountAKeypair.publicKey,
       program.provider.publicKey,
-      1_000_000_000,
+      1_000_000_000
     );
     initSwapIxes.push(mintToPoolIxA);
     const mintToPoolIxB = createMintToInstruction(
       tokenMintB,
       swapTokenAccountBKeypair.publicKey,
       program.provider.publicKey,
-      1_000_000_000,
+      1_000_000_000
     );
     initSwapIxes.push(mintToPoolIxB);
     initSwapIxes.push(
@@ -191,7 +197,7 @@ export const mochaHooks = {
         space: TokenSwapLayout.span,
         lamports: lamportsForTokenSwapAccount,
         programId: TOKEN_SWAP_PROGRAM_ID,
-      }),
+      })
     );
 
     const initPoolIx = TokenSwap.createInitSwapInstruction(
@@ -199,7 +205,7 @@ export const mochaHooks = {
       swapAuthority,
       swapTokenAccountAKeypair.publicKey,
       swapTokenAccountBKeypair.publicKey,
-      poolMint.publicKey,
+      _poolMint.publicKey,
       ownerPoolShareAta,
       ownerPoolShareAta,
       TOKEN_PROGRAM_ID,
@@ -212,7 +218,7 @@ export const mochaHooks = {
       BigInt(10_000),
       BigInt(0),
       BigInt(10_000),
-      CurveType.ConstantProduct,
+      CurveType.ConstantProduct
     );
     initSwapIxes.push(initPoolIx);
     const initSwapTx = new web3.Transaction().add(...initSwapIxes);
