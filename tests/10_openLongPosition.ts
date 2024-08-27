@@ -604,4 +604,89 @@ describe("OpenLongPosition", () => {
       }
     });
   });
+
+  describe("Without swap co-signer", () => {
+    it("Should fail", async () => {
+      const nonce = 1;
+      const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+          anchor.utils.bytes.utf8.encode("position"),
+          program.provider.publicKey.toBuffer(),
+          longPoolBKey.toBuffer(),
+          lpVaultKey.toBuffer(),
+          new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
+        ],
+        program.programId
+      );
+      const now = new Date().getTime() / 1_000;
+
+      const downPayment = new anchor.BN(1_000);
+      // amount to be borrowed
+      const principal = new anchor.BN(1_000);
+      const swapAmount = downPayment.add(principal);
+      const minimumAmountOut = new anchor.BN(1_900);
+
+      const setupIx = await program.methods
+        .openLongPositionSetup({
+          nonce: 0,
+          minTargetAmount: minimumAmountOut,
+          downPayment,
+          principal,
+          currency: tokenMintA,
+          expiration: new anchor.BN(now + 3_600),
+        })
+        .accounts({
+          owner: program.provider.publicKey,
+          ownerCurrencyAccount: ownerTokenA,
+          lpVault: lpVaultKey,
+          longPool: longPoolBKey,
+        })
+        .instruction();
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        program.provider.publicKey,
+        ownerTokenA,
+        swapTokenAccountA,
+        swapTokenAccountB,
+        longPoolBVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintA,
+        tokenMintB,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(swapAmount.toString()),
+        BigInt(minimumAmountOut.toString())
+      );
+      try {
+        await program.methods
+        .openLongPositionCleanup()
+        .accounts({
+          owner: program.provider.publicKey,
+          ownerCurrencyAccount: ownerTokenA,
+          longPool: longPoolBKey,
+          position: positionKey,
+        })
+        .preInstructions([setupIx, swapIx])
+        .rpc({ skipPreflight: true });
+        assert.ok(false);
+      } catch(err) {
+        if (err instanceof anchor.AnchorError) {
+          assert.equal(err.error.errorCode.number, 6008);
+        } else if (err instanceof anchor.ProgramError) {
+          assert.equal(err.code, 6008);
+        } else {
+          assert.ok(false);
+        }
+      }
+    });
+  })
 });
