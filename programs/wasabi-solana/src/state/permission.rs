@@ -37,7 +37,7 @@ impl Permission {
   }
 
   /// True if the authority has permission to co-sign OpenPosition and ClosePosition instructions
-  pub fn can_cosign(&self) -> bool {
+  pub fn can_cosign_swaps(&self) -> bool {
     self.permissions_map & COSIGN_PERMISSION == COSIGN_PERMISSION || self.is_super_authority
   }
 }

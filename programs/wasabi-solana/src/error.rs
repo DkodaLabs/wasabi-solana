@@ -18,4 +18,6 @@ pub enum ErrorCode {
     InvalidPool, // 6006
     #[msg("Invalid position")]
     InvalidPosition, // 6007
+    #[msg("Invalid swap cosigner")]
+    InvalidSwapCosigner, // 6008
 }

@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds, BasePool, LpVault, OpenPositionRequest, Position,
+    error::ErrorCode, lp_vault_signer_seeds, BasePool, LpVault, OpenPositionRequest, Permission, Position
 };
 
 use super::OpenLongPositionCleanup;
@@ -51,6 +51,13 @@ pub struct OpenLongPositionSetup<'info> {
       )]
     pub position: Account<'info, Position>,
 
+    pub authority: Signer<'info>,
+
+    #[account(
+      has_one = authority,
+    )]
+    pub permission: Account<'info, Permission>,
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     #[account(
@@ -61,11 +68,15 @@ pub struct OpenLongPositionSetup<'info> {
 }
 
 impl<'info> OpenLongPositionSetup<'info> {
-    pub fn validate(_ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
 
         if now > args.expiration {
             return Err(ErrorCode::PositionReqExpired.into());
+        }
+
+        if !ctx.accounts.permission.can_cosign_swaps() {
+            return Err(ErrorCode::InvalidSwapCosigner.into());
         }
         // TODO: Valdiate the parameters and accounts
         Ok(())
