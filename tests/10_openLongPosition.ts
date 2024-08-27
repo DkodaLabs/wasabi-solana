@@ -131,6 +131,14 @@ describe("OpenLongPosition", () => {
   describe("with one setup and one cleanup ", () => {
     it("should open a new position", async () => {
       const now = new Date().getTime() / 1_000;
+      const [openPositionRequestKey] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            anchor.utils.bytes.utf8.encode("open_pos"),
+            program.provider.publicKey.toBuffer(),
+          ],
+          program.programId
+        );
 
       const lpVault = await program.account.lpVault.fetch(lpVaultKey);
       const [lpVaultBefore, ownerTokenABefore, longPoolBVaultBefore] =
@@ -195,12 +203,17 @@ describe("OpenLongPosition", () => {
         .preInstructions([setupIx, swapIx])
         .rpc({ skipPreflight: true });
 
-      const [lpVaultAfter, ownerTokenAAfter, longPoolBVaultAfter] =
-        await getMultipleTokenAccounts(program.provider.connection, [
+      const [
+        [lpVaultAfter, ownerTokenAAfter, longPoolBVaultAfter],
+        openPositionRequestAfter,
+      ] = await Promise.all([
+        getMultipleTokenAccounts(program.provider.connection, [
           lpVault.vault,
           ownerTokenA,
           longPoolBVaultKey,
-        ]);
+        ]),
+        program.provider.connection.getAccountInfo(openPositionRequestKey),
+      ]);
 
       // Assert vault balance decreased by Principal
       assert.equal(
@@ -214,6 +227,9 @@ describe("OpenLongPosition", () => {
       );
       // Assert collateral vault balance has increased
       assert.isTrue(longPoolBVaultAfter.amount > longPoolBVaultBefore.amount);
+
+      // Assert the open position request account was closed
+      assert.isNull(openPositionRequestAfter);
     });
 
     it("should fail with noop", async () => {
