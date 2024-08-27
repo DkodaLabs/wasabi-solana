@@ -16,4 +16,6 @@ pub enum ErrorCode {
     SwapAmountExceeded, // 6005
     #[msg("Invalid pool")]
     InvalidPool, // 6006
+    #[msg("Invalid position")]
+    InvalidPosition, // 6007
 }

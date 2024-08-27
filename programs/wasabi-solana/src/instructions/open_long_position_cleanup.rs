@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
-use crate::{error::ErrorCode, BasePool, OpenPositionRequest};
+use crate::{error::ErrorCode, BasePool, OpenPositionRequest, Position};
 
 use super::get_function_hash;
 
@@ -28,6 +28,9 @@ pub struct OpenLongPositionCleanup<'info> {
     bump,
   )]
     pub open_position_request: Account<'info, OpenPositionRequest>,
+
+    #[account(mut)]
+    pub position: Account<'info, Position>,
 }
 
 impl<'info> OpenLongPositionCleanup<'info> {
@@ -35,32 +38,40 @@ impl<'info> OpenLongPositionCleanup<'info> {
         get_function_hash("global", "open_long_position_cleanup")
     }
 
+    pub fn get_destination_delta(&self) -> u64 {
+        self.collateral_vault
+            .amount
+            .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
+            .expect("overflow")
+    }
+
     pub fn validate(&self) -> Result<()> {
+        // Validate the same position was used in setup and cleanup
+        if self.position.key() != self.open_position_request.position {
+            return Err(ErrorCode::InvalidPosition.into());
+        }
+
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
         if self.long_pool.key() != self.open_position_request.pool_key {
             return Err(ErrorCode::InvalidPool.into());
         }
 
         // Validate owner receives at least the minimum amount of token being swapped to.
-        let destination_balance_diff = self
-            .collateral_vault
-            .amount
-            .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
-            .expect("overflow");
+        let destination_balance_delta = self.get_destination_delta();
 
-        if destination_balance_diff < self.open_position_request.min_amount_out {
+        if destination_balance_delta < self.open_position_request.min_amount_out {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
         // Validate owner does not spend more tokens than requested.
-        let source_balance_diff = self
+        let source_balance_delta = self
             .open_position_request
             .swap_cache
             .source_bal_before
             .checked_sub(self.owner_currency_account.amount)
             .expect("overflow");
 
-        if source_balance_diff > self.open_position_request.max_amount_in {
+        if source_balance_delta > self.open_position_request.max_amount_in {
             return Err(ErrorCode::SwapAmountExceeded.into());
         }
 
@@ -70,5 +81,10 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
 pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
+
+    let destination_delta = ctx.accounts.get_destination_delta();
+
+    let position = &mut ctx.accounts.position;
+    position.collateral_amount = destination_delta;
     Ok(())
 }

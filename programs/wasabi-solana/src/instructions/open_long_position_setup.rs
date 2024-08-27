@@ -1,11 +1,14 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::{error::ErrorCode, lp_vault_signer_seeds, BasePool, LpVault, OpenPositionRequest};
+use crate::{
+    error::ErrorCode, lp_vault_signer_seeds, BasePool, LpVault, OpenPositionRequest, Position,
+};
 
 use super::OpenLongPositionCleanup;
 
 #[derive(Accounts)]
+#[instruction(args: OpenLongPositionArgs)]
 pub struct OpenLongPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
@@ -38,6 +41,15 @@ pub struct OpenLongPositionSetup<'info> {
       space = 8 + std::mem::size_of::<OpenPositionRequest>(),
     )]
     pub open_position_request: Account<'info, OpenPositionRequest>,
+
+    #[account(
+        init,
+        payer = owner,
+        seeds = [b"position", owner.key().as_ref(), long_pool.key().as_ref(), lp_vault.key().as_ref(), &args.nonce.to_le_bytes()],
+        bump,
+        space = 8 + std::mem::size_of::<Position>(),
+      )]
+    pub position: Account<'info, Position>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -77,6 +89,8 @@ impl<'info> OpenLongPositionSetup<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct OpenLongPositionArgs {
+    /// The nonce of the Position
+    pub nonce: u16,
     /// The minimum amount out required when swapping
     pub min_target_amount: u64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
@@ -159,8 +173,18 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         .checked_add(args.principal)
         .expect("overflow");
     open_position_request.pool_key = ctx.accounts.long_pool.key();
+    open_position_request.position = ctx.accounts.position.key();
     open_position_request.swap_cache.source_bal_before = ctx.accounts.owner_currency_account.amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
+
+    let position = &mut ctx.accounts.position;
+    position.trader = ctx.accounts.owner.key();
+    position.currency = ctx.accounts.vault.mint;
+    position.collateral_currency = ctx.accounts.collateral_vault.mint;
+    position.down_payment = args.down_payment;
+    position.principal = args.principal;
+    position.collateral_pool = ctx.accounts.collateral_vault.key();
+    position.lp_vault = ctx.accounts.lp_vault.key();
 
     Ok(())
 }

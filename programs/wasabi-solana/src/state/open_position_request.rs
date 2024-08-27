@@ -13,4 +13,5 @@ pub struct OpenPositionRequest {
     pub min_amount_out: u64,
     pub max_amount_in: u64,
     pub pool_key: Pubkey,
+    pub position: Pubkey,
 }
