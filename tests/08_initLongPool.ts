@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
+import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 describe("InitLongPool", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -9,7 +10,7 @@ describe("InitLongPool", () => {
   const [superAdminPermissionKey] =
     anchor.web3.PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("super_admin")],
-      program.programId,
+      program.programId
     );
 
   it("should create the longPool", async () => {
@@ -23,12 +24,25 @@ describe("InitLongPool", () => {
       .rpc();
     const [longPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintA.toBuffer()],
-      superAdminProgram.programId,
+      superAdminProgram.programId
     );
-    const longPoolAfter = await superAdminProgram.account.basePool.fetch(longPoolKey);
+    const collateralVaultKey = getAssociatedTokenAddressSync(
+      tokenMintA,
+      longPoolKey,
+      true
+    );
+    const [longPoolAfter, collateralVault] = await Promise.all([
+      superAdminProgram.account.basePool.fetch(longPoolKey),
+      program.provider.connection.getAccountInfo(collateralVaultKey),
+    ]);
 
     // Validate long pool was created
     assert.equal(longPoolAfter.collateral.toString(), tokenMintA.toString());
+    assert.equal(
+      longPoolAfter.collateralVault.toString(),
+      collateralVaultKey.toString()
+    );
+    assert.isNotNull(collateralVault);
     assert.ok(longPoolAfter.isLongPool);
   });
 
