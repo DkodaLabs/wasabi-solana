@@ -12,4 +12,6 @@ pub enum ErrorCode {
     PositionReqExpired, // 6003
     #[msg("Minimum tokens not met")]
     MinTokensNotMet, // 6004
+    #[msg("Swap amount limit was exceeded")]
+    SwapAmountExceeded, // 6005
 }

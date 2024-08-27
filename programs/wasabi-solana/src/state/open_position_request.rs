@@ -11,4 +11,5 @@ pub struct SwapCache {
 pub struct OpenPositionRequest {
   pub swap_cache: SwapCache,
   pub min_amount_out: u64,
+  pub max_amount_in: u64,
 }

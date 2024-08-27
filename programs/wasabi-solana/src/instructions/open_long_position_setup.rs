@@ -148,10 +148,16 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     ctx.accounts
         .transfer_user_borrow_amount_from_vault(args.principal)?;
 
+    ctx.accounts.owner_currency_account.reload()?;
+
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
     let open_position_request = &mut ctx.accounts.open_position_request;
     open_position_request.min_amount_out = args.min_target_amount;
+    open_position_request.max_amount_in = args
+        .down_payment
+        .checked_add(args.principal)
+        .expect("overflow");
     open_position_request.swap_cache.source_bal_before = ctx.accounts.owner_currency_account.amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
 

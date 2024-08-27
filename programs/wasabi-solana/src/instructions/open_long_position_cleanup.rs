@@ -45,6 +45,18 @@ impl<'info> OpenLongPositionCleanup<'info> {
         if destination_balance_diff < self.open_position_request.min_amount_out {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
+
+        let source_balance_diff = self
+            .open_position_request
+            .swap_cache
+            .source_bal_before
+            .checked_sub(self.owner_currency_account.amount)
+            .expect("overflow");
+
+        if source_balance_diff > self.open_position_request.max_amount_in {
+            return Err(ErrorCode::SwapAmountExceeded.into());
+        }
+
         Ok(())
     }
 }
