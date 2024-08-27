@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::events::Withdraw;
+
 use super::DepositOrWithdraw;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -33,6 +35,14 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()
         .total_assets
         .checked_sub(args.amount)
         .expect("underflow");
+
+    emit!(Withdraw {
+        sender: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner.key(),
+        receiver: ctx.accounts.owner.key(),
+        assets: args.amount,
+        shares: shares_burn_amount,
+    });
 
     Ok(())
 }

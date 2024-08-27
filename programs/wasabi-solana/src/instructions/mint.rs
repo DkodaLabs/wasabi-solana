@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+use crate::events::Deposit;
+
 use super::DepositOrWithdraw;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -34,6 +36,13 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
         .total_assets
         .checked_add(tokens_in)
         .expect("overflow");
+
+    emit!(Deposit {
+        sender: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner.key(),
+        assets: tokens_in,
+        shares: args.shares_amount,
+    });
 
     Ok(())
 }
