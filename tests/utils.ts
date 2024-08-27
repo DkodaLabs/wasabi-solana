@@ -23,6 +23,7 @@ export const createSimpleMint = async (
   decimals: number,
   mintKeypair?: web3.Keypair,
   lamps?: number,
+  mintAuthority?: web3.PublicKey,
 ) => {
   let mint = mintKeypair ? mintKeypair : web3.Keypair.generate();
   let ixes: web3.TransactionInstruction[] = [];
@@ -42,8 +43,8 @@ export const createSimpleMint = async (
     createInitializeMintInstruction(
       mint.publicKey,
       decimals,
-      payer,
-      payer,
+      mintAuthority ?? payer,
+      undefined,
       TOKEN_PROGRAM_ID,
     ),
   );

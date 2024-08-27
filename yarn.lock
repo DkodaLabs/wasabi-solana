@@ -211,6 +211,14 @@
     "@solana/codecs" "2.0.0-preview.2"
     "@solana/spl-type-length-value" "0.1.0"
 
+"@solana/spl-token-swap@^0.4.3":
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/@solana/spl-token-swap/-/spl-token-swap-0.4.3.tgz#157aa6fd9c69b065d5101198eb05e789c2f9a6ca"
+  integrity sha512-wbmaoczp8Jebo+Iv1bK/endkMTVwTaZtyKvj25RdDascW2rt3zWdL93V4vA5AImQm78fyHiatOG52MA/4fxXyQ==
+  dependencies:
+    "@solana/buffer-layout" "^4.0.0"
+    "@solana/buffer-layout-utils" "^0.2.0"
+
 "@solana/spl-token@^0.4.8":
   version "0.4.8"
   resolved "https://registry.yarnpkg.com/@solana/spl-token/-/spl-token-0.4.8.tgz#a84e4131af957fa9fbd2727e5fc45dfbf9083586"

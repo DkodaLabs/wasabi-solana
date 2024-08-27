@@ -14,5 +14,9 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+[[test.genesis]] # TokenSwap program ID
+address = "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP"
+program = "tests/deps/spl_token_swap.so"
+
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/rootHooks.ts"
