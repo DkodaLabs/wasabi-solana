@@ -39,6 +39,7 @@ export let poolMint: web3.PublicKey;
 export let poolFeeAccount: web3.PublicKey;
 
 export const SWAP_AUTHORITY = web3.Keypair.generate();
+export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 
 export const mochaHooks = {
   beforeAll: async () => {

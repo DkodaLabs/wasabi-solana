@@ -1,10 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { superAdminProgram } from "./rootHooks";
+import { NON_SWAP_AUTHORITY, superAdminProgram } from "./rootHooks";
 
 describe("InitOrUpdatePermission", () => {
   it("Is initialized!", async () => {
-    const newAuthority = anchor.web3.Keypair.generate().publicKey;
+    const newAuthority = NON_SWAP_AUTHORITY.publicKey;
     const [adminKey] = anchor.web3.PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("admin"), newAuthority.toBuffer()],
       superAdminProgram.programId,
