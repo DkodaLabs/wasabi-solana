@@ -10,4 +10,6 @@ pub enum ErrorCode {
     MissingCleanup, // 6002
     #[msg("Expired")]
     PositionReqExpired, // 6003
+    #[msg("Minimum tokens not met")]
+    MinTokensNotMet, // 6004
 }

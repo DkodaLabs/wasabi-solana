@@ -36,7 +36,7 @@ pub struct InitLongPool<'info> {
     associated_token::mint = asset_mint,
     associated_token::authority = long_pool,
   )]
-    pub long_pool_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -57,7 +57,7 @@ pub fn handler(ctx: Context<InitLongPool>) -> Result<()> {
     let long_pool = &mut ctx.accounts.long_pool;
     long_pool.is_long_pool = true;
     long_pool.collateral = ctx.accounts.asset_mint.key();
-    long_pool.collateral_vault = ctx.accounts.long_pool_vault.key();
+    long_pool.collateral_vault = ctx.accounts.collateral_vault.key();
 
     Ok(())
 }

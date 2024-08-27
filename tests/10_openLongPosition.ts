@@ -73,6 +73,7 @@ describe("OpenLongPosition", () => {
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
+            longPool: longPoolBKey,
           })
           .instruction();
         await program.methods
@@ -80,6 +81,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            longPool: longPoolBKey,
           })
           .preInstructions([setupIx, setupIx])
           .rpc();
@@ -112,8 +114,10 @@ describe("OpenLongPosition", () => {
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
+            longPool: longPoolBKey,
           })
           .rpc();
+        assert.ok(false);
       } catch (err) {
         if (err instanceof anchor.AnchorError) {
           assert.equal(err.error.errorCode.number, 6002);
@@ -144,7 +148,7 @@ describe("OpenLongPosition", () => {
 
       const setupIx = await program.methods
         .openLongPositionSetup({
-          minTargetAmount: new anchor.BN(1_900),
+          minTargetAmount: minimumAmountOut,
           downPayment,
           principal,
           currency: tokenMintA,
@@ -154,6 +158,7 @@ describe("OpenLongPosition", () => {
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKey,
+          longPool: longPoolBKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -185,6 +190,7 @@ describe("OpenLongPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenA,
+          longPool: longPoolBKey,
         })
         .preInstructions([setupIx, swapIx])
         .rpc({ skipPreflight: true });
@@ -208,6 +214,50 @@ describe("OpenLongPosition", () => {
       );
       // Assert collateral vault balance has increased
       assert.isTrue(longPoolBVaultAfter.amount > longPoolBVaultBefore.amount);
+    });
+
+    it("should fail with noop", async () => {
+      const now = new Date().getTime() / 1_000;
+
+      const downPayment = new anchor.BN(1_000);
+      // amount to be borrowed
+      const principal = new anchor.BN(1_000);
+      const minimumAmountOut = new anchor.BN(1_900);
+      try {
+        const setupIx = await program.methods
+          .openLongPositionSetup({
+            minTargetAmount: minimumAmountOut,
+            downPayment,
+            principal,
+            currency: tokenMintA,
+            expiration: new anchor.BN(now + 3_600),
+          })
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            lpVault: lpVaultKey,
+            longPool: longPoolBKey,
+          })
+          .instruction();
+        await program.methods
+          .openLongPositionCleanup()
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            longPool: longPoolBKey,
+          })
+          .preInstructions([setupIx])
+          .rpc({ skipPreflight: true });
+        assert.ok(false);
+      } catch (err) {
+        if (err instanceof anchor.AnchorError) {
+          assert.equal(err.error.errorCode.number, 6004);
+        } else if (err instanceof anchor.ProgramError) {
+          assert.equal(err.code, 6004);
+        } else {
+          assert.ok(false);
+        }
+      }
     });
   });
 });

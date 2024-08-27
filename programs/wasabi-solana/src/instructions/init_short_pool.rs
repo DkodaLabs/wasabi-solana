@@ -36,7 +36,7 @@ pub struct InitShortPool<'info> {
     associated_token::mint = asset_mint,
     associated_token::authority = short_pool,
   )]
-    pub short_pool_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -57,7 +57,7 @@ pub fn handler(ctx: Context<InitShortPool>) -> Result<()> {
     let short_pool = &mut ctx.accounts.short_pool;
     short_pool.is_long_pool = false;
     short_pool.collateral = ctx.accounts.asset_mint.key();
-    short_pool.collateral_vault = ctx.accounts.short_pool_vault.key();
+    short_pool.collateral_vault = ctx.accounts.collateral_vault.key();
 
     Ok(())
 }
