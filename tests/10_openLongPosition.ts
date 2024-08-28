@@ -24,7 +24,10 @@ import { TokenSwap } from "@solana/spl-token-swap";
 describe("OpenLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("admin"), SWAP_AUTHORITY.publicKey.toBuffer()],
+    [
+      anchor.utils.bytes.utf8.encode("admin"),
+      SWAP_AUTHORITY.publicKey.toBuffer(),
+    ],
     program.programId
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -44,6 +47,13 @@ describe("OpenLongPosition", () => {
     tokenMintB,
     longPoolBKey,
     true
+  );
+  const [openPositionRequestKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      anchor.utils.bytes.utf8.encode("open_pos"),
+      program.provider.publicKey.toBuffer(),
+    ],
+    program.programId
   );
 
   before(async () => {
@@ -168,14 +178,6 @@ describe("OpenLongPosition", () => {
         program.programId
       );
       const now = new Date().getTime() / 1_000;
-      const [openPositionRequestKey] =
-        anchor.web3.PublicKey.findProgramAddressSync(
-          [
-            anchor.utils.bytes.utf8.encode("open_pos"),
-            program.provider.publicKey.toBuffer(),
-          ],
-          program.programId
-        );
 
       const lpVault = await program.account.lpVault.fetch(lpVaultKey);
       const [lpVaultBefore, ownerTokenABefore, longPoolBVaultBefore] =
@@ -652,10 +654,14 @@ describe("OpenLongPosition", () => {
       const swapAmount = downPayment.add(principal);
       const minimumAmountOut = new anchor.BN(1_900);
 
-      const [badCoSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("admin"), NON_SWAP_AUTHORITY.publicKey.toBuffer()],
-        program.programId
-      );
+      const [badCoSignerPermission] =
+        anchor.web3.PublicKey.findProgramAddressSync(
+          [
+            anchor.utils.bytes.utf8.encode("admin"),
+            NON_SWAP_AUTHORITY.publicKey.toBuffer(),
+          ],
+          program.programId
+        );
 
       const setupIx = await program.methods
         .openLongPositionSetup({
@@ -701,18 +707,18 @@ describe("OpenLongPosition", () => {
       );
       try {
         await program.methods
-        .openLongPositionCleanup()
-        .accounts({
-          owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
-          longPool: longPoolBKey,
-          position: positionKey,
-        })
-        .preInstructions([setupIx, swapIx])
-        .signers([NON_SWAP_AUTHORITY])
-        .rpc();
+          .openLongPositionCleanup()
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            longPool: longPoolBKey,
+            position: positionKey,
+          })
+          .preInstructions([setupIx, swapIx])
+          .signers([NON_SWAP_AUTHORITY])
+          .rpc();
         assert.ok(false);
-      } catch(err) {
+      } catch (err) {
         if (err instanceof anchor.AnchorError) {
           assert.equal(err.error.errorCode.number, 6008);
         } else if (err instanceof anchor.ProgramError) {
@@ -722,5 +728,5 @@ describe("OpenLongPosition", () => {
         }
       }
     });
-  })
+  });
 });

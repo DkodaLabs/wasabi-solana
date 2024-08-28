@@ -85,26 +85,38 @@ export const mochaHooks = {
 
     // Mint underlying & Quote to the provider wallet
     const mintTx = new web3.Transaction();
-    const tokenAAta = await getAssociatedTokenAddress(
+    const ataTokenA = await getAssociatedTokenAddress(
       tokenAKeypair.publicKey,
       program.provider.publicKey,
       false
     );
-    const createAtaIx = createAssociatedTokenAccountInstruction(
+    const createAtaTokanAIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
-      tokenAAta,
+      ataTokenA,
       program.provider.publicKey,
       tokenAKeypair.publicKey
     );
-    mintTx.add(createAtaIx);
-    const mintToIx = createMintToCheckedInstruction(
+    mintTx.add(createAtaTokanAIx);
+    const ataTokenB = await getAssociatedTokenAddress(
+      tokenBKeypair.publicKey,
+      program.provider.publicKey,
+      false
+    );
+    const createAtaTokanBIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      ataTokenB,
+      program.provider.publicKey,
+      tokenBKeypair.publicKey
+    );
+    mintTx.add(createAtaTokanBIx);
+    const mintTokenAToOwnerIx = createMintToCheckedInstruction(
       tokenAKeypair.publicKey,
-      tokenAAta,
+      ataTokenA,
       program.provider.publicKey,
       1_000_000_000 * Math.pow(10, 6),
       6
     );
-    mintTx.add(mintToIx);
+    mintTx.add(mintTokenAToOwnerIx);
     await program.provider.sendAndConfirm(mintTx);
 
     // TODO: Create a TokenSwap pool for the pair.
