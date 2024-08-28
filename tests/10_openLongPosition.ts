@@ -7,9 +7,11 @@ import {
 } from "@solana/spl-token";
 import {
   abSwapKey,
+  NON_SWAP_AUTHORITY,
   poolFeeAccount,
   poolMint,
   superAdminProgram,
+  SWAP_AUTHORITY,
   swapTokenAccountA,
   swapTokenAccountB,
   TOKEN_SWAP_PROGRAM_ID,
@@ -21,6 +23,10 @@ import { TokenSwap } from "@solana/spl-token-swap";
 
 describe("OpenLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
+  const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("admin"), SWAP_AUTHORITY.publicKey.toBuffer()],
+    program.programId
+  );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
     program.programId
@@ -86,6 +92,8 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
         await program.methods
@@ -97,6 +105,7 @@ describe("OpenLongPosition", () => {
             position: positionKey,
           })
           .preInstructions([setupIx, setupIx])
+          .signers([SWAP_AUTHORITY])
           .rpc();
         assert.ok(false);
       } catch (err) {
@@ -129,7 +138,10 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
+          .signers([SWAP_AUTHORITY])
           .rpc();
         assert.ok(false);
       } catch (err) {
@@ -193,6 +205,8 @@ describe("OpenLongPosition", () => {
           ownerCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKey,
           longPool: longPoolBKey,
+          permission: coSignerPermission,
+          authority: SWAP_AUTHORITY.publicKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -228,6 +242,7 @@ describe("OpenLongPosition", () => {
           position: positionKey,
         })
         .preInstructions([setupIx, swapIx])
+        .signers([SWAP_AUTHORITY])
         .rpc({ skipPreflight: true });
 
       const [
@@ -316,6 +331,8 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
         await program.methods
@@ -327,6 +344,7 @@ describe("OpenLongPosition", () => {
             position: positionKey,
           })
           .preInstructions([setupIx])
+          .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
@@ -373,6 +391,8 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -409,10 +429,10 @@ describe("OpenLongPosition", () => {
             position: positionKey,
           })
           .preInstructions([setupIx, swapIx])
+          .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
-        console.log(err);
         if (err instanceof anchor.AnchorError) {
           assert.equal(err.error.errorCode.number, 6005);
         } else if (err instanceof anchor.ProgramError) {
@@ -473,6 +493,8 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -509,6 +531,7 @@ describe("OpenLongPosition", () => {
             position: positionKey,
           })
           .preInstructions([setupIx, swapIx])
+          .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
@@ -555,6 +578,8 @@ describe("OpenLongPosition", () => {
             ownerCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
+            permission: coSignerPermission,
+            authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -591,6 +616,7 @@ describe("OpenLongPosition", () => {
             position: badPositionKey,
           })
           .preInstructions([setupIx, swapIx])
+          .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
@@ -626,9 +652,14 @@ describe("OpenLongPosition", () => {
       const swapAmount = downPayment.add(principal);
       const minimumAmountOut = new anchor.BN(1_900);
 
+      const [badCoSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("admin"), NON_SWAP_AUTHORITY.publicKey.toBuffer()],
+        program.programId
+      );
+
       const setupIx = await program.methods
         .openLongPositionSetup({
-          nonce: 0,
+          nonce,
           minTargetAmount: minimumAmountOut,
           downPayment,
           principal,
@@ -640,6 +671,8 @@ describe("OpenLongPosition", () => {
           ownerCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKey,
           longPool: longPoolBKey,
+          permission: badCoSignerPermission,
+          authority: NON_SWAP_AUTHORITY.publicKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -676,7 +709,8 @@ describe("OpenLongPosition", () => {
           position: positionKey,
         })
         .preInstructions([setupIx, swapIx])
-        .rpc({ skipPreflight: true });
+        .signers([NON_SWAP_AUTHORITY])
+        .rpc();
         assert.ok(false);
       } catch(err) {
         if (err instanceof anchor.AnchorError) {
