@@ -15,7 +15,7 @@ cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [[test.genesis]] # TokenSwap program ID
-address = "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP"
+address = "SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw"
 program = "tests/deps/spl_token_swap.so"
 
 [scripts]

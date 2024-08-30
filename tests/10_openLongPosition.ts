@@ -14,12 +14,11 @@ import {
   SWAP_AUTHORITY,
   swapTokenAccountA,
   swapTokenAccountB,
-  TOKEN_SWAP_PROGRAM_ID,
   tokenMintA,
   tokenMintB,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
-import { TokenSwap } from "@solana/spl-token-swap";
+import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 
 describe.skip("OpenLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
