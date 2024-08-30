@@ -7,7 +7,9 @@ pub mod init_lp_vault;
 pub mod init_or_update_permission;
 pub mod mint;
 pub mod open_long_position_cleanup;
+pub mod open_short_position_cleanup;
 pub mod open_long_position_setup;
+pub mod open_short_position_setup;
 pub mod redeem;
 pub mod withdraw;
 
@@ -20,6 +22,8 @@ pub use init_lp_vault::*;
 pub use init_or_update_permission::*;
 pub use mint::*;
 pub use open_long_position_cleanup::*;
+pub use open_short_position_cleanup::*;
 pub use open_long_position_setup::*;
+pub use open_short_position_setup::*;
 pub use redeem::*;
 pub use withdraw::*;
