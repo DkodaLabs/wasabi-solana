@@ -57,7 +57,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
         // Validate owner receives at least the minimum amount of token being swapped to.
         let destination_balance_delta = self.get_destination_delta();
 
-        if destination_balance_delta < self.open_position_request.min_amount_out {
+        if destination_balance_delta < self.open_position_request.min_target_amount {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
