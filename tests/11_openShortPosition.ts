@@ -92,11 +92,25 @@ describe("OpenShortPosition", () => {
         ],
         program.programId
       );
+      console.log(
+        "accounts ",
+        Object.values({
+          owner: program.provider.publicKey,
+          ownerCurrencyAccount: ownerTokenB,
+          ownerTargetCurrencyAccount: ownerTokenA,
+          lpVault: lpVaultKey,
+          shortPool: shortPoolAKey,
+          permission: coSignerPermission,
+          authority: SWAP_AUTHORITY.publicKey,
+          position: positionKey,
+        }).map((p) => p.toString())
+      );
       try {
         const now = new Date().getTime() / 1_000;
         const setupIx = await program.methods
           .openShortPositionSetup({
             nonce,
+            minTargetAmount: new anchor.BN(1_000),
             downPayment: new anchor.BN(1_000),
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
@@ -104,7 +118,8 @@ describe("OpenShortPosition", () => {
           })
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
+            ownerTargetCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
@@ -116,15 +131,16 @@ describe("OpenShortPosition", () => {
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
             position: positionKey,
           })
           .preInstructions([setupIx, setupIx])
           .signers([SWAP_AUTHORITY])
-          .rpc();
+          .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
+        console.log(err);
         const regex = /already in use/;
         const match = err.toString().match(regex);
         if (match) {
@@ -143,6 +159,7 @@ describe("OpenShortPosition", () => {
         await program.methods
           .openShortPositionSetup({
             nonce: 100,
+            minTargetAmount: new anchor.BN(1_000),
             downPayment: new anchor.BN(1_000),
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
@@ -150,7 +167,8 @@ describe("OpenShortPosition", () => {
           })
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
+            ownerTargetCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
@@ -188,7 +206,7 @@ describe("OpenShortPosition", () => {
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
       const swapAmount = downPayment.add(principal);
-      const minimumAmountOut = new anchor.BN(1_900);
+      const minTargetAmount = new anchor.BN(1_900);
 
       const [badCoSignerPermission] =
         anchor.web3.PublicKey.findProgramAddressSync(
@@ -202,6 +220,7 @@ describe("OpenShortPosition", () => {
       const setupIx = await program.methods
         .openShortPositionSetup({
           nonce,
+          minTargetAmount,
           downPayment,
           principal,
           currency: tokenMintA,
@@ -209,7 +228,8 @@ describe("OpenShortPosition", () => {
         })
         .accounts({
           owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
+          ownerCurrencyAccount: ownerTokenB,
+          ownerTargetCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKey,
           shortPool: shortPoolAKey,
           permission: badCoSignerPermission,
@@ -246,7 +266,7 @@ describe("OpenShortPosition", () => {
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
             position: positionKey,
           })
@@ -291,10 +311,11 @@ describe("OpenShortPosition", () => {
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
       const swapAmount = downPayment.add(principal);
-      const minimumAmountOut = new anchor.BN(1_900);
+      const minTargetAmount = new anchor.BN(1);
       const setupIx = await program.methods
         .openShortPositionSetup({
           nonce: 0,
+          minTargetAmount,
           downPayment,
           principal,
           currency: tokenMintA,
@@ -303,6 +324,7 @@ describe("OpenShortPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenB,
+          ownerTargetCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKey,
           shortPool: shortPoolAKey,
           permission: coSignerPermission,
@@ -310,30 +332,30 @@ describe("OpenShortPosition", () => {
           position: positionKey,
         })
         .instruction();
-      // const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-      //   [abSwapKey.publicKey.toBuffer()],
-      //   TOKEN_SWAP_PROGRAM_ID
-      // );
-      // const swapIx = TokenSwap.swapInstruction(
-      //   abSwapKey.publicKey,
-      //   swapAuthority,
-      //   program.provider.publicKey,
-      //   ownerTokenB,
-      //   swapTokenAccountB,
-      //   swapTokenAccountA,
-      //   shortPoolAVaultKey,
-      //   poolMint,
-      //   poolFeeAccount,
-      //   null,
-      //   tokenMintA,
-      //   tokenMintB,
-      //   TOKEN_SWAP_PROGRAM_ID,
-      //   TOKEN_PROGRAM_ID,
-      //   TOKEN_PROGRAM_ID,
-      //   TOKEN_PROGRAM_ID,
-      //   BigInt(swapAmount.toString()),
-      //   BigInt(minimumAmountOut.toString())
-      // );
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        program.provider.publicKey,
+        ownerTokenB,
+        swapTokenAccountB,
+        swapTokenAccountA,
+        shortPoolAVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintA,
+        tokenMintB,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(swapAmount.toString()),
+        BigInt(minimumAmountOut.toString())
+      );
       await program.methods
         .openShortPositionCleanup()
         .accounts({
@@ -384,11 +406,12 @@ describe("OpenShortPosition", () => {
       const downPayment = new anchor.BN(1_000);
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
-      const minimumAmountOut = new anchor.BN(1_900);
+      const minTargetAmount = new anchor.BN(1_900);
       try {
         const setupIx = await program.methods
           .openShortPositionSetup({
             nonce,
+            minTargetAmount,
             downPayment,
             principal,
             currency: tokenMintA,
@@ -396,7 +419,8 @@ describe("OpenShortPosition", () => {
           })
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
+            ownerTargetCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
@@ -407,7 +431,7 @@ describe("OpenShortPosition", () => {
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
             position: positionKey,
           })
@@ -460,11 +484,12 @@ describe("OpenShortPosition", () => {
       const downPayment = new anchor.BN(1_000);
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
-      const minimumAmountOut = new anchor.BN(1_900);
+      const minTargetAmount = new anchor.BN(1_900);
       try {
         const setupIx = await program.methods
           .openShortPositionSetup({
             nonce,
+            minTargetAmount,
             downPayment,
             principal,
             currency: tokenMintA,
@@ -472,7 +497,8 @@ describe("OpenShortPosition", () => {
           })
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
+            ownerTargetCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
@@ -480,40 +506,40 @@ describe("OpenShortPosition", () => {
             position: positionKey,
           })
           .instruction();
-        // const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        //   [abSwapKey.publicKey.toBuffer()],
-        //   TOKEN_SWAP_PROGRAM_ID
-        // );
+        const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+          [abSwapKey.publicKey.toBuffer()],
+          TOKEN_SWAP_PROGRAM_ID
+        );
 
-        // const swapIx = TokenSwap.swapInstruction(
-        //   abSwapKey.publicKey,
-        //   swapAuthority,
-        //   program.provider.publicKey,
-        //   ownerTokenA,
-        //   swapTokenAccountA,
-        //   swapTokenAccountB,
-        //   longPoolBVaultKey,
-        //   poolMint,
-        //   poolFeeAccount,
-        //   null,
-        //   tokenMintA,
-        //   tokenMintB,
-        //   TOKEN_SWAP_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   BigInt(downPayment.add(principal).toString()),
-        //   BigInt(minimumAmountOut.toString())
-        // );
+        const swapIx = TokenSwap.swapInstruction(
+          abSwapKey.publicKey,
+          swapAuthority,
+          program.provider.publicKey,
+          ownerTokenB,
+          swapTokenAccountB,
+          swapTokenAccountA,
+          shortPoolAKey,
+          poolMint,
+          poolFeeAccount,
+          null,
+          tokenMintA,
+          tokenMintB,
+          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          BigInt(downPayment.add(principal).toString()),
+          BigInt(minTargetAmount.toString())
+        );
         await program.methods
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolBKey,
             position: positionKey,
           })
-          .preInstructions([setupIx])
+          .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
@@ -545,11 +571,12 @@ describe("OpenShortPosition", () => {
       const downPayment = new anchor.BN(1_000);
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
-      const minimumAmountOut = new anchor.BN(1_900);
+      const minTargetAmount = new anchor.BN(1_900);
       try {
         const setupIx = await program.methods
           .openShortPositionSetup({
             nonce,
+            minTargetAmount,
             downPayment,
             principal,
             currency: tokenMintA,
@@ -557,47 +584,48 @@ describe("OpenShortPosition", () => {
           })
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
+            ownerTargetCurrencyAccount: ownerTokenA,
             lpVault: lpVaultKey,
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
           })
           .instruction();
-        // const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        //   [abSwapKey.publicKey.toBuffer()],
-        //   TOKEN_SWAP_PROGRAM_ID
-        // );
+        const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+          [abSwapKey.publicKey.toBuffer()],
+          TOKEN_SWAP_PROGRAM_ID
+        );
 
-        // const swapIx = TokenSwap.swapInstruction(
-        //   abSwapKey.publicKey,
-        //   swapAuthority,
-        //   program.provider.publicKey,
-        //   ownerTokenA,
-        //   swapTokenAccountA,
-        //   swapTokenAccountB,
-        //   longPoolBVaultKey,
-        //   poolMint,
-        //   poolFeeAccount,
-        //   null,
-        //   tokenMintA,
-        //   tokenMintB,
-        //   TOKEN_SWAP_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   TOKEN_PROGRAM_ID,
-        //   BigInt(downPayment.add(principal).toString()),
-        //   BigInt(minimumAmountOut.toString())
-        // );
+        const swapIx = TokenSwap.swapInstruction(
+          abSwapKey.publicKey,
+          swapAuthority,
+          program.provider.publicKey,
+          ownerTokenB,
+          swapTokenAccountB,
+          swapTokenAccountA,
+          shortPoolAKey,
+          poolMint,
+          poolFeeAccount,
+          null,
+          tokenMintA,
+          tokenMintB,
+          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          BigInt(downPayment.add(principal).toString()),
+          BigInt(minTargetAmount.toString())
+        );
         await program.methods
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
+            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
             position: badPositionKey,
           })
-          .preInstructions([setupIx])
+          .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);

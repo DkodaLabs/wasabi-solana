@@ -1,9 +1,10 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, utils::position_setup_transaction_introspecation_validation, BasePool,
-    LpVault, OpenPositionRequest, Permission, Position,
+    error::ErrorCode, lp_vault_signer_seeds,
+    utils::position_setup_transaction_introspecation_validation, BasePool, LpVault,
+    OpenPositionRequest, Permission, Position,
 };
 
 use super::OpenShortPositionCleanup;
@@ -17,6 +18,11 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    /// The account that holds the owner's target currency
+    pub owner_target_currency_account: Account<'info, TokenAccount>,
+
     /// The LP Vault that the user will borrow from
     #[account(
       has_one = vault,
@@ -72,6 +78,8 @@ pub struct OpenShortPositionSetup<'info> {
 pub struct OpenShortPositionArgs {
     /// The nonce of the Position
     pub nonce: u16,
+    /// The minimum amount out required when swapping
+    pub min_target_amount: u64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
     pub down_payment: u64,
     /// The total principal amount to be borrowed for the position.
@@ -96,15 +104,56 @@ impl<'info> OpenShortPositionSetup<'info> {
 
         Ok(())
     }
+
+    pub fn transfer_from_user_to_collateral_vault(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.owner_target_currency_account.to_account_info(),
+            to: self.collateral_vault.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, amount)
+    }
+
+    pub fn transfer_from_vault_to_user(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.vault.to_account_info(),
+            to: self.owner_currency_account.to_account_info(),
+            authority: self.lp_vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
+        };
+        token::transfer(cpi_ctx, amount)
+    }
 }
 
 pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs) -> Result<()> {
+    // Down payment is transfered from user to collateral_vault since it's
+    // not used for swapping when opening a short position.
+    ctx.accounts
+        .transfer_from_user_to_collateral_vault(args.down_payment)?;
+
+    // Reload the collateral_vault account so we can get the balance after
+    // downpayment has been made.
+    ctx.accounts.collateral_vault.reload()?;
+
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
     let open_position_request = &mut ctx.accounts.open_position_request;
 
     open_position_request.position = ctx.accounts.position.key();
     open_position_request.pool_key = ctx.accounts.short_pool.key();
+    open_position_request.min_target_amount = args.min_target_amount;
+    open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
+    open_position_request.swap_cache.source_bal_before =
+        ctx.accounts.owner_target_currency_account.amount;
+
+    // Transfer the borrowed amount to user's wallet to be used in swap.
+    ctx.accounts.transfer_from_vault_to_user(args.principal)?;
 
     Ok(())
 }

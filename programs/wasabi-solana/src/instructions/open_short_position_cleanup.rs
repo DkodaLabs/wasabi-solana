@@ -36,6 +36,13 @@ impl<'info> OpenShortPositionCleanup<'info> {
         get_function_hash("global", "open_short_position_cleanup")
     }
 
+    pub fn get_destination_delta(&self) -> u64 {
+        self.collateral_vault
+            .amount
+            .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
+            .expect("overflow")
+    }
+
     pub fn validate(&self) -> Result<()> {
         // Validate the same position was used in setup and cleanup
         if self.position.key() != self.open_position_request.position {
@@ -46,7 +53,13 @@ impl<'info> OpenShortPositionCleanup<'info> {
             return Err(ErrorCode::InvalidPool.into());
         }
 
-        
+        // Validate owner receives at least the minimum amount of token being swapped to.
+        let destination_balance_delta = self.get_destination_delta();
+
+        if destination_balance_delta < self.open_position_request.min_target_amount {
+            return Err(ErrorCode::MinTokensNotMet.into());
+        }
+
         Ok(())
     }
 }
