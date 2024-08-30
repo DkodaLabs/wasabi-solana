@@ -1,3 +1,5 @@
+pub mod close_long_position_cleanup;
+pub mod close_long_position_setup;
 pub mod deposit;
 pub mod donate;
 pub mod init_global_settings;
@@ -11,6 +13,8 @@ pub mod open_long_position_setup;
 pub mod redeem;
 pub mod withdraw;
 
+pub use close_long_position_cleanup::*;
+pub use close_long_position_setup::*;
 pub use deposit::*;
 pub use donate::*;
 pub use init_global_settings::*;
