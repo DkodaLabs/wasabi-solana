@@ -3,12 +3,13 @@ use anchor_spl::token::{Token, TokenAccount};
 
 use crate::{
     error::ErrorCode, utils::position_setup_transaction_introspecation_validation, BasePool,
-    LpVault, OpenPositionRequest, Permission,
+    LpVault, OpenPositionRequest, Permission, Position,
 };
 
 use super::OpenShortPositionCleanup;
 
 #[derive(Accounts)]
+#[instruction(args: OpenShortPositionArgs)]
 pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
@@ -41,6 +42,15 @@ pub struct OpenShortPositionSetup<'info> {
       space = 8 + std::mem::size_of::<OpenPositionRequest>(),
     )]
     pub open_position_request: Account<'info, OpenPositionRequest>,
+
+    #[account(
+      init,
+      payer = owner,
+      seeds = [b"position", owner.key().as_ref(), short_pool.key().as_ref(), lp_vault.key().as_ref(), &args.nonce.to_le_bytes()],
+      bump,
+      space = 8 + std::mem::size_of::<Position>(),
+    )]
+    pub position: Account<'info, Position>,
 
     pub authority: Signer<'info>,
 
@@ -89,5 +99,12 @@ impl<'info> OpenShortPositionSetup<'info> {
 }
 
 pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs) -> Result<()> {
+    // Cache data on the `open_position_request` account. We use the value
+    // after the borrow in order to track the entire amount being swapped.
+    let open_position_request = &mut ctx.accounts.open_position_request;
+
+    open_position_request.position = ctx.accounts.position.key();
+    open_position_request.pool_key = ctx.accounts.short_pool.key();
+
     Ok(())
 }
