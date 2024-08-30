@@ -37,6 +37,7 @@ pub struct OpenShortPositionSetup<'info> {
   )]
     /// The ShortPool that owns the Position
     pub short_pool: Account<'info, BasePool>,
+    #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
 
@@ -56,7 +57,7 @@ pub struct OpenShortPositionSetup<'info> {
       bump,
       space = 8 + std::mem::size_of::<Position>(),
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     pub authority: Signer<'info>,
 

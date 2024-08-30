@@ -117,6 +117,14 @@ export const mochaHooks = {
       6
     );
     mintTx.add(mintTokenAToOwnerIx);
+    const mintTokenBToOwnerIx = createMintToCheckedInstruction(
+      tokenBKeypair.publicKey,
+      ataTokenB,
+      program.provider.publicKey,
+      1_000_000_000 * Math.pow(10, 6),
+      6
+    );
+    mintTx.add(mintTokenBToOwnerIx);
     await program.provider.sendAndConfirm(mintTx);
 
     // TODO: Create a TokenSwap pool for the pair.
