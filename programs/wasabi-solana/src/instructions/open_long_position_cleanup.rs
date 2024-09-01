@@ -1,9 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::TokenAccount;
 
-use crate::{error::ErrorCode, BasePool, OpenPositionRequest, Position};
-
-use super::get_function_hash;
+use crate::{error::ErrorCode, utils::get_function_hash, BasePool, OpenPositionRequest, Position};
 
 #[derive(Accounts)]
 pub struct OpenLongPositionCleanup<'info> {

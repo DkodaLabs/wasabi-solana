@@ -6,6 +6,7 @@ pub mod events;
 pub mod instructions;
 pub mod macros;
 pub mod state;
+pub mod utils;
 
 pub use constants::*;
 pub use instructions::*;

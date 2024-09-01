@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds, BasePool, LpVault, OpenPositionRequest, Permission, Position
+    error::ErrorCode, lp_vault_signer_seeds, utils::position_setup_transaction_introspecation_validation, BasePool, LpVault, OpenPositionRequest, Permission, Position
 };
 
 use super::OpenLongPositionCleanup;
@@ -78,7 +78,8 @@ impl<'info> OpenLongPositionSetup<'info> {
         if !ctx.accounts.permission.can_cosign_swaps() {
             return Err(ErrorCode::InvalidSwapCosigner.into());
         }
-        // TODO: Valdiate the parameters and accounts
+        // Validate TX only has only one setup IX and has one following cleanup IX
+        position_setup_transaction_introspecation_validation(&ctx.accounts.sysvar_info, OpenLongPositionCleanup::get_hash())?;
         Ok(())
     }
 
@@ -114,61 +115,7 @@ pub struct OpenLongPositionArgs {
     pub expiration: i64,
 }
 
-pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
-    let preimage = format!("{}:{}", namespace, name);
-    let mut sighash = [0u8; 8];
-    sighash.copy_from_slice(
-        &anchor_lang::solana_program::hash::hash(preimage.as_bytes()).to_bytes()[..8],
-    );
-    sighash
-}
-
-/// This should only be ran on setup
-pub fn transaction_introspecation_validation(sysvar_info: &AccountInfo) -> Result<()> {
-    let current_index = sysvar::instructions::load_current_index_checked(sysvar_info)? as usize;
-    let open_long_position_cleanup_hash = OpenLongPositionCleanup::get_hash();
-
-    // Validate there are no previous setup instructions
-    for ixn_idx in 0..current_index {
-        let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
-        if crate::ID == ixn.program_id {
-            return Err(ErrorCode::UnpermittedIx.into());
-        }
-    }
-
-    let mut post_current_idx = 1usize;
-    let mut has_cleanup_ix = false;
-    // Check that any ixns after are whitelisted programs
-    loop {
-        let ixn = sysvar::instructions::load_instruction_at_checked(
-            current_index + post_current_idx,
-            sysvar_info,
-        );
-        if ixn.is_err() {
-            break;
-        } else {
-            let ixn_unwrapped = ixn.unwrap();
-            if crate::ID == ixn_unwrapped.program_id {
-                // Check that there is a cleanup instruction
-                if ixn_unwrapped.data[0..8] == open_long_position_cleanup_hash {
-                    has_cleanup_ix = true;
-                }
-            }
-            // TODO: Check against whitelisted programs
-            post_current_idx = post_current_idx.checked_add(1).expect("overflow");
-        }
-    }
-    if !has_cleanup_ix {
-        return Err(ErrorCode::MissingCleanup.into());
-    }
-
-    Ok(())
-}
-
 pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
-    // Validate TX only has only one setup IX and has one following cleanup IX
-    transaction_introspecation_validation(&ctx.accounts.sysvar_info)?;
-
     // Borrow from LP Vault
     ctx.accounts
         .transfer_user_borrow_amount_from_vault(args.principal)?;
