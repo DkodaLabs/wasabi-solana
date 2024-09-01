@@ -61,12 +61,28 @@ describe("CloseLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
     });
     it("should close the position and return funds", async () => {
-      const position = await program.account.position.fetch(positionKey);
-      
+      const positionBefore = await program.account.position.fetch(positionKey);
+
+      const setupIx = await program.methods
+        .closeLongPositionSetup()
+        .accounts({})
+        .instruction();
+      // TODO: swapIx
+      await program.methods
+        .closeLongPositionCleanup()
+        .accounts({})
+        .preInstructions([setupIx])
+        .signers([SWAP_AUTHORITY])
+        .rpc();
+
+      const positionAfter = await program.account.position.fetchNullable(
+        positionKey,
+      );
+      assert.ok(positionAfter === null);
     });
   });
 });
