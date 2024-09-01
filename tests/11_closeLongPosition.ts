@@ -48,9 +48,17 @@ describe("CloseLongPosition", () => {
     longPoolBKey,
     true,
   );
+  const closePositionRequestKey = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      anchor.utils.bytes.utf8.encode("long_pool"),
+      program.provider.publicKey.toBuffer(),
+    ],
+    program.programId,
+  );
 
   describe("With owned long position", () => {
     let positionKey: anchor.web3.PublicKey;
+    let closeRequestExpiration = new anchor.BN(Date.now() / 1_000 + 60 * 60);
     before(async () => {
       const nonce = 0;
       [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -66,15 +74,27 @@ describe("CloseLongPosition", () => {
     });
     it("should close the position and return funds", async () => {
       const positionBefore = await program.account.position.fetch(positionKey);
-
       const setupIx = await program.methods
-        .closeLongPositionSetup()
-        .accounts({})
+        .closeLongPositionSetup({
+          expiration: closeRequestExpiration,
+          minTargetAmount: new anchor.BN(0),
+        })
+        .accounts({
+          owner: program.provider.publicKey,
+          ownerCurrencyAccount: ownerTokenA,
+          longPool: longPoolBKey,
+          position: positionKey,
+          permission: coSignerPermission,
+          // @ts-ignore
+          authority: SWAP_AUTHORITY.publicKey,
+        })
         .instruction();
       // TODO: swapIx
       await program.methods
         .closeLongPositionCleanup()
-        .accounts({})
+        .accounts({
+          owner: program.provider.publicKey,
+        })
         .preInstructions([setupIx])
         .signers([SWAP_AUTHORITY])
         .rpc();
@@ -83,6 +103,45 @@ describe("CloseLongPosition", () => {
         positionKey,
       );
       assert.ok(positionAfter === null);
+    });
+
+    describe("with more than one setup IX", () => {
+      it("should fail", async () => {
+        try {
+          const setupIx = await program.methods
+          .closeLongPositionSetup({
+            expiration: closeRequestExpiration,
+            minTargetAmount: new anchor.BN(0),
+          })
+            .accounts({
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              longPool: longPoolBKey,
+              position: positionKey,
+              permission: coSignerPermission,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            })
+            .instruction();
+          await program.methods
+            .closeLongPositionCleanup()
+            .accounts({
+              owner: program.provider.publicKey,
+            })
+            .preInstructions([setupIx])
+            .signers([SWAP_AUTHORITY])
+            .rpc();
+          assert.ok(false);
+        } catch (err) {
+          const regex = /already in use/;
+          const match = err.toString().match(regex);
+          if (match) {
+            assert.ok(true);
+          } else {
+            assert.ok(false);
+          }
+        }
+      });
     });
   });
 });
