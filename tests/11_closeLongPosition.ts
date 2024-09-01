@@ -109,10 +109,10 @@ describe("CloseLongPosition", () => {
       it("should fail", async () => {
         try {
           const setupIx = await program.methods
-          .closeLongPositionSetup({
-            expiration: closeRequestExpiration,
-            minTargetAmount: new anchor.BN(0),
-          })
+            .closeLongPositionSetup({
+              expiration: closeRequestExpiration,
+              minTargetAmount: new anchor.BN(0),
+            })
             .accounts({
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenA,
@@ -128,7 +128,7 @@ describe("CloseLongPosition", () => {
             .accounts({
               owner: program.provider.publicKey,
             })
-            .preInstructions([setupIx])
+            .preInstructions([setupIx, setupIx])
             .signers([SWAP_AUTHORITY])
             .rpc();
           assert.ok(false);
@@ -137,6 +137,36 @@ describe("CloseLongPosition", () => {
           const match = err.toString().match(regex);
           if (match) {
             assert.ok(true);
+          } else {
+            assert.ok(false);
+          }
+        }
+      });
+    });
+
+    describe("without cleanup IX", () => {
+      it("should fail", async () => {
+        try {
+          await program.methods
+            .closeLongPositionSetup({
+              expiration: closeRequestExpiration,
+              minTargetAmount: new anchor.BN(0),
+            })
+            .accounts({
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              longPool: longPoolBKey,
+              position: positionKey,
+              permission: coSignerPermission,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            })
+            .signers([SWAP_AUTHORITY])
+            .rpc();
+          assert.ok(false);
+        } catch (err) {
+          if (err instanceof anchor.AnchorError) {
+            assert.equal(err.error.errorCode.number, 6002);
           } else {
             assert.ok(false);
           }

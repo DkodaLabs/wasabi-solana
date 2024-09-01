@@ -1,11 +1,17 @@
 use anchor_lang::prelude::*;
 
-use crate::utils::get_function_hash;
+use crate::{utils::get_function_hash, ClosePositionRequest};
 
 #[derive(Accounts)]
 pub struct CloseLongPositionCleanup<'info> {
   owner: Signer<'info>,
-  
+  #[account(
+    mut,
+    close = owner,
+    seeds = [b"close_pos", owner.key().as_ref()],
+    bump,
+  )]
+    pub close_position_request: Account<'info, ClosePositionRequest>,
 
 }
 

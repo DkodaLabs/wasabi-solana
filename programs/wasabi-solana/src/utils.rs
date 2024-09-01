@@ -45,6 +45,7 @@ pub fn position_setup_transaction_introspecation_validation(sysvar_info: &Accoun
           post_current_idx = post_current_idx.checked_add(1).expect("overflow");
       }
   }
+  msg!("has_cleanup_ix {}", has_cleanup_ix);
   if !has_cleanup_ix {
       return Err(ErrorCode::MissingCleanup.into());
   }
