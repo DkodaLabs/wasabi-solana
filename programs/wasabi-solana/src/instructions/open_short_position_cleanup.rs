@@ -43,6 +43,14 @@ impl<'info> OpenShortPositionCleanup<'info> {
             .expect("overflow")
     }
 
+    pub fn get_source_delta(&self) -> u64 {
+        self.open_position_request
+            .swap_cache
+            .source_bal_before
+            .checked_sub(self.owner_currency_account.amount)
+            .expect("overflow")
+    }
+
     pub fn validate(&self) -> Result<()> {
         // Validate the same position was used in setup and cleanup
         if self.position.key() != self.open_position_request.position {
@@ -60,6 +68,12 @@ impl<'info> OpenShortPositionCleanup<'info> {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
+        let source_balance_delta = self.get_source_delta();
+
+        if source_balance_delta > 0 {
+            return Err(ErrorCode::MaxSwapExceeded.into());
+        }
+
         Ok(())
     }
 }
@@ -67,6 +81,9 @@ impl<'info> OpenShortPositionCleanup<'info> {
 pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
 
-    // store the amount of
+    let destination_delta = ctx.accounts.get_destination_delta();
+
+    let position = &mut ctx.accounts.position;
+    position.collateral_amount = destination_delta;
     Ok(())
 }

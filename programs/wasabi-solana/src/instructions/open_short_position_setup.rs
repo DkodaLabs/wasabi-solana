@@ -141,6 +141,9 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     // Reload the collateral_vault account so we can get the balance after
     // downpayment has been made.
     ctx.accounts.collateral_vault.reload()?;
+    // Reload the owner's currency account so we can check to make sure there
+    // is no change in balance after swapping.
+    ctx.accounts.owner_currency_account.reload()?;
 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
@@ -150,8 +153,16 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     open_position_request.pool_key = ctx.accounts.short_pool.key();
     open_position_request.min_target_amount = args.min_target_amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
-    open_position_request.swap_cache.source_bal_before =
-        ctx.accounts.owner_target_currency_account.amount;
+    open_position_request.swap_cache.source_bal_before = ctx.accounts.owner_currency_account.amount;
+
+    let position = &mut ctx.accounts.position;
+    position.trader = ctx.accounts.owner.key();
+    position.currency = ctx.accounts.vault.mint;
+    position.collateral_currency = ctx.accounts.collateral_vault.mint;
+    position.down_payment = args.down_payment;
+    position.principal = args.principal;
+    position.collateral_pool = ctx.accounts.collateral_vault.key();
+    position.lp_vault = ctx.accounts.lp_vault.key();
 
     // Transfer the borrowed amount to user's wallet to be used in swap.
     ctx.accounts.transfer_from_vault_to_user(args.principal)?;
