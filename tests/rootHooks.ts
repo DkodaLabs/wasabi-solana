@@ -5,7 +5,7 @@ import {
   web3,
   workspace,
 } from "@coral-xyz/anchor";
-import { CurveType, TokenSwap, TokenSwapLayout } from "@solana/spl-token-swap";
+import { CurveType, TOKEN_SWAP_PROGRAM_ID, TokenSwap, TokenSwapLayout } from "@solana/spl-token-swap";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { createSimpleMint } from "./utils";
 import {
@@ -17,10 +17,6 @@ import {
   getAssociatedTokenAddress,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-
-export const TOKEN_SWAP_PROGRAM_ID = new web3.PublicKey(
-  "9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP"
-);
 
 export let superAdminProgram: Program<WasabiSolana>;
 
@@ -85,26 +81,46 @@ export const mochaHooks = {
 
     // Mint underlying & Quote to the provider wallet
     const mintTx = new web3.Transaction();
-    const tokenAAta = await getAssociatedTokenAddress(
+    const ataTokenA = await getAssociatedTokenAddress(
       tokenAKeypair.publicKey,
       program.provider.publicKey,
       false
     );
-    const createAtaIx = createAssociatedTokenAccountInstruction(
+    const createAtaTokanAIx = createAssociatedTokenAccountInstruction(
       program.provider.publicKey,
-      tokenAAta,
+      ataTokenA,
       program.provider.publicKey,
       tokenAKeypair.publicKey
     );
-    mintTx.add(createAtaIx);
-    const mintToIx = createMintToCheckedInstruction(
+    mintTx.add(createAtaTokanAIx);
+    const ataTokenB = await getAssociatedTokenAddress(
+      tokenBKeypair.publicKey,
+      program.provider.publicKey,
+      false
+    );
+    const createAtaTokanBIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      ataTokenB,
+      program.provider.publicKey,
+      tokenBKeypair.publicKey
+    );
+    mintTx.add(createAtaTokanBIx);
+    const mintTokenAToOwnerIx = createMintToCheckedInstruction(
       tokenAKeypair.publicKey,
-      tokenAAta,
+      ataTokenA,
       program.provider.publicKey,
       1_000_000_000 * Math.pow(10, 6),
       6
     );
-    mintTx.add(mintToIx);
+    mintTx.add(mintTokenAToOwnerIx);
+    const mintTokenBToOwnerIx = createMintToCheckedInstruction(
+      tokenBKeypair.publicKey,
+      ataTokenB,
+      program.provider.publicKey,
+      1_000_000_000 * Math.pow(10, 6),
+      6
+    );
+    mintTx.add(mintTokenBToOwnerIx);
     await program.provider.sendAndConfirm(mintTx);
 
     // TODO: Create a TokenSwap pool for the pair.

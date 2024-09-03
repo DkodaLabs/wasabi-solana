@@ -4,7 +4,7 @@ use anchor_spl::token::TokenAccount;
 use crate::{error::ErrorCode, utils::get_function_hash, BasePool, OpenPositionRequest, Position};
 
 #[derive(Accounts)]
-pub struct OpenLongPositionCleanup<'info> {
+pub struct OpenShortPositionCleanup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
@@ -13,27 +13,27 @@ pub struct OpenLongPositionCleanup<'info> {
 
     #[account(
       has_one = collateral_vault,
-  )]
-    /// The LongPool that owns the Position
-    pub long_pool: Account<'info, BasePool>,
+    )]
+    /// The ShortPool that owns the Position
+    pub short_pool: Account<'info, BasePool>,
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
 
     #[account(
-    mut,
-    close = owner,
-    seeds = [b"open_pos", owner.key().as_ref()],
-    bump,
-  )]
+      mut,
+      close = owner,
+      seeds = [b"open_pos", owner.key().as_ref()],
+      bump,
+    )]
     pub open_position_request: Account<'info, OpenPositionRequest>,
 
     #[account(mut)]
     pub position: Account<'info, Position>,
 }
 
-impl<'info> OpenLongPositionCleanup<'info> {
+impl<'info> OpenShortPositionCleanup<'info> {
     pub fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "open_long_position_cleanup")
+        get_function_hash("global", "open_short_position_cleanup")
     }
 
     pub fn get_destination_delta(&self) -> u64 {
@@ -43,14 +43,21 @@ impl<'info> OpenLongPositionCleanup<'info> {
             .expect("overflow")
     }
 
+    pub fn get_source_delta(&self) -> u64 {
+        self.open_position_request
+            .swap_cache
+            .source_bal_before
+            .checked_sub(self.owner_currency_account.amount)
+            .expect("overflow")
+    }
+
     pub fn validate(&self) -> Result<()> {
         // Validate the same position was used in setup and cleanup
         if self.position.key() != self.open_position_request.position {
             return Err(ErrorCode::InvalidPosition.into());
         }
-
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
-        if self.long_pool.key() != self.open_position_request.pool_key {
+        if self.short_pool.key() != self.open_position_request.pool_key {
             return Err(ErrorCode::InvalidPool.into());
         }
 
@@ -61,23 +68,17 @@ impl<'info> OpenLongPositionCleanup<'info> {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
-        // Validate owner does not spend more tokens than requested.
-        let source_balance_delta = self
-            .open_position_request
-            .swap_cache
-            .source_bal_before
-            .checked_sub(self.owner_currency_account.amount)
-            .expect("overflow");
+        let source_balance_delta = self.get_source_delta();
 
-        if source_balance_delta > self.open_position_request.max_amount_in {
-            return Err(ErrorCode::SwapAmountExceeded.into());
+        if source_balance_delta > 0 {
+            return Err(ErrorCode::MaxSwapExceeded.into());
         }
 
         Ok(())
     }
 }
 
-pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
+pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
 
     let destination_delta = ctx.accounts.get_destination_delta();
