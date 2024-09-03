@@ -67,6 +67,7 @@ pub struct CloseLongPositionArgs {
 
 
 pub fn handler(_ctx: Context<CloseLongPositionSetup>, _args: CloseLongPositionArgs) -> Result<()> {
+  // TODO: allow "owner" to swap on behalf of the collateral vault
   // TODO: Pull the collateral from the LongPool vault
   // TODO: Create a close position request
 

@@ -14,12 +14,11 @@ import {
   SWAP_AUTHORITY,
   swapTokenAccountA,
   swapTokenAccountB,
-  TOKEN_SWAP_PROGRAM_ID,
   tokenMintA,
   tokenMintB,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
-import { TokenSwap } from "@solana/spl-token-swap";
+import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 
 describe("CloseLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -28,32 +27,32 @@ describe("CloseLongPosition", () => {
       anchor.utils.bytes.utf8.encode("admin"),
       SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
-    program.programId,
+    program.programId
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    program.programId,
+    program.programId
   );
   const ownerTokenA = getAssociatedTokenAddressSync(
     tokenMintA,
     program.provider.publicKey,
-    false,
+    false
   );
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintB.toBuffer()],
-    program.programId,
+    program.programId
   );
   const longPoolBVaultKey = getAssociatedTokenAddressSync(
     tokenMintB,
     longPoolBKey,
-    true,
+    true
   );
   const closePositionRequestKey = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("long_pool"),
       program.provider.publicKey.toBuffer(),
     ],
-    program.programId,
+    program.programId
   );
 
   describe("With owned long position", () => {
@@ -69,7 +68,7 @@ describe("CloseLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId,
+        program.programId
       );
     });
     it("should close the position and return funds", async () => {
@@ -89,21 +88,49 @@ describe("CloseLongPosition", () => {
           authority: SWAP_AUTHORITY.publicKey,
         })
         .instruction();
-      // TODO: swapIx
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        program.provider.publicKey,
+        longPoolBVaultKey,
+        swapTokenAccountB,
+        swapTokenAccountA,
+        ownerTokenA,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintB,
+        tokenMintA,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(positionBefore.collateralAmount.toString()),
+        BigInt(0)
+      );
       await program.methods
         .closeLongPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
         })
-        .preInstructions([setupIx])
+        .preInstructions([setupIx, swapIx])
         .signers([SWAP_AUTHORITY])
         .rpc();
 
       const positionAfter = await program.account.position.fetchNullable(
-        positionKey,
+        positionKey
       );
-      assert.ok(positionAfter === null);
+      assert.isNull(positionAfter);
+
+      // TODO should pay back interest to LP Vault
     });
+
+    // TODO should fail when position is not owned by current signer/owner
+    // TODO should fail if swap uses less/more than position collateral
 
     describe("with more than one setup IX", () => {
       it("should fail", async () => {
