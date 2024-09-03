@@ -16,6 +16,7 @@ import {
   swapTokenAccountB,
   tokenMintA,
   tokenMintB,
+  user2,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -72,8 +73,72 @@ describe("CloseLongPosition", () => {
       );
     });
 
-    // TODO should fail when position is not owned by current signer/owner
-    // TODO should fail if swap uses less/more than position collateral
+    // should fail when position is not owned by current signer/owner
+    describe("Incorrect owner", () => {
+      it("should fail", async () => {
+
+        const positionBefore = await program.account.position.fetch(positionKey);
+        const setupIx = await program.methods
+          .closeLongPositionSetup({
+            expiration: closeRequestExpiration,
+            minTargetAmount: new anchor.BN(0),
+            interest: new anchor.BN(1_000),
+          })
+          .accounts({
+            owner: user2.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            longPool: longPoolBKey,
+            position: positionKey,
+            permission: coSignerPermission,
+            // @ts-ignore
+            authority: SWAP_AUTHORITY.publicKey,
+          })
+          .instruction();
+        const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+          [abSwapKey.publicKey.toBuffer()],
+          TOKEN_SWAP_PROGRAM_ID,
+        );
+        const swapIx = TokenSwap.swapInstruction(
+          abSwapKey.publicKey,
+          swapAuthority,
+          program.provider.publicKey,
+          longPoolBVaultKey,
+          swapTokenAccountB,
+          swapTokenAccountA,
+          ownerTokenA,
+          poolMint,
+          poolFeeAccount,
+          null,
+          tokenMintB,
+          tokenMintA,
+          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          BigInt(positionBefore.collateralAmount.toString()),
+          BigInt(0),
+        );
+        try {
+          await program.methods
+          .closeLongPositionCleanup()
+          .accounts({
+            owner: user2.publicKey,
+          })
+          .preInstructions([setupIx, swapIx])
+          .signers([SWAP_AUTHORITY, user2])
+          .rpc();
+        } catch (err) {
+          if (err instanceof anchor.AnchorError) {
+            assert.equal(err.error.errorCode.number, 6010);
+          } else if (err instanceof anchor.ProgramError) {
+            assert.equal(err.code, 6010);
+          } else {
+            assert.ok(false);
+          }
+        }
+      })
+    })
+
     // should fail if not signed by co-signer with swap authority
     describe("Without swap co-signer", () => {
       it("Should fail", async () => {
@@ -222,6 +287,7 @@ describe("CloseLongPosition", () => {
       });
     });
 
+    // TODO should fail if swap uses less/more than position collateral
 
     it("should close the position and return funds", async () => {
       const positionBefore = await program.account.position.fetch(positionKey);

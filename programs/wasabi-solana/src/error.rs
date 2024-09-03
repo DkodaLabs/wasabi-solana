@@ -22,4 +22,6 @@ pub enum ErrorCode {
     InvalidSwapCosigner, // 6008
     #[msg("Maximum tokens swapped exceened")]
     MaxSwapExceeded, // 6009
+    #[msg("Owner doesnt match")]
+    IncorrectOwner, // 6010
 }

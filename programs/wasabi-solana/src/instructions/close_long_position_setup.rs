@@ -52,7 +52,7 @@ pub struct CloseLongPositionSetup<'info> {
 }
 
 impl<'info> CloseLongPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>, args: &CloseLongPositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, _args: &CloseLongPositionArgs) -> Result<()> {
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(
             &ctx.accounts.sysvar_info,
@@ -62,6 +62,9 @@ impl<'info> CloseLongPositionSetup<'info> {
         if !ctx.accounts.permission.can_cosign_swaps() {
             return Err(ErrorCode::InvalidSwapCosigner.into());
         }
+
+        require!(ctx.accounts.owner.key() == ctx.accounts.position.trader, ErrorCode::IncorrectOwner);
+
         Ok(())
     }
 }
