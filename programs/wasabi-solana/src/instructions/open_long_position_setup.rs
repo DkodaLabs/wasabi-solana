@@ -125,7 +125,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
     let open_position_request = &mut ctx.accounts.open_position_request;
-    open_position_request.min_amount_out = args.min_target_amount;
+    open_position_request.min_target_amount = args.min_target_amount;
     open_position_request.max_amount_in = args
         .down_payment
         .checked_add(args.principal)
