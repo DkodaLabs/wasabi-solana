@@ -1,9 +1,10 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::TokenAccount;
+use anchor_spl::token::{self, Approve, Token, TokenAccount};
 
 use crate::{
-    error::ErrorCode, utils::position_setup_transaction_introspecation_validation, BasePool,
-    ClosePositionRequest, Permission, Position,
+    error::ErrorCode, long_pool_signer_seeds,
+    utils::position_setup_transaction_introspecation_validation, BasePool, ClosePositionRequest,
+    Permission, Position,
 };
 
 use super::CloseLongPositionCleanup;
@@ -21,6 +22,7 @@ pub struct CloseLongPositionSetup<'info> {
     )]
     /// The LongPool that owns the Position
     pub long_pool: Account<'info, BasePool>,
+    #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
 
@@ -43,6 +45,8 @@ pub struct CloseLongPositionSetup<'info> {
     )]
     pub close_position_request: Account<'info, ClosePositionRequest>,
 
+    pub token_program: Program<'info, Token>,
+
     pub system_program: Program<'info, System>,
     #[account(
       address = sysvar::instructions::ID
@@ -63,9 +67,27 @@ impl<'info> CloseLongPositionSetup<'info> {
             return Err(ErrorCode::InvalidSwapCosigner.into());
         }
 
-        require!(ctx.accounts.owner.key() == ctx.accounts.position.trader, ErrorCode::IncorrectOwner);
+        require!(
+            ctx.accounts.owner.key() == ctx.accounts.position.trader,
+            ErrorCode::IncorrectOwner
+        );
 
         Ok(())
+    }
+
+    pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Approve {
+            to: self.collateral_vault.to_account_info(),
+            delegate: self.owner.to_account_info(),
+            authority: self.long_pool.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[long_pool_signer_seeds!(self.long_pool)],
+        };
+        token::approve(cpi_ctx, amount)
     }
 }
 
@@ -79,10 +101,20 @@ pub struct CloseLongPositionArgs {
     pub interest: u64,
 }
 
-pub fn handler(_ctx: Context<CloseLongPositionSetup>, _args: CloseLongPositionArgs) -> Result<()> {
-    // TODO: allow "owner" to swap on behalf of the collateral vault
+pub fn handler(ctx: Context<CloseLongPositionSetup>, args: CloseLongPositionArgs) -> Result<()> {
+    // The user is long WIF and used SOL as downpayment. When closing the long WIF position we 
+    //  need to take all the WIF collateral and sell it for SOL.
+    let position = &ctx.accounts.position;
+    // allow "owner" to swap on behalf of the collateral vault
+    ctx.accounts.approve_owner_delegation(position.collateral_amount)?;
     // TODO: Pull the collateral from the LongPool vault
-    // TODO: Create a close position request
-
+    // Create a close position request
+    let close_position_request = &mut ctx.accounts.close_position_request;
+    close_position_request.swap_cache.source_bal_before = ctx.accounts.collateral_vault.amount;
+    close_position_request.swap_cache.destination_bal_before = ctx.accounts.owner_currency_account.amount;
+    close_position_request.max_amount_in = position.collateral_amount;
+    close_position_request.min_amount_out = args.min_target_amount;
+    close_position_request.pool_key = position.collateral_pool;
+    close_position_request.position = position.key();
     Ok(())
 }

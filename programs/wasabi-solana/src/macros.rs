@@ -8,3 +8,14 @@ macro_rules! lp_vault_signer_seeds {
         ]
     };
 }
+
+#[macro_export]
+macro_rules! long_pool_signer_seeds {
+    ($long_pool:expr) => {
+        &[
+            b"long_pool",
+            $long_pool.collateral.as_ref(),
+            &[$long_pool.bump],
+        ]
+    };
+}

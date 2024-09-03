@@ -9,6 +9,8 @@ pub struct BasePool {
   pub collateral_vault: Pubkey,
   /// Flag to determine if it's a long or short pool
   pub is_long_pool: bool,
+  /// The bump seed for this PDA
+  pub bump: u8,
 }
 // The long pool needs to borrow SOL to buy WIF. Collateral is held in WIF, so the long pool needs 
 //  a WIF token account to store that collateral.

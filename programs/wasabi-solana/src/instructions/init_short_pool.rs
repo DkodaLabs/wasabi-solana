@@ -58,6 +58,7 @@ pub fn handler(ctx: Context<InitShortPool>) -> Result<()> {
     short_pool.is_long_pool = false;
     short_pool.collateral = ctx.accounts.asset_mint.key();
     short_pool.collateral_vault = ctx.accounts.collateral_vault.key();
+    short_pool.bump = ctx.bumps.short_pool;
 
     Ok(())
 }

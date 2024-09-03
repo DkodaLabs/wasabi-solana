@@ -290,12 +290,13 @@ describe("CloseLongPosition", () => {
     // TODO should fail if swap uses less/more than position collateral
 
     it("should close the position and return funds", async () => {
+      const interestOwed = new anchor.BN(1_000);
       const positionBefore = await program.account.position.fetch(positionKey);
       const setupIx = await program.methods
         .closeLongPositionSetup({
           expiration: closeRequestExpiration,
           minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(1_000),
+          interest: interestOwed,
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -314,11 +315,11 @@ describe("CloseLongPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
-        longPoolBVaultKey,
-        swapTokenAccountB,
-        swapTokenAccountA,
-        ownerTokenA,
+        program.provider.publicKey, //userTransferAuthority
+        longPoolBVaultKey, // userSource
+        swapTokenAccountB, // poolSource
+        swapTokenAccountA, // poolDestination
+        ownerTokenA, // userDestination
         poolMint,
         poolFeeAccount,
         null,
