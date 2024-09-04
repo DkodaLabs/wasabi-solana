@@ -5,7 +5,12 @@ import {
   web3,
   workspace,
 } from "@coral-xyz/anchor";
-import { CurveType, TOKEN_SWAP_PROGRAM_ID, TokenSwap, TokenSwapLayout } from "@solana/spl-token-swap";
+import {
+  CurveType,
+  TOKEN_SWAP_PROGRAM_ID,
+  TokenSwap,
+  TokenSwapLayout,
+} from "@solana/spl-token-swap";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { createSimpleMint } from "./utils";
 import {
@@ -58,10 +63,16 @@ export const mochaHooks = {
       )
     );
 
-    await superAdminProgram.provider.connection.requestAirdrop(
-      superAdminProgram.provider.publicKey!,
-      100_000_000_000
-    );
+    await Promise.all([
+      superAdminProgram.provider.connection.requestAirdrop(
+        superAdminProgram.provider.publicKey!,
+        100_000_000_000
+      ),
+      program.provider.connection.requestAirdrop(
+        program.provider.publicKey!,
+        100_000_000_000
+      ),
+    ]);
 
     const tx = new web3.Transaction();
     let { ixes: uIxes, mint: uMint } = await createSimpleMint(

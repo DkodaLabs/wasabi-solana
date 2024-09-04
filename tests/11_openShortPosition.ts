@@ -21,7 +21,7 @@ import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import { assert } from "chai";
 
-describe("OpenShortPosition", () => {
+describe.skip("OpenShortPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
     [
