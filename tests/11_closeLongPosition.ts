@@ -21,63 +21,57 @@ import {
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 
-describe.skip("CloseLongPosition", () => {
+describe("CloseLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("admin"),
       SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
-    program.programId,
+    program.programId
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    program.programId,
+    program.programId
   );
   const ownerTokenA = getAssociatedTokenAddressSync(
     tokenMintA,
     program.provider.publicKey,
-    false,
+    false
   );
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintB.toBuffer()],
-    program.programId,
+    [
+      anchor.utils.bytes.utf8.encode("long_pool"),
+      tokenMintB.toBuffer(),
+      tokenMintA.toBuffer(),
+    ],
+    program.programId
   );
   const longPoolBVaultKey = getAssociatedTokenAddressSync(
     tokenMintB,
     longPoolBKey,
-    true,
-  );
-  const closePositionRequestKey = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      anchor.utils.bytes.utf8.encode("long_pool"),
-      program.provider.publicKey.toBuffer(),
-    ],
-    program.programId,
+    true
   );
 
   describe("With owned long position", () => {
-    let positionKey: anchor.web3.PublicKey;
+    const nonce = 0;
+    const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        anchor.utils.bytes.utf8.encode("position"),
+        program.provider.publicKey.toBuffer(),
+        longPoolBKey.toBuffer(),
+        lpVaultKey.toBuffer(),
+        new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
+      ],
+      program.programId
+    );
     let closeRequestExpiration = new anchor.BN(Date.now() / 1_000 + 60 * 60);
-    before(async () => {
-      const nonce = 0;
-      [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-          anchor.utils.bytes.utf8.encode("position"),
-          program.provider.publicKey.toBuffer(),
-          longPoolBKey.toBuffer(),
-          lpVaultKey.toBuffer(),
-          new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-        ],
-        program.programId,
-      );
-    });
 
     // should fail when position is not owned by current signer/owner
     describe("Incorrect owner", () => {
       it("should fail", async () => {
         const positionBefore = await program.account.position.fetch(
-          positionKey,
+          positionKey
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
@@ -97,7 +91,7 @@ describe.skip("CloseLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_SWAP_PROGRAM_ID
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -117,7 +111,7 @@ describe.skip("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0),
+          BigInt(0)
         );
         try {
           await program.methods
@@ -148,7 +142,7 @@ describe.skip("CloseLongPosition", () => {
     describe("Without swap co-signer", () => {
       it("Should fail", async () => {
         const positionBefore = await program.account.position.fetch(
-          positionKey,
+          positionKey
         );
         const [badCoSignerPermission] =
           anchor.web3.PublicKey.findProgramAddressSync(
@@ -156,7 +150,7 @@ describe.skip("CloseLongPosition", () => {
               anchor.utils.bytes.utf8.encode("admin"),
               NON_SWAP_AUTHORITY.publicKey.toBuffer(),
             ],
-            program.programId,
+            program.programId
           );
 
         const setupIx = await program.methods
@@ -177,7 +171,7 @@ describe.skip("CloseLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_SWAP_PROGRAM_ID
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -197,7 +191,7 @@ describe.skip("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0),
+          BigInt(0)
         );
         try {
           await program.methods
@@ -306,16 +300,16 @@ describe.skip("CloseLongPosition", () => {
       it("should close the position and return funds", async () => {
         const interestOwed = new anchor.BN(10);
         const positionBefore = await program.account.position.fetch(
-          positionKey,
+          positionKey
         );
         const vaultKey = getAssociatedTokenAddressSync(
           positionBefore.currency,
           lpVaultKey,
-          true,
+          true
         );
         const [vaultBefore, ownerABefore] = await getMultipleTokenAccounts(
           program.provider.connection,
-          [vaultKey, ownerTokenA],
+          [vaultKey, ownerTokenA]
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
@@ -335,7 +329,7 @@ describe.skip("CloseLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_SWAP_PROGRAM_ID
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -355,7 +349,7 @@ describe.skip("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0),
+          BigInt(0)
         );
         await program.methods
           .closeLongPositionCleanup()
@@ -372,7 +366,10 @@ describe.skip("CloseLongPosition", () => {
 
         const [positionAfter, [vaultAfter, ownerAAfter]] = await Promise.all([
           program.account.position.fetchNullable(positionKey),
-          getMultipleTokenAccounts(program.provider.connection, [vaultKey, ownerTokenA]),
+          getMultipleTokenAccounts(program.provider.connection, [
+            vaultKey,
+            ownerTokenA,
+          ]),
         ]);
         assert.isNull(positionAfter);
 
