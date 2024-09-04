@@ -121,7 +121,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
@@ -252,7 +251,6 @@ describe("OpenLongPosition", () => {
         .openLongPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
           longPool: longPoolBKey,
           position: positionKey,
         })
@@ -356,7 +354,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
@@ -449,7 +446,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
@@ -459,7 +455,7 @@ describe("OpenLongPosition", () => {
         assert.ok(false);
       } catch (err) {
         // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
-        // is not delegated more than `down_payment` + `principal`.
+        // is not delegated more than `down_payment` + `principal
         assert.ok(
           err.toString().includes(`"InstructionError":[2,{"Custom":1}]`)
         );
@@ -555,7 +551,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: shortPoolBKey,
             position: positionKey,
           })
@@ -641,7 +636,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: badPositionKey,
           })
@@ -739,7 +733,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })

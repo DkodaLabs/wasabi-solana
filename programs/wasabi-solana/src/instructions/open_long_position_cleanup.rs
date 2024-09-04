@@ -11,8 +11,6 @@ pub struct OpenLongPositionCleanup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
-    /// The account that holds the owner's base currency
-    pub owner_currency_account: Account<'info, TokenAccount>,
 
     #[account(
       has_one = collateral_vault,
