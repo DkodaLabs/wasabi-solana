@@ -54,7 +54,11 @@ describe("OpenShortPosition", () => {
     false
   );
   const [shortPoolAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintA.toBuffer()],
+    [
+      anchor.utils.bytes.utf8.encode("short_pool"),
+      tokenMintA.toBuffer(),
+      tokenMintB.toBuffer(),
+    ],
     program.programId
   );
   const shortPoolAVaultKey = getAssociatedTokenAddressSync(
@@ -521,7 +525,11 @@ describe("OpenShortPosition", () => {
         program.programId
       );
       const [shortPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintB.toBuffer()],
+        [
+          anchor.utils.bytes.utf8.encode("short_pool"),
+          tokenMintB.toBuffer(),
+          tokenMintA.toBuffer(),
+        ],
         program.programId
       );
       const now = new Date().getTime() / 1_000;
