@@ -141,7 +141,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     position.collateral_currency = ctx.accounts.collateral_vault.mint;
     position.down_payment = args.down_payment;
     position.principal = args.principal;
-    position.collateral_pool = ctx.accounts.collateral_vault.key();
+    position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
 
     Ok(())

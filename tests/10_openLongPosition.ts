@@ -271,7 +271,7 @@ describe("OpenLongPosition", () => {
         tokenMintB.toString()
       );
       assert.equal(
-        positionAfter.collateralPool.toString(),
+        positionAfter.collateralVault.toString(),
         longPoolBVaultKey.toString()
       );
       assert.equal(positionAfter.currency.toString(), tokenMintA.toString());

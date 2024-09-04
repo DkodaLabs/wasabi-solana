@@ -19,7 +19,7 @@ pub struct Position {
   /// The total fees to be paid for the position (is in `currency`)
   pub fees_to_be_paid: u64,
   /// Link to the token account that is holding the collateral
-  pub collateral_pool: Pubkey,
+  pub collateral_vault: Pubkey,
   // Link to the LP Vault that the Position borrowed from.
   pub lp_vault: Pubkey,
 }
