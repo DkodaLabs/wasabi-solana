@@ -1,11 +1,17 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Revoke, Token, TokenAccount};
+use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
-use crate::{long_pool_signer_seeds, utils::get_function_hash, BasePool, ClosePositionRequest, Position};
+use crate::{
+    long_pool_signer_seeds, utils::get_function_hash, BasePool, ClosePositionRequest, LpVault,
+    Position,
+};
 
 #[derive(Accounts)]
 pub struct CloseLongPositionCleanup<'info> {
     owner: Signer<'info>,
+    #[account(mut)]
+    /// The account that holds the owner's base currency
+    pub owner_currency_account: Account<'info, TokenAccount>,
 
     #[account(
       has_one = collateral_vault,
@@ -29,9 +35,16 @@ pub struct CloseLongPositionCleanup<'info> {
     )]
     pub position: Account<'info, Position>,
 
+    /// The LP Vault that the user borrowed from
+    #[account(
+      has_one = vault,
+    )]
+    pub lp_vault: Account<'info, LpVault>,
+    #[account(mut)]
+    /// The LP Vault's token account.
+    pub vault: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
-    
 }
 
 impl<'info> CloseLongPositionCleanup<'info> {
@@ -52,11 +65,57 @@ impl<'info> CloseLongPositionCleanup<'info> {
         };
         token::revoke(cpi_ctx)
     }
+
+    pub fn transfer_from_user_to_vault(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.owner_currency_account.to_account_info(),
+            to: self.vault.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, amount)
+    }
 }
 
 pub fn handler(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
     // revoke "owner" ability to swap on behalf of the collateral vault
     ctx.accounts.revoke_owner_delegation()?;
-    // TODO: Transfer the interest amount to the LP Vault
+    // Total currency received after the swap.
+    let close_position_request = &ctx.accounts.close_position_request;
+    let collateral_diff = close_position_request
+        .swap_cache
+        .source_bal_before
+        .checked_sub(ctx.accounts.collateral_vault.amount)
+        .expect("overflow");
+    let currency_diff = ctx
+        .accounts
+        .owner_currency_account
+        .amount
+        .checked_sub(close_position_request.swap_cache.destination_bal_before)
+        .expect("overflow");
+    if collateral_diff < ctx.accounts.position.collateral_amount {
+        let collateral_dust = ctx
+            .accounts
+            .position
+            .collateral_amount - collateral_diff;
+        // TODO: What to do with any collateral_dust?
+        msg!("collateral_dust: {}", collateral_dust);
+    }
+
+    // TODO: Cap the interest with a max interest ([EVM source](https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/BaseWasabiPool.sol#L188))
+
+    // Transfer the prinicpal and interest amount to the LP Vault
+    let lp_vault_payment = ctx
+        .accounts
+        .position
+        .principal
+        .checked_add(close_position_request.interest)
+        .expect("overflow");
+    ctx.accounts.transfer_from_user_to_vault(lp_vault_payment)?;
+    if currency_diff < lp_vault_payment {
+      // TODO: If currency_diff < prinicpal + interest then there's bad debt. throw error?
+      msg!("Bad debt");
+    }
+    // The rest is left over in the user account
     Ok(())
 }

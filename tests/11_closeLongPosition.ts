@@ -83,7 +83,7 @@ describe("CloseLongPosition", () => {
           .closeLongPositionSetup({
             expiration: closeRequestExpiration,
             minTargetAmount: new anchor.BN(0),
-            interest: new anchor.BN(1_000),
+            interest: new anchor.BN(10),
           })
           .accounts({
             owner: user2.publicKey,
@@ -124,8 +124,10 @@ describe("CloseLongPosition", () => {
             .closeLongPositionCleanup()
             .accounts({
               owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
               longPool: longPoolBKey,
               position: positionKey,
+              lpVault: lpVaultKey,
             })
             .preInstructions([setupIx, swapIx])
             .signers([SWAP_AUTHORITY, user2])
@@ -161,7 +163,7 @@ describe("CloseLongPosition", () => {
           .closeLongPositionSetup({
             expiration: closeRequestExpiration,
             minTargetAmount: new anchor.BN(0),
-            interest: new anchor.BN(1_000),
+            interest: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -202,8 +204,10 @@ describe("CloseLongPosition", () => {
             .closeLongPositionCleanup()
             .accounts({
               owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
               longPool: longPoolBKey,
               position: positionKey,
+              lpVault: lpVaultKey,
             })
             .preInstructions([setupIx, swapIx])
             .signers([NON_SWAP_AUTHORITY])
@@ -228,7 +232,7 @@ describe("CloseLongPosition", () => {
             .closeLongPositionSetup({
               expiration: closeRequestExpiration,
               minTargetAmount: new anchor.BN(0),
-              interest: new anchor.BN(1_000),
+              interest: new anchor.BN(10),
             })
             .accounts({
               owner: program.provider.publicKey,
@@ -244,8 +248,10 @@ describe("CloseLongPosition", () => {
             .closeLongPositionCleanup()
             .accounts({
               owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
               longPool: longPoolBKey,
               position: positionKey,
+              lpVault: lpVaultKey,
             })
             .preInstructions([setupIx, setupIx])
             .signers([SWAP_AUTHORITY])
@@ -270,7 +276,7 @@ describe("CloseLongPosition", () => {
             .closeLongPositionSetup({
               expiration: closeRequestExpiration,
               minTargetAmount: new anchor.BN(0),
-              interest: new anchor.BN(1_000),
+              interest: new anchor.BN(10),
             })
             .accounts({
               owner: program.provider.publicKey,
@@ -298,9 +304,18 @@ describe("CloseLongPosition", () => {
 
     describe("correct setup", () => {
       it("should close the position and return funds", async () => {
-        const interestOwed = new anchor.BN(1_000);
+        const interestOwed = new anchor.BN(10);
         const positionBefore = await program.account.position.fetch(
           positionKey,
+        );
+        const vaultKey = getAssociatedTokenAddressSync(
+          positionBefore.currency,
+          lpVaultKey,
+          true,
+        );
+        const [vaultBefore, ownerABefore] = await getMultipleTokenAccounts(
+          program.provider.connection,
+          [vaultKey, ownerTokenA],
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
@@ -346,20 +361,29 @@ describe("CloseLongPosition", () => {
           .closeLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc();
 
-        const positionAfter = await program.account.position.fetchNullable(
-          positionKey,
-        );
+        const [positionAfter, [vaultAfter, ownerAAfter]] = await Promise.all([
+          program.account.position.fetchNullable(positionKey),
+          getMultipleTokenAccounts(program.provider.connection, [vaultKey, ownerTokenA]),
+        ]);
         assert.isNull(positionAfter);
 
-        // TODO should pay back interest to LP Vault
-        assert.ok(false);
+        // should pay back interest + principal to LP Vault
+        const expectedLpVaultDiff = positionBefore.principal.add(interestOwed);
+        const vaultDiff = vaultAfter.amount - vaultBefore.amount;
+        assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
+
+        // Validate the user got the rest
+        const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
+        assert.equal(ownerADiff.toString(), "950");
       });
     });
   });

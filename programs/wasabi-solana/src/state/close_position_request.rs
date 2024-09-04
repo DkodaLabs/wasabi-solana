@@ -6,6 +6,7 @@ use super::SwapCache;
 #[account]
 pub struct ClosePositionRequest {
     pub swap_cache: SwapCache,
+    pub interest: u64,
     pub min_amount_out: u64,
     pub max_amount_in: u64,
     pub pool_key: Pubkey,

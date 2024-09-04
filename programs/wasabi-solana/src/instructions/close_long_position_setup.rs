@@ -117,6 +117,7 @@ pub fn handler(ctx: Context<CloseLongPositionSetup>, args: CloseLongPositionArgs
     let close_position_request = &mut ctx.accounts.close_position_request;
     close_position_request.swap_cache.source_bal_before = ctx.accounts.collateral_vault.amount;
     close_position_request.swap_cache.destination_bal_before = ctx.accounts.owner_currency_account.amount;
+    close_position_request.interest = args.interest;
     close_position_request.max_amount_in = position.collateral_amount;
     close_position_request.min_amount_out = args.min_target_amount;
     close_position_request.pool_key = position.collateral_vault;
