@@ -19,14 +19,19 @@ pub struct CloseLongPositionSetup<'info> {
 
     #[account(
       has_one = collateral_vault,
+      seeds = [b"long_pool", collateral_vault.mint.as_ref()],
+      bump,
     )]
     /// The LongPool that owns the Position
     pub long_pool: Account<'info, BasePool>,
     #[account(mut)]
-    /// The collateral account that is the destination of the swap
+    /// The collateral account that is the source of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+      mut,
+      has_one = collateral_vault,
+    )]
     pub position: Account<'info, Position>,
 
     pub authority: Signer<'info>,
@@ -114,7 +119,7 @@ pub fn handler(ctx: Context<CloseLongPositionSetup>, args: CloseLongPositionArgs
     close_position_request.swap_cache.destination_bal_before = ctx.accounts.owner_currency_account.amount;
     close_position_request.max_amount_in = position.collateral_amount;
     close_position_request.min_amount_out = args.min_target_amount;
-    close_position_request.pool_key = position.collateral_pool;
+    close_position_request.pool_key = position.collateral_vault;
     close_position_request.position = position.key();
     Ok(())
 }

@@ -76,8 +76,9 @@ describe("CloseLongPosition", () => {
     // should fail when position is not owned by current signer/owner
     describe("Incorrect owner", () => {
       it("should fail", async () => {
-
-        const positionBefore = await program.account.position.fetch(positionKey);
+        const positionBefore = await program.account.position.fetch(
+          positionKey,
+        );
         const setupIx = await program.methods
           .closeLongPositionSetup({
             expiration: closeRequestExpiration,
@@ -120,13 +121,15 @@ describe("CloseLongPosition", () => {
         );
         try {
           await program.methods
-          .closeLongPositionCleanup()
-          .accounts({
-            owner: user2.publicKey,
-          })
-          .preInstructions([setupIx, swapIx])
-          .signers([SWAP_AUTHORITY, user2])
-          .rpc();
+            .closeLongPositionCleanup()
+            .accounts({
+              owner: user2.publicKey,
+              longPool: longPoolBKey,
+              position: positionKey,
+            })
+            .preInstructions([setupIx, swapIx])
+            .signers([SWAP_AUTHORITY, user2])
+            .rpc();
         } catch (err) {
           if (err instanceof anchor.AnchorError) {
             assert.equal(err.error.errorCode.number, 6010);
@@ -136,8 +139,8 @@ describe("CloseLongPosition", () => {
             assert.ok(false);
           }
         }
-      })
-    })
+      });
+    });
 
     // should fail if not signed by co-signer with swap authority
     describe("Without swap co-signer", () => {
@@ -199,6 +202,8 @@ describe("CloseLongPosition", () => {
             .closeLongPositionCleanup()
             .accounts({
               owner: program.provider.publicKey,
+              longPool: longPoolBKey,
+              position: positionKey,
             })
             .preInstructions([setupIx, swapIx])
             .signers([NON_SWAP_AUTHORITY])
@@ -239,6 +244,8 @@ describe("CloseLongPosition", () => {
             .closeLongPositionCleanup()
             .accounts({
               owner: program.provider.publicKey,
+              longPool: longPoolBKey,
+              position: positionKey,
             })
             .preInstructions([setupIx, setupIx])
             .signers([SWAP_AUTHORITY])
@@ -289,64 +296,71 @@ describe("CloseLongPosition", () => {
 
     // TODO should fail if swap uses less/more than position collateral
 
-    it("should close the position and return funds", async () => {
-      const interestOwed = new anchor.BN(1_000);
-      const positionBefore = await program.account.position.fetch(positionKey);
-      const setupIx = await program.methods
-        .closeLongPositionSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: interestOwed,
-        })
-        .accounts({
-          owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
-          longPool: longPoolBKey,
-          position: positionKey,
-          permission: coSignerPermission,
-          // @ts-ignore
-          authority: SWAP_AUTHORITY.publicKey,
-        })
-        .instruction();
-      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID,
-      );
-      const swapIx = TokenSwap.swapInstruction(
-        abSwapKey.publicKey,
-        swapAuthority,
-        program.provider.publicKey, //userTransferAuthority
-        longPoolBVaultKey, // userSource
-        swapTokenAccountB, // poolSource
-        swapTokenAccountA, // poolDestination
-        ownerTokenA, // userDestination
-        poolMint,
-        poolFeeAccount,
-        null,
-        tokenMintB,
-        tokenMintA,
-        TOKEN_SWAP_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        BigInt(positionBefore.collateralAmount.toString()),
-        BigInt(0),
-      );
-      await program.methods
-        .closeLongPositionCleanup()
-        .accounts({
-          owner: program.provider.publicKey,
-        })
-        .preInstructions([setupIx, swapIx])
-        .signers([SWAP_AUTHORITY])
-        .rpc();
+    describe("correct setup", () => {
+      it("should close the position and return funds", async () => {
+        const interestOwed = new anchor.BN(1_000);
+        const positionBefore = await program.account.position.fetch(
+          positionKey,
+        );
+        const setupIx = await program.methods
+          .closeLongPositionSetup({
+            expiration: closeRequestExpiration,
+            minTargetAmount: new anchor.BN(0),
+            interest: interestOwed,
+          })
+          .accounts({
+            owner: program.provider.publicKey,
+            ownerCurrencyAccount: ownerTokenA,
+            longPool: longPoolBKey,
+            position: positionKey,
+            permission: coSignerPermission,
+            // @ts-ignore
+            authority: SWAP_AUTHORITY.publicKey,
+          })
+          .instruction();
+        const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+          [abSwapKey.publicKey.toBuffer()],
+          TOKEN_SWAP_PROGRAM_ID,
+        );
+        const swapIx = TokenSwap.swapInstruction(
+          abSwapKey.publicKey,
+          swapAuthority,
+          program.provider.publicKey, //userTransferAuthority
+          longPoolBVaultKey, // userSource
+          swapTokenAccountB, // poolSource
+          swapTokenAccountA, // poolDestination
+          ownerTokenA, // userDestination
+          poolMint,
+          poolFeeAccount,
+          null,
+          tokenMintB,
+          tokenMintA,
+          TOKEN_SWAP_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          TOKEN_PROGRAM_ID,
+          BigInt(positionBefore.collateralAmount.toString()),
+          BigInt(0),
+        );
+        await program.methods
+          .closeLongPositionCleanup()
+          .accounts({
+            owner: program.provider.publicKey,
+            longPool: longPoolBKey,
+            position: positionKey,
+          })
+          .preInstructions([setupIx, swapIx])
+          .signers([SWAP_AUTHORITY])
+          .rpc();
 
-      const positionAfter = await program.account.position.fetchNullable(
-        positionKey,
-      );
-      assert.isNull(positionAfter);
+        const positionAfter = await program.account.position.fetchNullable(
+          positionKey,
+        );
+        assert.isNull(positionAfter);
 
-      // TODO should pay back interest to LP Vault
+        // TODO should pay back interest to LP Vault
+        assert.ok(false);
+      });
     });
   });
 });

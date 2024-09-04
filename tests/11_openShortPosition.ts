@@ -408,7 +408,7 @@ describe("OpenShortPosition", () => {
         tokenMintA.toString()
       );
       assert.equal(
-        positionAfter.collateralPool.toString(),
+        positionAfter.collateralVault.toString(),
         shortPoolAVaultKey.toString()
       );
       assert.equal(positionAfter.currency.toString(), tokenMintB.toString());
