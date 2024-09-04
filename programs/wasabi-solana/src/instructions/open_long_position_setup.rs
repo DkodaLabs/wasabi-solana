@@ -1,8 +1,8 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Approve, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds,
+    error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
     utils::position_setup_transaction_introspecation_validation, BasePool, LpVault,
     OpenPositionRequest, Permission, Position,
 };
@@ -29,7 +29,7 @@ pub struct OpenLongPositionSetup<'info> {
 
     #[account(
         has_one = collateral_vault,
-        // has_one = currency_vault,
+        has_one = currency_vault,
     )]
     /// The LongPool that owns the Position
     pub long_pool: Account<'info, BasePool>,
@@ -38,7 +38,7 @@ pub struct OpenLongPositionSetup<'info> {
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
     #[account(mut)]
-    pub currency_vault: Account<'info, TokenAccount>,
+    pub currency_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
       init,
@@ -96,7 +96,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     pub fn transfer_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
-            to: self.owner_currency_account.to_account_info(),
+            to: self.currency_vault.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
@@ -108,16 +108,31 @@ impl<'info> OpenLongPositionSetup<'info> {
         token::transfer(cpi_ctx, amount)
     }
 
-    // pub fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
-    //     let cpi_accounts = Transfer {
-    //         from: self.owner_currency_account.to_account_info(),
-    //         to: self.currency_vault.to_account_info(),
-    //         authority: self.owner.to_account_info(),
-    //     };
+    pub fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.owner_currency_account.to_account_info(),
+            to: self.currency_vault.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
 
-    //     let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-    //     token::transfer(cpi_ctx, amount)
-    // }
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, amount)
+    }
+
+    pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Approve {
+            to: self.currency_vault.to_account_info(),
+            delegate: self.owner.to_account_info(),
+            authority: self.long_pool.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[long_pool_signer_seeds!(self.long_pool)],
+        };
+        token::approve(cpi_ctx, amount)
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug)]
@@ -137,14 +152,21 @@ pub struct OpenLongPositionArgs {
 }
 
 pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
-    msg!("args {:?}", args);
     // Borrow from LP Vault
     ctx.accounts
         .transfer_borrow_amount_from_vault(args.principal)?;
-    // ctx.accounts
-    //     .transfer_down_payment_from_user(args.down_payment)?;
+    ctx.accounts
+        .transfer_down_payment_from_user(args.down_payment)?;
 
-    // ctx.accounts.currency_vault.reload()?;
+    ctx.accounts.currency_vault.reload()?;
+
+    let total_to_swap = args
+        .principal
+        .checked_add(args.down_payment)
+        .expect("overflow");
+
+    // Approve user to make swap on behalf of `currency_vault`
+    ctx.accounts.approve_owner_delegation(total_to_swap)?;
 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
@@ -156,7 +178,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         .expect("overflow");
     open_position_request.pool_key = ctx.accounts.long_pool.key();
     open_position_request.position = ctx.accounts.position.key();
-    // open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
+    open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
 
     let position = &mut ctx.accounts.position;

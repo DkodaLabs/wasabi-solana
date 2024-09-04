@@ -15,6 +15,7 @@ macro_rules! long_pool_signer_seeds {
         &[
             b"long_pool",
             $long_pool.collateral.as_ref(),
+            $long_pool.currency.as_ref(),
             &[$long_pool.bump],
         ]
     };

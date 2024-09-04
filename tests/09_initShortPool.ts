@@ -53,6 +53,7 @@ describe("InitShortPool", () => {
       shortPoolAfter.collateralVault.toString(),
       collateralVaultKey.toString()
     );
+    assert.equal(shortPoolAfter.currency.toString(), tokenMintB.toString());
     assert.equal(
       shortPoolAfter.currencyVault.toString(),
       currencyVaultKey.toString()

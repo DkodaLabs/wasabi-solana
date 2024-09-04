@@ -1,7 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
+use anchor_spl::token::{self, Revoke, Token, TokenAccount};
 
-use crate::{error::ErrorCode, utils::get_function_hash, BasePool, OpenPositionRequest, Position};
+use crate::{
+    error::ErrorCode, long_pool_signer_seeds, utils::get_function_hash, BasePool,
+    OpenPositionRequest, Position,
+};
 
 #[derive(Accounts)]
 pub struct OpenLongPositionCleanup<'info> {
@@ -13,11 +16,14 @@ pub struct OpenLongPositionCleanup<'info> {
 
     #[account(
       has_one = collateral_vault,
+      has_one = currency_vault,
   )]
     /// The LongPool that owns the Position
     pub long_pool: Account<'info, BasePool>,
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
+    // The token account that is the source of the swap (where principal and downpayment are sent)
+    pub currency_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
     mut,
@@ -29,6 +35,8 @@ pub struct OpenLongPositionCleanup<'info> {
 
     #[account(mut)]
     pub position: Account<'info, Position>,
+
+    pub token_program: Program<'info, Token>,
 }
 
 impl<'info> OpenLongPositionCleanup<'info> {
@@ -66,7 +74,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
             .open_position_request
             .swap_cache
             .source_bal_before
-            .checked_sub(self.owner_currency_account.amount)
+            .checked_sub(self.currency_vault.amount)
             .expect("overflow");
 
         if source_balance_delta > self.open_position_request.max_amount_in {
@@ -75,10 +83,26 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
         Ok(())
     }
+
+    pub fn revoke_owner_delegation(&self) -> Result<()> {
+        let cpi_accounts = Revoke {
+            source: self.currency_vault.to_account_info(),
+            authority: self.long_pool.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[long_pool_signer_seeds!(self.long_pool)],
+        };
+        token::revoke(cpi_ctx)
+    }
 }
 
 pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
+    // Revoke owner's ability to transfer on behalf of the `currency_vault`
+    ctx.accounts.revoke_owner_delegation()?;
 
     let destination_delta = ctx.accounts.get_destination_delta();
 

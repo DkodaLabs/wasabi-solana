@@ -24,7 +24,11 @@ describe("InitLongPool", () => {
       })
       .rpc();
     const [longPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintA.toBuffer(), tokenMintB.toBuffer()],
+      [
+        anchor.utils.bytes.utf8.encode("long_pool"),
+        tokenMintA.toBuffer(),
+        tokenMintB.toBuffer(),
+      ],
       superAdminProgram.programId
     );
     const collateralVaultKey = getAssociatedTokenAddressSync(
@@ -49,6 +53,7 @@ describe("InitLongPool", () => {
       longPoolAfter.collateralVault.toString(),
       collateralVaultKey.toString()
     );
+    assert.equal(longPoolAfter.currency.toString(), tokenMintB.toString());
     assert.equal(
       longPoolAfter.currencyVault.toString(),
       currencyVaultKey.toString()

@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
+  createTransferInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -97,26 +98,6 @@ describe("OpenLongPosition", () => {
       );
       try {
         const now = new Date().getTime() / 1_000;
-        const tmp = await program.methods
-          .openLongPositionSetup({
-            nonce,
-            minTargetAmount: new anchor.BN(1_900),
-            downPayment: new anchor.BN(1_000),
-            principal: new anchor.BN(1_000),
-            currency: tokenMintA,
-            expiration: new anchor.BN(now + 3_600),
-          })
-          .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
-            currencyVault: longPoolBCurrencyVaultKey,
-            lpVault: lpVaultKey,
-            longPool: longPoolBKey,
-            permission: coSignerPermission,
-            authority: SWAP_AUTHORITY.publicKey,
-          })
-          .instruction();
-        console.log("[DEBUG] data ", tmp.data);
         const setupIx = await program.methods
           .openLongPositionSetup({
             nonce,
@@ -146,7 +127,7 @@ describe("OpenLongPosition", () => {
           })
           .preInstructions([setupIx, setupIx])
           .signers([SWAP_AUTHORITY])
-          .rpc({ skipPreflight: true });
+          .rpc();
         assert.ok(false);
       } catch (err) {
         const regex = /already in use/;
@@ -160,7 +141,7 @@ describe("OpenLongPosition", () => {
     });
   });
 
-  describe.skip("without cleanup IX", () => {
+  describe("without cleanup IX", () => {
     it("should fail", async () => {
       try {
         const now = new Date().getTime() / 1_000;
@@ -195,7 +176,7 @@ describe("OpenLongPosition", () => {
     });
   });
 
-  describe.skip("with one setup and one cleanup ", () => {
+  describe("with one setup and one cleanup ", () => {
     it("should open a new position", async () => {
       const nonce = 0;
       const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -251,7 +232,7 @@ describe("OpenLongPosition", () => {
         abSwapKey.publicKey,
         swapAuthority,
         program.provider.publicKey,
-        ownerTokenA,
+        longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
         longPoolBVaultKey,
@@ -288,6 +269,7 @@ describe("OpenLongPosition", () => {
           lpVault.vault,
           ownerTokenA,
           longPoolBVaultKey,
+          longPoolBCurrencyVaultKey,
         ]),
         program.provider.connection.getAccountInfo(openPositionRequestKey),
         program.account.position.fetch(positionKey),
@@ -412,6 +394,13 @@ describe("OpenLongPosition", () => {
       const principal = new anchor.BN(1_000);
       const minimumAmountOut = new anchor.BN(1_900);
       try {
+        const transferAmount = 2_000;
+        const transferIX = createTransferInstruction(
+          ownerTokenA,
+          longPoolBCurrencyVaultKey,
+          program.provider.publicKey,
+          transferAmount
+        );
         const setupIx = await program.methods
           .openLongPositionSetup({
             nonce,
@@ -440,7 +429,7 @@ describe("OpenLongPosition", () => {
           abSwapKey.publicKey,
           swapAuthority,
           program.provider.publicKey,
-          ownerTokenA,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -464,18 +453,16 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             position: positionKey,
           })
-          .preInstructions([setupIx, swapIx])
+          .preInstructions([transferIX, setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
-        if (err instanceof anchor.AnchorError) {
-          assert.equal(err.error.errorCode.number, 6005);
-        } else if (err instanceof anchor.ProgramError) {
-          assert.equal(err.code, 6005);
-        } else {
-          assert.ok(false);
-        }
+        // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
+        // is not delegated more than `down_payment` + `principal`.
+        assert.ok(
+          err.toString().includes(`"InstructionError":[2,{"Custom":1}]`)
+        );
       }
     });
 
@@ -548,7 +535,7 @@ describe("OpenLongPosition", () => {
           abSwapKey.publicKey,
           swapAuthority,
           program.provider.publicKey,
-          ownerTokenA,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -634,7 +621,7 @@ describe("OpenLongPosition", () => {
           abSwapKey.publicKey,
           swapAuthority,
           program.provider.publicKey,
-          ownerTokenA,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -674,7 +661,7 @@ describe("OpenLongPosition", () => {
     });
   });
 
-  describe.skip("Without swap co-signer", () => {
+  describe("Without swap co-signer", () => {
     it("Should fail", async () => {
       const nonce = 1;
       const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -731,7 +718,7 @@ describe("OpenLongPosition", () => {
         abSwapKey.publicKey,
         swapAuthority,
         program.provider.publicKey,
-        ownerTokenA,
+        longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
         longPoolBVaultKey,

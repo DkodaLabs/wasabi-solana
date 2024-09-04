@@ -69,6 +69,7 @@ pub fn handler(ctx: Context<InitLongPool>) -> Result<()> {
     long_pool.is_long_pool = true;
     long_pool.collateral = ctx.accounts.asset_mint.key();
     long_pool.collateral_vault = ctx.accounts.collateral_vault.key();
+    long_pool.currency = ctx.accounts.currency_mint.key();
     long_pool.currency_vault = ctx.accounts.currency_vault.key();
     long_pool.bump = ctx.bumps.long_pool;
 
