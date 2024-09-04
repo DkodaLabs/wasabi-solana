@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    long_pool_signer_seeds, utils::get_function_hash, BasePool, ClosePositionRequest, LpVault,
-    Position,
+    error::ErrorCode, long_pool_signer_seeds, utils::get_function_hash, BasePool,
+    ClosePositionRequest, LpVault, Position,
 };
 
 #[derive(Accounts)]
@@ -52,6 +52,51 @@ impl<'info> CloseLongPositionCleanup<'info> {
         get_function_hash("global", "close_long_position_cleanup")
     }
 
+    pub fn get_destination_delta(&self) -> u64 {
+        self.owner_currency_account
+            .amount
+            .checked_sub(
+                self.close_position_request
+                    .swap_cache
+                    .destination_bal_before,
+            )
+            .expect("overflow")
+    }
+
+    pub fn get_source_delta(&self) -> u64 {
+        self.close_position_request
+            .swap_cache
+            .source_bal_before
+            .checked_sub(self.collateral_vault.amount)
+            .expect("overflow")
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        // Validate the same position was used in setup and cleanup
+        if self.position.key() != self.close_position_request.position {
+            return Err(ErrorCode::InvalidPosition.into());
+        }
+        // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
+        if self.long_pool.key() != self.close_position_request.pool_key {
+            return Err(ErrorCode::InvalidPool.into());
+        }
+
+        // Validate owner receives at least the minimum amount of token being swapped to.
+        let destination_balance_delta = self.get_destination_delta();
+
+        if destination_balance_delta < self.close_position_request.min_target_amount {
+            return Err(ErrorCode::MinTokensNotMet.into());
+        }
+
+        let source_balance_delta = self.get_source_delta();
+
+        if source_balance_delta > 0 {
+            return Err(ErrorCode::MaxSwapExceeded.into());
+        }
+
+        Ok(())
+    }
+
     pub fn revoke_owner_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
             source: self.collateral_vault.to_account_info(),
@@ -82,22 +127,11 @@ pub fn handler(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
     ctx.accounts.revoke_owner_delegation()?;
     // Total currency received after the swap.
     let close_position_request = &ctx.accounts.close_position_request;
-    let collateral_diff = close_position_request
-        .swap_cache
-        .source_bal_before
-        .checked_sub(ctx.accounts.collateral_vault.amount)
-        .expect("overflow");
-    let currency_diff = ctx
-        .accounts
-        .owner_currency_account
-        .amount
-        .checked_sub(close_position_request.swap_cache.destination_bal_before)
-        .expect("overflow");
+    let collateral_diff = ctx.accounts.get_source_delta();
+    let currency_diff = ctx.accounts.get_destination_delta();
+
     if collateral_diff < ctx.accounts.position.collateral_amount {
-        let collateral_dust = ctx
-            .accounts
-            .position
-            .collateral_amount - collateral_diff;
+        let collateral_dust = ctx.accounts.position.collateral_amount - collateral_diff;
         // TODO: What to do with any collateral_dust?
         msg!("collateral_dust: {}", collateral_dust);
     }
@@ -113,8 +147,8 @@ pub fn handler(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
         .expect("overflow");
     ctx.accounts.transfer_from_user_to_vault(lp_vault_payment)?;
     if currency_diff < lp_vault_payment {
-      // TODO: If currency_diff < prinicpal + interest then there's bad debt. throw error?
-      msg!("Bad debt");
+        // TODO: If currency_diff < prinicpal + interest then there's bad debt. throw error?
+        msg!("Bad debt");
     }
     // The rest is left over in the user account
     Ok(())
