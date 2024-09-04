@@ -41,6 +41,7 @@ export let poolFeeAccount: web3.PublicKey;
 
 export const SWAP_AUTHORITY = web3.Keypair.generate();
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
+export const user2 = web3.Keypair.generate();
 
 export const mochaHooks = {
   beforeAll: async () => {
@@ -68,8 +69,8 @@ export const mochaHooks = {
         superAdminProgram.provider.publicKey!,
         100_000_000_000
       ),
-      program.provider.connection.requestAirdrop(
-        program.provider.publicKey!,
+      superAdminProgram.provider.connection.requestAirdrop(
+        user2.publicKey,
         100_000_000_000
       ),
     ]);
