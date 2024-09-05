@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
+  createTransferInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -39,11 +40,20 @@ describe("OpenLongPosition", () => {
     false
   );
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintB.toBuffer()],
+    [
+      anchor.utils.bytes.utf8.encode("long_pool"),
+      tokenMintB.toBuffer(),
+      tokenMintA.toBuffer(),
+    ],
     program.programId
   );
   const longPoolBVaultKey = getAssociatedTokenAddressSync(
     tokenMintB,
+    longPoolBKey,
+    true
+  );
+  const longPoolBCurrencyVaultKey = getAssociatedTokenAddressSync(
+    tokenMintA,
     longPoolBKey,
     true
   );
@@ -68,6 +78,7 @@ describe("OpenLongPosition", () => {
         payer: superAdminProgram.provider.publicKey,
         permission: superAdminPermissionKey,
         assetMint: tokenMintB,
+        currencyMint: tokenMintA,
       })
       .rpc();
   });
@@ -99,6 +110,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -109,7 +121,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
@@ -145,6 +156,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -204,6 +216,7 @@ describe("OpenLongPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenA,
+          currencyVault: longPoolBCurrencyVaultKey,
           lpVault: lpVaultKey,
           longPool: longPoolBKey,
           permission: coSignerPermission,
@@ -217,8 +230,8 @@ describe("OpenLongPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
-        ownerTokenA,
+        SWAP_AUTHORITY.publicKey,
+        longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
         longPoolBVaultKey,
@@ -238,7 +251,6 @@ describe("OpenLongPosition", () => {
         .openLongPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
           longPool: longPoolBKey,
           position: positionKey,
         })
@@ -255,6 +267,7 @@ describe("OpenLongPosition", () => {
           lpVault.vault,
           ownerTokenA,
           longPoolBVaultKey,
+          longPoolBCurrencyVaultKey,
         ]),
         program.provider.connection.getAccountInfo(openPositionRequestKey),
         program.account.position.fetch(positionKey),
@@ -330,6 +343,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -340,7 +354,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
@@ -378,6 +391,13 @@ describe("OpenLongPosition", () => {
       const principal = new anchor.BN(1_000);
       const minimumAmountOut = new anchor.BN(1_900);
       try {
+        const transferAmount = 2_000;
+        const transferIX = createTransferInstruction(
+          ownerTokenA,
+          longPoolBCurrencyVaultKey,
+          program.provider.publicKey,
+          transferAmount
+        );
         const setupIx = await program.methods
           .openLongPositionSetup({
             nonce,
@@ -390,6 +410,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -404,8 +425,8 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
-          ownerTokenA,
+          SWAP_AUTHORITY.publicKey,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -425,22 +446,19 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
-          .preInstructions([setupIx, swapIx])
+          .preInstructions([transferIX, setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
-        if (err instanceof anchor.AnchorError) {
-          assert.equal(err.error.errorCode.number, 6005);
-        } else if (err instanceof anchor.ProgramError) {
-          assert.equal(err.code, 6005);
-        } else {
-          assert.ok(false);
-        }
+        // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
+        // is not delegated more than `down_payment` + `principal
+        assert.ok(
+          err.toString().includes(`"InstructionError":[2,{"Custom":1}]`)
+        );
       }
     });
 
@@ -467,10 +485,15 @@ describe("OpenLongPosition", () => {
           payer: superAdminProgram.provider.publicKey,
           permission: superAdminPermissionKey,
           assetMint: tokenMintB,
+          currencyMint: tokenMintA,
         })
         .rpc();
       const [shortPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintB.toBuffer()],
+        [
+          anchor.utils.bytes.utf8.encode("short_pool"),
+          tokenMintB.toBuffer(),
+          tokenMintA.toBuffer(),
+        ],
         program.programId
       );
       const now = new Date().getTime() / 1_000;
@@ -492,6 +515,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -506,8 +530,8 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
-          ownerTokenA,
+          SWAP_AUTHORITY.publicKey,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -527,7 +551,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: shortPoolBKey,
             position: positionKey,
           })
@@ -577,6 +600,7 @@ describe("OpenLongPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             ownerCurrencyAccount: ownerTokenA,
+            currencyVault: longPoolBCurrencyVaultKey,
             lpVault: lpVaultKey,
             longPool: longPoolBKey,
             permission: coSignerPermission,
@@ -591,8 +615,8 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
-          ownerTokenA,
+          SWAP_AUTHORITY.publicKey,
+          longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
           longPoolBVaultKey,
@@ -612,7 +636,6 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: badPositionKey,
           })
@@ -674,6 +697,7 @@ describe("OpenLongPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           ownerCurrencyAccount: ownerTokenA,
+          currencyVault: longPoolBCurrencyVaultKey,
           lpVault: lpVaultKey,
           longPool: longPoolBKey,
           permission: badCoSignerPermission,
@@ -687,8 +711,8 @@ describe("OpenLongPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
-        ownerTokenA,
+        NON_SWAP_AUTHORITY.publicKey,
+        longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
         longPoolBVaultKey,
@@ -709,13 +733,12 @@ describe("OpenLongPosition", () => {
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
             position: positionKey,
           })
           .preInstructions([setupIx, swapIx])
           .signers([NON_SWAP_AUTHORITY])
-          .rpc();
+          .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
         if (err instanceof anchor.AnchorError) {

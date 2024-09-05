@@ -1,8 +1,8 @@
 use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::{self, Token, TokenAccount, Transfer};
+use anchor_spl::token::{self, Approve, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds,
+    error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
     utils::position_setup_transaction_introspecation_validation, BasePool, LpVault,
     OpenPositionRequest, Permission, Position,
 };
@@ -33,13 +33,18 @@ pub struct OpenShortPositionSetup<'info> {
     pub vault: Account<'info, TokenAccount>,
 
     #[account(
-      has_one = collateral_vault,
-  )]
+        has_one = collateral_vault,
+        has_one = currency_vault,
+    )]
     /// The ShortPool that owns the Position
     pub short_pool: Account<'info, BasePool>,
     #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
+
+    // The token account that is the source of the swap (where principal and downpayment are sent)
+    #[account(mut)]
+    pub currency_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
       init,
@@ -116,10 +121,10 @@ impl<'info> OpenShortPositionSetup<'info> {
         token::transfer(cpi_ctx, amount)
     }
 
-    pub fn transfer_from_vault_to_user(&self, amount: u64) -> Result<()> {
+    pub fn transfer_from_lp_vault_to_currency_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
-            to: self.owner_currency_account.to_account_info(),
+            to: self.currency_vault.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
@@ -129,6 +134,21 @@ impl<'info> OpenShortPositionSetup<'info> {
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
         token::transfer(cpi_ctx, amount)
+    }
+
+    pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Approve {
+            to: self.currency_vault.to_account_info(),
+            delegate: self.authority.to_account_info(),
+            authority: self.short_pool.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
+        };
+        token::approve(cpi_ctx, amount)
     }
 }
 
@@ -141,9 +161,11 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     // Reload the collateral_vault account so we can get the balance after
     // downpayment has been made.
     ctx.accounts.collateral_vault.reload()?;
-    // Reload the owner's currency account so we can check to make sure there
-    // is no change in balance after swapping.
-    ctx.accounts.owner_currency_account.reload()?;
+
+    let total_to_swap = args.principal;
+
+    // Approve user to make swap on behalf of `currency_vault`
+    ctx.accounts.approve_owner_delegation(total_to_swap)?;
 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
@@ -153,7 +175,7 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     open_position_request.pool_key = ctx.accounts.short_pool.key();
     open_position_request.min_target_amount = args.min_target_amount;
     open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
-    open_position_request.swap_cache.source_bal_before = ctx.accounts.owner_currency_account.amount;
+    open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
 
     let position = &mut ctx.accounts.position;
     position.trader = ctx.accounts.owner.key();
@@ -165,7 +187,8 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     position.lp_vault = ctx.accounts.lp_vault.key();
 
     // Transfer the borrowed amount to user's wallet to be used in swap.
-    ctx.accounts.transfer_from_vault_to_user(args.principal)?;
+    ctx.accounts
+        .transfer_from_lp_vault_to_currency_vault(args.principal)?;
 
     Ok(())
 }

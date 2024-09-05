@@ -19,7 +19,7 @@ pub struct CloseLongPositionSetup<'info> {
 
     #[account(
       has_one = collateral_vault,
-      seeds = [b"long_pool", collateral_vault.mint.as_ref()],
+      seeds = [b"long_pool", collateral_vault.mint.as_ref(), owner_currency_account.mint.as_ref()],
       bump,
     )]
     /// The LongPool that owns the Position

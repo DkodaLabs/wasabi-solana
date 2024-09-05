@@ -20,10 +20,15 @@ describe("InitShortPool", () => {
         payer: superAdminProgram.provider.publicKey,
         permission: superAdminPermissionKey,
         assetMint: tokenMintA,
+        currencyMint: tokenMintB,
       })
       .rpc();
     const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("short_pool"), tokenMintA.toBuffer()],
+      [
+        anchor.utils.bytes.utf8.encode("short_pool"),
+        tokenMintA.toBuffer(),
+        tokenMintB.toBuffer(),
+      ],
       superAdminProgram.programId
     );
     const collateralVaultKey = getAssociatedTokenAddressSync(
@@ -31,9 +36,15 @@ describe("InitShortPool", () => {
       shortPoolKey,
       true
     );
-    const [shortPoolAfter, collateralVault] = await Promise.all([
+    const currencyVaultKey = getAssociatedTokenAddressSync(
+      tokenMintB,
+      shortPoolKey,
+      true
+    );
+    const [shortPoolAfter, collateralVault, currencyVault] = await Promise.all([
       superAdminProgram.account.basePool.fetch(shortPoolKey),
       program.provider.connection.getAccountInfo(collateralVaultKey),
+      program.provider.connection.getAccountInfo(currencyVaultKey),
     ]);
 
     // Validate short pool was created
@@ -42,7 +53,13 @@ describe("InitShortPool", () => {
       shortPoolAfter.collateralVault.toString(),
       collateralVaultKey.toString()
     );
+    assert.equal(shortPoolAfter.currency.toString(), tokenMintB.toString());
+    assert.equal(
+      shortPoolAfter.currencyVault.toString(),
+      currencyVaultKey.toString()
+    );
     assert.isNotNull(collateralVault);
+    assert.isNotNull(currencyVault);
     assert.ok(!shortPoolAfter.isLongPool);
   });
 

@@ -20,10 +20,15 @@ describe("InitLongPool", () => {
         payer: superAdminProgram.provider.publicKey,
         permission: superAdminPermissionKey,
         assetMint: tokenMintA,
+        currencyMint: tokenMintB,
       })
       .rpc();
     const [longPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
-      [anchor.utils.bytes.utf8.encode("long_pool"), tokenMintA.toBuffer()],
+      [
+        anchor.utils.bytes.utf8.encode("long_pool"),
+        tokenMintA.toBuffer(),
+        tokenMintB.toBuffer(),
+      ],
       superAdminProgram.programId
     );
     const collateralVaultKey = getAssociatedTokenAddressSync(
@@ -31,9 +36,15 @@ describe("InitLongPool", () => {
       longPoolKey,
       true
     );
-    const [longPoolAfter, collateralVault] = await Promise.all([
+    const currencyVaultKey = getAssociatedTokenAddressSync(
+      tokenMintB,
+      longPoolKey,
+      true
+    );
+    const [longPoolAfter, collateralVault, currencyVault] = await Promise.all([
       superAdminProgram.account.basePool.fetch(longPoolKey),
       program.provider.connection.getAccountInfo(collateralVaultKey),
+      program.provider.connection.getAccountInfo(currencyVaultKey),
     ]);
 
     // Validate long pool was created
@@ -42,7 +53,13 @@ describe("InitLongPool", () => {
       longPoolAfter.collateralVault.toString(),
       collateralVaultKey.toString()
     );
+    assert.equal(longPoolAfter.currency.toString(), tokenMintB.toString());
+    assert.equal(
+      longPoolAfter.currencyVault.toString(),
+      currencyVaultKey.toString()
+    );
     assert.isNotNull(collateralVault);
+    assert.isNotNull(currencyVault);
     assert.ok(longPoolAfter.isLongPool);
   });
 
