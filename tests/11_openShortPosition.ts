@@ -328,7 +328,7 @@ describe("OpenShortPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
+        SWAP_AUTHORITY.publicKey,
         shortPoolACurrencyVaultKey,
         swapTokenAccountB,
         swapTokenAccountA,
@@ -537,7 +537,7 @@ describe("OpenShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolACurrencyVaultKey,
           swapTokenAccountB,
           swapTokenAccountA,
@@ -622,7 +622,7 @@ describe("OpenShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolACurrencyVaultKey,
           swapTokenAccountB,
           swapTokenAccountA,
@@ -707,7 +707,7 @@ describe("OpenShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolACurrencyVaultKey,
           swapTokenAccountB,
           swapTokenAccountA,
@@ -799,7 +799,7 @@ describe("OpenShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolACurrencyVaultKey,
           swapTokenAccountB,
           swapTokenAccountA,

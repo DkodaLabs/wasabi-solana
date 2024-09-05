@@ -139,7 +139,7 @@ impl<'info> OpenShortPositionSetup<'info> {
     pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
-            delegate: self.owner.to_account_info(),
+            delegate: self.authority.to_account_info(),
             authority: self.short_pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {

@@ -230,7 +230,7 @@ describe("OpenLongPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
+        SWAP_AUTHORITY.publicKey,
         longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
@@ -425,7 +425,7 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
@@ -530,7 +530,7 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
@@ -615,7 +615,7 @@ describe("OpenLongPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           longPoolBCurrencyVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
@@ -711,7 +711,7 @@ describe("OpenLongPosition", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        program.provider.publicKey,
+        NON_SWAP_AUTHORITY.publicKey,
         longPoolBCurrencyVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
@@ -738,7 +738,7 @@ describe("OpenLongPosition", () => {
           })
           .preInstructions([setupIx, swapIx])
           .signers([NON_SWAP_AUTHORITY])
-          .rpc();
+          .rpc({ skipPreflight: true });
         assert.ok(false);
       } catch (err) {
         if (err instanceof anchor.AnchorError) {
