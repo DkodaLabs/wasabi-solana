@@ -25,8 +25,8 @@ import {
 
 export let superAdminProgram: Program<WasabiSolana>;
 
-const tokenAKeypair = web3.Keypair.generate();
-const tokenBKeypair = web3.Keypair.generate();
+export const tokenAKeypair = web3.Keypair.generate();
+export const tokenBKeypair = web3.Keypair.generate();
 const swapTokenAccountAKeypair = web3.Keypair.generate();
 const swapTokenAccountBKeypair = web3.Keypair.generate();
 
