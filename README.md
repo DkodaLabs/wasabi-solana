@@ -9,4 +9,4 @@
 3. Build the program
     - Build: `anchor build`
 4. Depoy the program
-    - Deploy: `solana program deploy --program-id $PWD/devnet-program-keypair.json --fee-payer ~/wasabi-devnet-deployer.json --keypair ~/wasabi-devnet-deployer.json --url devnet`
+    - Deploy: `solana program deploy target/deploy/wasabi_solana.so --program-id $PWD/devnet-program-keypair.json --fee-payer ~/wasabi-devnet-deployer.json --keypair ~/wasabi-devnet-deployer.json --url devnet`
