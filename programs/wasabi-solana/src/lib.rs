@@ -102,4 +102,16 @@ pub mod wasabi_solana {
     pub fn open_short_position_cleanup(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
         open_short_position_cleanup::handler(ctx)
     }
+
+    #[access_control(CloseShortPositionSetup::validate(&ctx, &args))]
+    pub fn close_short_position_setup(
+        ctx: Context<CloseShortPositionSetup>,
+        args: CloseShortPositionSetupArgs,
+    ) -> Result<()> {
+        close_short_position_setup::handler(ctx, args)
+    }
+
+    pub fn close_short_position_cleanup(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
+        close_short_position_cleanup::handler(ctx)
+    }
 }

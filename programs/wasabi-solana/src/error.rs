@@ -24,4 +24,6 @@ pub enum ErrorCode {
     MaxSwapExceeded, // 6009
     #[msg("Owner doesnt match")]
     IncorrectOwner, // 6010
+    #[msg("Cannot close bad debt")]
+    BadDebt, // 6011
 }
