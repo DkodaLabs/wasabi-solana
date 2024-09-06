@@ -11,7 +11,8 @@ use crate::{
 pub struct ClosePositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
-    pub owner: Signer<'info>,
+    /// CHECK: No need
+    pub owner: AccountInfo<'info>,
     /// The account that holds the owner's base currency
     pub owner_currency_account: Account<'info, TokenAccount>,
 

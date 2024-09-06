@@ -9,6 +9,9 @@ use crate::{
 #[derive(Accounts)]
 pub struct CloseShortPositionSetup<'info> {
     pub close_position_setup: ClosePositionSetup<'info>,
+    #[account(mut)]
+    /// The wallet that owns the assets
+    pub owner: Signer<'info>,
 }
 
 pub fn handler(

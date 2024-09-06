@@ -7,6 +7,9 @@ use super::CloseLongPositionCleanup;
 #[derive(Accounts)]
 pub struct CloseLongPositionSetup<'info> {
     pub close_position_setup: ClosePositionSetup<'info>,
+    #[account(mut)]
+    /// The wallet that owns the assets
+    pub owner: Signer<'info>,
 }
 
 pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) -> Result<()> {
