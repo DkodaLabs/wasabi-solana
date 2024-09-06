@@ -98,13 +98,15 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            collateralVault: shortPoolAVaultKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: coSignerPermission,
+              //@ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -135,11 +137,13 @@ describe("CloseShortPosition", () => {
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              shortPool: shortPoolAKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: user2.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                pool: shortPoolAKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              }
             })
             .preInstructions([setupIx, swapIx])
             .signers([SWAP_AUTHORITY, user2])
@@ -178,12 +182,15 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            position: positionKey,
-            permission: badCoSignerPermission,
-            authority: NON_SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: badCoSignerPermission,
+              //@ts-ignore
+              authority: NON_SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -214,11 +221,13 @@ describe("CloseShortPosition", () => {
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              shortPool: shortPoolAKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                pool: shortPoolAKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              }
             })
             .preInstructions([setupIx, swapIx])
             .signers([NON_SWAP_AUTHORITY])
@@ -246,22 +255,27 @@ describe("CloseShortPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
               shortPool: shortPoolAKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                position: positionKey,
+                permission: coSignerPermission,
+                //@ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .instruction();
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              shortPool: shortPoolAKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                pool: shortPoolAKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              }
             })
             .preInstructions([setupIx, setupIx])
             .signers([SWAP_AUTHORITY])
@@ -292,9 +306,14 @@ describe("CloseShortPosition", () => {
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
               shortPool: shortPoolAKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                position: positionKey,
+                permission: coSignerPermission,
+                //@ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .signers([SWAP_AUTHORITY])
             .rpc();
@@ -331,12 +350,15 @@ describe("CloseShortPosition", () => {
             interest: interestOwed,
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: coSignerPermission,
+              //@ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         // TODO couldn't get the swap pool in a state that wouldn't
@@ -371,11 +393,13 @@ describe("CloseShortPosition", () => {
         await program.methods
           .closeShortPositionCleanup()
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
-            shortPool: shortPoolAKey,
-            position: positionKey,
-            lpVault: lpVaultKey,
+            closePositionCleanup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              pool: shortPoolAKey,
+              position: positionKey,
+              lpVault: lpVaultKey,
+            }
           })
           .preInstructions([setupIx, swapIx, mintTokenBToOwnerIx])
           .signers([SWAP_AUTHORITY])
