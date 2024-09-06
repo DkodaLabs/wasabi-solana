@@ -28,16 +28,16 @@ describe("CloseLongPosition", () => {
       anchor.utils.bytes.utf8.encode("admin"),
       SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
-    program.programId
+    program.programId,
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    program.programId
+    program.programId,
   );
   const ownerTokenA = getAssociatedTokenAddressSync(
     tokenMintA,
     program.provider.publicKey,
-    false
+    false,
   );
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -45,12 +45,12 @@ describe("CloseLongPosition", () => {
       tokenMintB.toBuffer(),
       tokenMintA.toBuffer(),
     ],
-    program.programId
+    program.programId,
   );
   const longPoolBVaultKey = getAssociatedTokenAddressSync(
     tokenMintB,
     longPoolBKey,
-    true
+    true,
   );
 
   describe("With owned long position", () => {
@@ -63,7 +63,7 @@ describe("CloseLongPosition", () => {
         lpVaultKey.toBuffer(),
         new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
       ],
-      program.programId
+      program.programId,
     );
     let closeRequestExpiration = new anchor.BN(Date.now() / 1_000 + 60 * 60);
 
@@ -71,7 +71,7 @@ describe("CloseLongPosition", () => {
     describe("Incorrect owner", () => {
       it("should fail", async () => {
         const positionBefore = await program.account.position.fetch(
-          positionKey
+          positionKey,
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
@@ -88,12 +88,12 @@ describe("CloseLongPosition", () => {
               permission: coSignerPermission,
               // @ts-ignore
               authority: SWAP_AUTHORITY.publicKey,
-            }
+            },
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -113,17 +113,19 @@ describe("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0)
+          BigInt(0),
         );
         try {
           await program.methods
             .closeLongPositionCleanup()
             .accounts({
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              longPool: longPoolBKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: user2.publicKey,
+                ownerCurrencyAccount: ownerTokenA,
+                pool: longPoolBKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              },
             })
             .preInstructions([setupIx, swapIx])
             .signers([SWAP_AUTHORITY, user2])
@@ -144,7 +146,7 @@ describe("CloseLongPosition", () => {
     describe("Without swap co-signer", () => {
       it("Should fail", async () => {
         const positionBefore = await program.account.position.fetch(
-          positionKey
+          positionKey,
         );
         const [badCoSignerPermission] =
           anchor.web3.PublicKey.findProgramAddressSync(
@@ -152,7 +154,7 @@ describe("CloseLongPosition", () => {
               anchor.utils.bytes.utf8.encode("admin"),
               NON_SWAP_AUTHORITY.publicKey.toBuffer(),
             ],
-            program.programId
+            program.programId,
           );
 
         const setupIx = await program.methods
@@ -170,12 +172,12 @@ describe("CloseLongPosition", () => {
               permission: badCoSignerPermission,
               // @ts-ignore
               authority: NON_SWAP_AUTHORITY.publicKey,
-            }
+            },
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -195,17 +197,19 @@ describe("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0)
+          BigInt(0),
         );
         try {
           await program.methods
             .closeLongPositionCleanup()
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              longPool: longPoolBKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenA,
+                pool: longPoolBKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              },
             })
             .preInstructions([setupIx, swapIx])
             .signers([NON_SWAP_AUTHORITY])
@@ -241,17 +245,19 @@ describe("CloseLongPosition", () => {
                 permission: coSignerPermission,
                 // @ts-ignore
                 authority: SWAP_AUTHORITY.publicKey,
-              }
+              },
             })
             .instruction();
           await program.methods
             .closeLongPositionCleanup()
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              longPool: longPoolBKey,
-              position: positionKey,
-              lpVault: lpVaultKey,
+              closePositionCleanup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenA,
+                pool: longPoolBKey,
+                position: positionKey,
+                lpVault: lpVaultKey,
+              },
             })
             .preInstructions([setupIx, setupIx])
             .signers([SWAP_AUTHORITY])
@@ -287,7 +293,7 @@ describe("CloseLongPosition", () => {
                 permission: coSignerPermission,
                 // @ts-ignore
                 authority: SWAP_AUTHORITY.publicKey,
-              }
+              },
             })
             .signers([SWAP_AUTHORITY])
             .rpc();
@@ -308,16 +314,16 @@ describe("CloseLongPosition", () => {
       it("should close the position and return funds", async () => {
         const interestOwed = new anchor.BN(10);
         const positionBefore = await program.account.position.fetch(
-          positionKey
+          positionKey,
         );
         const vaultKey = getAssociatedTokenAddressSync(
           positionBefore.currency,
           lpVaultKey,
-          true
+          true,
         );
         const [vaultBefore, ownerABefore] = await getMultipleTokenAccounts(
           program.provider.connection,
-          [vaultKey, ownerTokenA]
+          [vaultKey, ownerTokenA],
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
@@ -334,12 +340,12 @@ describe("CloseLongPosition", () => {
               permission: coSignerPermission,
               // @ts-ignore
               authority: SWAP_AUTHORITY.publicKey,
-            }
+            },
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
@@ -359,16 +365,18 @@ describe("CloseLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(positionBefore.collateralAmount.toString()),
-          BigInt(0)
+          BigInt(0),
         );
         await program.methods
           .closeLongPositionCleanup()
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
-            longPool: longPoolBKey,
-            position: positionKey,
-            lpVault: lpVaultKey,
+            closePositionCleanup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              pool: longPoolBKey,
+              position: positionKey,
+              lpVault: lpVaultKey,
+            }
           })
           .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])

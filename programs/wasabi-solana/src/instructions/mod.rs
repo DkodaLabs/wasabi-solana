@@ -1,6 +1,7 @@
 pub mod close_long_position_cleanup;
 pub mod close_long_position_setup;
 pub mod close_position_setup;
+pub mod close_position_cleanup;
 pub mod close_short_position_cleanup;
 pub mod close_short_position_setup;
 pub mod deposit;
