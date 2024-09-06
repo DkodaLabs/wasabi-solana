@@ -87,6 +87,26 @@ impl<'info> ClosePositionSetup<'info> {
         close_position_request.position = position.key();
         Ok(())
     }
+
+    pub fn approve_owner_delegation(
+        &self,
+        amount: u64,
+        pool: AccountInfo<'info>,
+        pool_signer_seeds: &[&[&[u8]]],
+    ) -> Result<()> {
+        let cpi_accounts = Approve {
+            to: self.collateral_vault.to_account_info(),
+            delegate: self.owner.to_account_info(),
+            authority: pool,
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: pool_signer_seeds,
+        };
+        token::approve(cpi_ctx, amount)
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
