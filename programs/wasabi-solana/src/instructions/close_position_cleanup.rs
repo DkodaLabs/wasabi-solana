@@ -138,7 +138,7 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 }
 
-pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup) -> Result<()> {
+pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup, is_liquidation: bool) -> Result<()> {
     // revoke "owner" ability to swap on behalf of the collateral vault
     if close_position_cleanup.pool.is_long_pool {
         close_position_cleanup
@@ -167,7 +167,7 @@ pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup
         .checked_add(close_position_request.interest)
         .expect("overflow");
     close_position_cleanup.transfer_from_user_to_vault(lp_vault_payment)?;
-    if currency_diff < lp_vault_payment {
+    if currency_diff < lp_vault_payment && !is_liquidation {
         return Err(ErrorCode::BadDebt.into());
     }
     // The rest is left over in the user account
