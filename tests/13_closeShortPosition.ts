@@ -98,13 +98,15 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            collateralVault: shortPoolAVaultKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: coSignerPermission,
+              //@ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -178,12 +180,15 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            position: positionKey,
-            permission: badCoSignerPermission,
-            authority: NON_SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: badCoSignerPermission,
+              //@ts-ignore
+              authority: NON_SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -246,12 +251,15 @@ describe("CloseShortPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
               shortPool: shortPoolAKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                position: positionKey,
+                permission: coSignerPermission,
+                //@ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .instruction();
           await program.methods
@@ -292,9 +300,14 @@ describe("CloseShortPosition", () => {
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
               shortPool: shortPoolAKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenB,
+                position: positionKey,
+                permission: coSignerPermission,
+                //@ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .signers([SWAP_AUTHORITY])
             .rpc();
@@ -331,12 +344,15 @@ describe("CloseShortPosition", () => {
             interest: interestOwed,
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
             shortPool: shortPoolAKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenB,
+              position: positionKey,
+              permission: coSignerPermission,
+              //@ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         // TODO couldn't get the swap pool in a state that wouldn't

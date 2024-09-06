@@ -79,10 +79,9 @@ pub mod wasabi_solana {
         open_long_position_cleanup::handler(ctx)
     }
 
-    #[access_control(CloseLongPositionSetup::validate(&ctx, &args))]
     pub fn close_long_position_setup(
         ctx: Context<CloseLongPositionSetup>,
-        args: CloseLongPositionArgs,
+        args: instructions::close_position_setup::ClosePositionArgs,
     ) -> Result<()> {
         close_long_position_setup::handler(ctx, args)
     }
@@ -103,10 +102,9 @@ pub mod wasabi_solana {
         open_short_position_cleanup::handler(ctx)
     }
 
-    #[access_control(CloseShortPositionSetup::validate(&ctx, &args))]
     pub fn close_short_position_setup(
         ctx: Context<CloseShortPositionSetup>,
-        args: CloseShortPositionSetupArgs,
+        args: ClosePositionArgs,
     ) -> Result<()> {
         close_short_position_setup::handler(ctx, args)
     }

@@ -80,13 +80,15 @@ describe("CloseLongPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              position: positionKey,
+              permission: coSignerPermission,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -160,13 +162,15 @@ describe("CloseLongPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
-            position: positionKey,
-            permission: badCoSignerPermission,
-            // @ts-ignore
-            authority: NON_SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              position: positionKey,
+              permission: badCoSignerPermission,
+              // @ts-ignore
+              authority: NON_SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -229,13 +233,15 @@ describe("CloseLongPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
               longPool: longPoolBKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              // @ts-ignore
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenA,
+                position: positionKey,
+                permission: coSignerPermission,
+                // @ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .instruction();
           await program.methods
@@ -273,13 +279,15 @@ describe("CloseLongPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
               longPool: longPoolBKey,
-              position: positionKey,
-              permission: coSignerPermission,
-              // @ts-ignore
-              authority: SWAP_AUTHORITY.publicKey,
+              closePositionSetup: {
+                owner: program.provider.publicKey,
+                ownerCurrencyAccount: ownerTokenA,
+                position: positionKey,
+                permission: coSignerPermission,
+                // @ts-ignore
+                authority: SWAP_AUTHORITY.publicKey,
+              }
             })
             .signers([SWAP_AUTHORITY])
             .rpc();
@@ -318,13 +326,15 @@ describe("CloseLongPosition", () => {
             interest: interestOwed,
           })
           .accounts({
-            owner: program.provider.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
             longPool: longPoolBKey,
-            position: positionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+            closePositionSetup: {
+              owner: program.provider.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              position: positionKey,
+              permission: coSignerPermission,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+            }
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(

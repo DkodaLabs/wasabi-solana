@@ -1,5 +1,6 @@
 pub mod close_long_position_cleanup;
 pub mod close_long_position_setup;
+pub mod close_position_setup;
 pub mod close_short_position_cleanup;
 pub mod close_short_position_setup;
 pub mod deposit;
@@ -19,6 +20,7 @@ pub mod withdraw;
 
 pub use close_long_position_cleanup::*;
 pub use close_long_position_setup::*;
+pub use close_position_setup::*;
 pub use close_short_position_cleanup::*;
 pub use close_short_position_setup::*;
 pub use deposit::*;
