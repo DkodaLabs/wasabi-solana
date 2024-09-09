@@ -25,8 +25,6 @@ pub fn handler(ctx: Context<LiquidatePositionSetup>, args: ClosePositionArgs) ->
         &args,
         LiquidatePositionCleanup::get_hash(),
     )?;
-    // The user is long WIF and used SOL as downpayment. When closing the long WIF position we
-    //  need to take all the WIF collateral and sell it for SOL.
     let position = &ctx.accounts.close_position_setup.position;
     // allow "owner" to swap on behalf of the collateral vault
     if ctx.accounts.close_position_setup.pool.is_long_pool {

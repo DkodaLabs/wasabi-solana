@@ -25,7 +25,7 @@ pub struct ClosePositionSetup<'info> {
     #[account(
       has_one = collateral_vault,
     )]
-    /// The LongPool that owns the Position
+    /// The pool that owns the Position
     pub pool: Account<'info, BasePool>,
     #[account(mut)]
     /// The collateral account that is the source of the swap
