@@ -98,8 +98,8 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            shortPool: shortPoolAKey,
             closePositionSetup: {
+              pool: shortPoolAKey,
               owner: user2.publicKey,
               ownerCurrencyAccount: ownerTokenB,
               position: positionKey,
@@ -182,8 +182,8 @@ describe("CloseShortPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            shortPool: shortPoolAKey,
             closePositionSetup: {
+              pool: shortPoolAKey,
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
               position: positionKey,
@@ -255,8 +255,8 @@ describe("CloseShortPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              shortPool: shortPoolAKey,
               closePositionSetup: {
+                pool: shortPoolAKey,
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
                 position: positionKey,
@@ -303,10 +303,8 @@ describe("CloseShortPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              shortPool: shortPoolAKey,
               closePositionSetup: {
+                pool: shortPoolAKey,
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
                 position: positionKey,
@@ -350,8 +348,8 @@ describe("CloseShortPosition", () => {
             interest: interestOwed,
           })
           .accounts({
-            shortPool: shortPoolAKey,
             closePositionSetup: {
+              pool: shortPoolAKey,
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
               position: positionKey,

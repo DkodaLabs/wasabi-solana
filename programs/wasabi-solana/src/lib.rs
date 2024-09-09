@@ -112,4 +112,12 @@ pub mod wasabi_solana {
     pub fn close_short_position_cleanup(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
         close_short_position_cleanup::handler(ctx)
     }
+    
+    pub fn liquidate_position_setup(ctx: Context<LiquidatePositionSetup>, args: ClosePositionArgs) -> Result<()> {
+        instructions::liquidate_position_setup::handler(ctx, args)
+    }
+
+    pub fn liquidate_position_cleanup(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
+        instructions::liquidate_position_cleanup::handler(ctx)
+    }
 }

@@ -80,8 +80,8 @@ describe("CloseLongPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            longPool: longPoolBKey,
             closePositionSetup: {
+              pool: longPoolBKey,
               owner: user2.publicKey,
               ownerCurrencyAccount: ownerTokenA,
               position: positionKey,
@@ -164,8 +164,8 @@ describe("CloseLongPosition", () => {
             interest: new anchor.BN(10),
           })
           .accounts({
-            longPool: longPoolBKey,
             closePositionSetup: {
+              pool: longPoolBKey,
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenA,
               position: positionKey,
@@ -237,8 +237,8 @@ describe("CloseLongPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              longPool: longPoolBKey,
               closePositionSetup: {
+                pool: longPoolBKey,
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenA,
                 position: positionKey,
@@ -285,8 +285,8 @@ describe("CloseLongPosition", () => {
               interest: new anchor.BN(10),
             })
             .accounts({
-              longPool: longPoolBKey,
               closePositionSetup: {
+                pool: longPoolBKey,
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenA,
                 position: positionKey,
@@ -332,8 +332,8 @@ describe("CloseLongPosition", () => {
             interest: interestOwed,
           })
           .accounts({
-            longPool: longPoolBKey,
             closePositionSetup: {
+              pool: longPoolBKey,
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenA,
               position: positionKey,
