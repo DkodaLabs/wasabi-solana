@@ -106,6 +106,7 @@ pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
     let destination_delta = ctx.accounts.get_destination_delta();
 
     let position = &mut ctx.accounts.position;
-    position.collateral_amount = destination_delta;
+
+    position.collateral_amount = destination_delta.checked_add(position.down_payment).expect("overflow");
     Ok(())
 }

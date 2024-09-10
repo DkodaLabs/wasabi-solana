@@ -378,7 +378,8 @@ describe("OpenShortPosition", () => {
         positionAfter.trader.toString(),
         program.provider.publicKey.toString()
       );
-      assert.ok(positionAfter.collateralAmount.gt(new anchor.BN(0)));
+      // Assert it's greater than downpayment since it's collateral + downpayment
+      assert.ok(positionAfter.collateralAmount.gt(downPayment));
       assert.equal(
         positionAfter.collateralCurrency.toString(),
         tokenMintA.toString()
