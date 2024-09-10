@@ -178,6 +178,9 @@ impl<'info> ClosePositionCleanup<'info> {
 #[derive(Default)]
 pub struct CloseAmounts {
     pub payout: u64,
+    pub interest_paid: u64,
+    pub principal_repaid: u64,
+    pub close_fee: u64,
 }
 
 pub fn shared_position_cleanup(
@@ -198,7 +201,7 @@ pub fn shared_position_cleanup(
     let collateral_diff = close_position_cleanup.get_source_delta();
     let currency_diff = close_position_cleanup.get_destination_delta();
 
-    if collateral_diff < close_position_cleanup.position.collateral_amount {
+    if close_position_cleanup.pool.is_long_pool && collateral_diff < close_position_cleanup.position.collateral_amount {
         let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_diff;
         // TODO: What to do with any collateral_dust?
         msg!("collateral_dust: {}", collateral_dust);
@@ -206,22 +209,32 @@ pub fn shared_position_cleanup(
 
     // TODO: Cap the interest with a max interest ([EVM source](https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/BaseWasabiPool.sol#L188))
 
-    // TODO: Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
+    // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
     let position = &close_position_cleanup.position;
     close_amounts.payout = if close_position_cleanup.pool.is_long_pool {
-        let (_payout, _) = crate::utils::deduct(currency_diff, position.principal);
-        let (_payout, _) = crate::utils::deduct(currency_diff, close_position_request.interest);
+        // 1. Deduct principal
+        let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
+        close_amounts.principal_repaid = _principal_repaid;
+        // 2. Deduct interest
+        let (_payout, _interest_paid) = crate::utils::deduct(currency_diff, close_position_request.interest);
+        close_amounts.interest_paid = _interest_paid;
         _payout
     } else {
+        close_amounts.principal_repaid = currency_diff;
+
+        (close_amounts.interest_paid, close_amounts.principal_repaid) = crate::utils::deduct(close_amounts.principal_repaid, position.principal);
+
         let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
         _payout
     };
+    // Deduct fees
     let (payout, close_fee) =
         crate::utils::deduct(
             close_amounts.payout,
             position.compute_close_fee(close_amounts.payout, close_position_cleanup.pool.is_long_pool) + close_position_request.execution_fee
         );
     close_amounts.payout = payout;
+    close_amounts.close_fee = close_fee;
 
     // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
     let lp_vault_payment = position
@@ -236,7 +249,7 @@ pub fn shared_position_cleanup(
 
     // Pay the fees
     let position_fees_to_transfer = position.fees_to_be_paid + close_fee;
-    msg!("position_fees_to_transfer {}", position_fees_to_transfer);
+    msg!("payout {} | position_fees_to_transfer {}", close_amounts.payout, position_fees_to_transfer);
     close_position_cleanup.transfer_fees(position_fees_to_transfer)?;
     Ok(close_amounts)
 }

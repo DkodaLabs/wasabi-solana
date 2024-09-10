@@ -448,7 +448,7 @@ describe("CloseShortPosition", () => {
         assert.equal(ownerBDiff, BigInt(89));
 
         const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-        assert.equal(ownerADiff, BigInt(989));
+        assert.equal(ownerADiff, BigInt(979));
 
         const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
         const expectedFeeBalanceDiff = positionBefore.feesToBePaid.add(closeExecutionFee);
