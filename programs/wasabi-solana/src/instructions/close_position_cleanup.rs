@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
     error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds, BasePool,
-    ClosePositionRequest, LpVault, Position,
+    ClosePositionRequest, GlobalSettings, LpVault, Position,
 };
 
 #[derive(Accounts)]
@@ -44,6 +44,11 @@ pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
     /// The LP Vault's token account.
     pub vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub fee_wallet: Account<'info, TokenAccount>,
+
+    pub global_settings: Account<'info, GlobalSettings>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -110,6 +115,11 @@ impl<'info> ClosePositionCleanup<'info> {
             return Err(ErrorCode::MaxSwapExceeded.into());
         }
 
+        require!(
+            self.fee_wallet.owner == self.global_settings.protocol_fee_wallet,
+            ErrorCode::IncorrectFeeWallet
+        );
+
         Ok(())
     }
 
@@ -136,9 +146,39 @@ impl<'info> ClosePositionCleanup<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)
     }
+
+    pub fn transfer_fees(&self, amount: u64) -> Result<()> {
+        if self.pool.is_long_pool {
+            // Fees for long are paid in Currency token (typically SOL)
+            let cpi_accounts = Transfer {
+                from: self.owner_currency_account.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
+                authority: self.owner.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+            token::transfer(cpi_ctx, amount)
+        } else {
+            // Fees for shorts are paid in collateral token (typically SOL)
+            let cpi_accounts = Transfer {
+                from: self.collateral_vault.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[short_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        }
+    }
 }
 
-pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup, is_liquidation: bool) -> Result<()> {
+pub fn shared_position_cleanup(
+    close_position_cleanup: &mut ClosePositionCleanup,
+    is_liquidation: bool,
+) -> Result<()> {
     // revoke "owner" ability to swap on behalf of the collateral vault
     if close_position_cleanup.pool.is_long_pool {
         close_position_cleanup
@@ -160,16 +200,36 @@ pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup
 
     // TODO: Cap the interest with a max interest ([EVM source](https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/BaseWasabiPool.sol#L188))
 
-    // Transfer the prinicpal and interest amount to the LP Vault
-    let lp_vault_payment = close_position_cleanup
-        .position
+    // TODO: Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
+    let position = &close_position_cleanup.position;
+    let payout: u64 = if close_position_cleanup.pool.is_long_pool {
+        let (_payout, _) = crate::utils::deduct(currency_diff, position.principal);
+        let (_payout, _) = crate::utils::deduct(currency_diff, close_position_request.interest);
+        _payout
+    } else {
+        let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
+        _payout
+    };
+    let (_, close_fee) =
+        crate::utils::deduct(
+            payout,
+            position.compute_close_fee(payout, close_position_cleanup.pool.is_long_pool) + close_position_request.execution_fee
+        );
+
+    // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
+    let lp_vault_payment = position
         .principal
         .checked_add(close_position_request.interest)
         .expect("overflow");
+    // Transfer the prinicpal and interest amount to the LP Vault.
     close_position_cleanup.transfer_from_user_to_vault(lp_vault_payment)?;
     if currency_diff < lp_vault_payment && !is_liquidation {
         return Err(ErrorCode::BadDebt.into());
     }
-    // The rest is left over in the user account
+
+    // Pay the fees
+    let position_fees_to_transfer = position.fees_to_be_paid + close_fee;
+    msg!("position_fees_to_transfer {}", position_fees_to_transfer);
+    close_position_cleanup.transfer_fees(position_fees_to_transfer)?;
     Ok(())
 }

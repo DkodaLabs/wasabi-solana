@@ -26,4 +26,6 @@ pub enum ErrorCode {
     IncorrectOwner, // 6010
     #[msg("Cannot close bad debt")]
     BadDebt, // 6011
+    #[msg("Wrong fee wallet")]
+    IncorrectFeeWallet, // 6012
 }

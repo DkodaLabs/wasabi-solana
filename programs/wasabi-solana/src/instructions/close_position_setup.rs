@@ -102,6 +102,7 @@ impl<'info> ClosePositionSetup<'info> {
         close_position_request.min_target_amount = args.min_target_amount;
         close_position_request.pool_key = position.collateral_vault;
         close_position_request.position = position.key();
+        close_position_request.execution_fee = args.execution_fee;
         Ok(())
     }
 
@@ -134,4 +135,6 @@ pub struct ClosePositionArgs {
     pub expiration: i64,
     /// The amount of interest the user must pay
     pub interest: u64,
+    /// The amount of the execution fee to be paid
+    pub execution_fee: u64,
 }

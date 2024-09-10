@@ -52,3 +52,15 @@ pub fn position_setup_transaction_introspecation_validation(sysvar_info: &Accoun
 
   Ok(())
 }
+
+pub fn deduct(amount: u64, deducted_amount: u64) -> (u64, u64) {
+    if amount > deducted_amount {
+        let remaining = amount - deducted_amount;
+        let deducted = deducted_amount;
+        (remaining, deducted)
+    } else {
+        let remaining = 0;
+        let deducted = amount;
+        (remaining, deducted)
+    }
+}
