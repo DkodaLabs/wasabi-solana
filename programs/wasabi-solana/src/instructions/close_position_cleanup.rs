@@ -175,10 +175,16 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 }
 
+#[derive(Default)]
+pub struct CloseAmounts {
+    pub payout: u64,
+}
+
 pub fn shared_position_cleanup(
     close_position_cleanup: &mut ClosePositionCleanup,
     is_liquidation: bool,
-) -> Result<()> {
+) -> Result<CloseAmounts> {
+    let mut close_amounts = CloseAmounts::default();
     // revoke "owner" ability to swap on behalf of the collateral vault
     if close_position_cleanup.pool.is_long_pool {
         close_position_cleanup
@@ -202,7 +208,7 @@ pub fn shared_position_cleanup(
 
     // TODO: Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
     let position = &close_position_cleanup.position;
-    let payout: u64 = if close_position_cleanup.pool.is_long_pool {
+    close_amounts.payout = if close_position_cleanup.pool.is_long_pool {
         let (_payout, _) = crate::utils::deduct(currency_diff, position.principal);
         let (_payout, _) = crate::utils::deduct(currency_diff, close_position_request.interest);
         _payout
@@ -210,11 +216,12 @@ pub fn shared_position_cleanup(
         let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
         _payout
     };
-    let (_, close_fee) =
+    let (payout, close_fee) =
         crate::utils::deduct(
-            payout,
-            position.compute_close_fee(payout, close_position_cleanup.pool.is_long_pool) + close_position_request.execution_fee
+            close_amounts.payout,
+            position.compute_close_fee(close_amounts.payout, close_position_cleanup.pool.is_long_pool) + close_position_request.execution_fee
         );
+    close_amounts.payout = payout;
 
     // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
     let lp_vault_payment = position
@@ -231,5 +238,5 @@ pub fn shared_position_cleanup(
     let position_fees_to_transfer = position.fees_to_be_paid + close_fee;
     msg!("position_fees_to_transfer {}", position_fees_to_transfer);
     close_position_cleanup.transfer_fees(position_fees_to_transfer)?;
-    Ok(())
+    Ok(close_amounts)
 }
