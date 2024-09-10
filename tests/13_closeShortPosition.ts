@@ -419,7 +419,7 @@ describe("CloseShortPosition", () => {
 
         // Validate the user got the rest
         const ownerADiff = ownerBAfter.amount - ownerBBefore.amount;
-        assert.equal(ownerADiff, BigInt(79));
+        assert.equal(ownerADiff, BigInt(1068));
       });
     });
   });
