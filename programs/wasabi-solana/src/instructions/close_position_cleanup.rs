@@ -201,7 +201,9 @@ pub fn shared_position_cleanup(
     let collateral_diff = close_position_cleanup.get_source_delta();
     let currency_diff = close_position_cleanup.get_destination_delta();
 
-    if close_position_cleanup.pool.is_long_pool && collateral_diff < close_position_cleanup.position.collateral_amount {
+    if close_position_cleanup.pool.is_long_pool
+        && collateral_diff < close_position_cleanup.position.collateral_amount
+    {
         let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_diff;
         // TODO: What to do with any collateral_dust?
         msg!("collateral_dust: {}", collateral_dust);
@@ -216,22 +218,26 @@ pub fn shared_position_cleanup(
         let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
         close_amounts.principal_repaid = _principal_repaid;
         // 2. Deduct interest
-        let (_payout, _interest_paid) = crate::utils::deduct(currency_diff, close_position_request.interest);
+        let (_payout, _interest_paid) =
+            crate::utils::deduct(currency_diff, close_position_request.interest);
         close_amounts.interest_paid = _interest_paid;
         _payout
     } else {
         close_amounts.principal_repaid = currency_diff;
 
-        (close_amounts.interest_paid, close_amounts.principal_repaid) = crate::utils::deduct(close_amounts.principal_repaid, position.principal);
+        (close_amounts.interest_paid, close_amounts.principal_repaid) =
+            crate::utils::deduct(close_amounts.principal_repaid, position.principal);
 
         let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
         _payout
     };
     // Deduct fees
-    let (payout, close_fee) =
-        crate::utils::deduct(
+    let (payout, close_fee) = crate::utils::deduct(
+        close_amounts.payout,
+        position.compute_close_fee(
             close_amounts.payout,
-            position.compute_close_fee(close_amounts.payout, close_position_cleanup.pool.is_long_pool) + close_position_request.execution_fee
+            close_position_cleanup.pool.is_long_pool,
+        ) + close_position_request.execution_fee,
         );
     close_amounts.payout = payout;
     close_amounts.close_fee = close_fee;
