@@ -137,6 +137,7 @@ describe("CloseShortPosition", () => {
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
+              ownerCollateralAccount: ownerTokenA,
               closePositionCleanup: {
                 owner: user2.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
@@ -147,7 +148,7 @@ describe("CloseShortPosition", () => {
             })
             .preInstructions([setupIx, swapIx])
             .signers([SWAP_AUTHORITY, user2])
-            .rpc();
+            .rpc({ skipPreflight: true });
         } catch (err) {
           if (err instanceof anchor.AnchorError) {
             assert.equal(err.error.errorCode.number, 6010);
@@ -221,6 +222,7 @@ describe("CloseShortPosition", () => {
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
+              ownerCollateralAccount: ownerTokenA,
               closePositionCleanup: {
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
@@ -269,6 +271,7 @@ describe("CloseShortPosition", () => {
           await program.methods
             .closeShortPositionCleanup()
             .accounts({
+              ownerCollateralAccount: ownerTokenA,
               closePositionCleanup: {
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
@@ -337,9 +340,9 @@ describe("CloseShortPosition", () => {
           lpVaultKey,
           true
         );
-        const [vaultBefore, ownerBBefore] = await getMultipleTokenAccounts(
+        const [vaultBefore, ownerTokenABefore, ownerBBefore] = await getMultipleTokenAccounts(
           program.provider.connection,
-          [vaultKey, ownerTokenB]
+          [vaultKey, ownerTokenA, ownerTokenB]
         );
         const setupIx = await program.methods
           .closeShortPositionSetup({
@@ -385,12 +388,13 @@ describe("CloseShortPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
-          BigInt(positionBefore.collateralAmount.toString()),
+          BigInt(positionBefore.principal.toString()),
           BigInt(0)
         );
         await program.methods
           .closeShortPositionCleanup()
           .accounts({
+            ownerCollateralAccount: ownerTokenA,
             closePositionCleanup: {
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
@@ -403,10 +407,11 @@ describe("CloseShortPosition", () => {
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
 
-        const [positionAfter, [vaultAfter, ownerBAfter]] = await Promise.all([
+        const [positionAfter, [vaultAfter, ownerTokenAAfter, ownerBAfter]] = await Promise.all([
           program.account.position.fetchNullable(positionKey),
           getMultipleTokenAccounts(program.provider.connection, [
             vaultKey,
+            ownerTokenA,
             ownerTokenB,
           ]),
         ]);
@@ -417,9 +422,12 @@ describe("CloseShortPosition", () => {
         const vaultDiff = vaultAfter.amount - vaultBefore.amount;
         assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
 
-        // Validate the user got the rest
-        const ownerADiff = ownerBAfter.amount - ownerBBefore.amount;
-        assert.equal(ownerADiff, BigInt(1068));
+        // 
+        const ownerBDiff = ownerBAfter.amount - ownerBBefore.amount;
+        assert.equal(ownerBDiff, BigInt(89));
+
+        const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
+        assert.equal(ownerADiff, BigInt(989));
       });
     });
   });
