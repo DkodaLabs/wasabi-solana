@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::LpVault;
+use crate::{LpVault, Position};
 
 #[event]
 pub struct Deposit {
@@ -45,6 +45,20 @@ pub struct PositionOpened {
     pub principal: u64,
     pub collateral_amount: u64,
     pub fees_to_be_paid: u64,
+}
+impl PositionOpened {
+    pub fn new(position: &Account<'_, Position>) -> Self {
+        Self {
+            position: position.key(),
+            trader: position.trader,
+            currency: position.currency,
+            collateral_currency: position.collateral_currency,
+            down_payment: position.down_payment,
+            principal: position.principal,
+            collateral_amount: position.collateral_amount,
+            fees_to_be_paid: position.fees_to_be_paid,
+        }
+    }
 }
 
 #[event]

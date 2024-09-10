@@ -149,6 +149,8 @@ pub struct OpenLongPositionArgs {
     pub currency: Pubkey,
     /// The timestamp when this position request expires.
     pub expiration: i64,
+    /// The fee to be paid for the position
+    pub fee: u64,
 }
 
 pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
@@ -189,6 +191,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     position.principal = args.principal;
     position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
+    position.fees_to_be_paid = args.fee;
 
     Ok(())
 }
