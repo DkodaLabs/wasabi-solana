@@ -37,13 +37,10 @@ impl<'info> CloseShortPositionCleanup<'info> {
 
 pub fn handler(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
     // make sure all leftover collateral is sent back to the user
-    crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, false)?;
+    let close_amounts = crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, false)?;
 
-    let collateral_delta = ctx.accounts.close_position_cleanup.get_source_delta();
-    // Payout amount 
-    let payout_amount = ctx.accounts.close_position_cleanup.position.collateral_amount.checked_sub(collateral_delta).expect("overflow");
     // Transfer collateral back to user
-    ctx.accounts.transfer_collateral_back_to_user(payout_amount)?;
+    ctx.accounts.transfer_collateral_back_to_user(close_amounts.payout)?;
 
     Ok(())
 }

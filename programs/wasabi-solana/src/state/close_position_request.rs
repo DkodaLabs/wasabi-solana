@@ -11,4 +11,5 @@ pub struct ClosePositionRequest {
     pub max_amount_in: u64,
     pub pool_key: Pubkey,
     pub position: Pubkey,
+    pub execution_fee: u64
 }

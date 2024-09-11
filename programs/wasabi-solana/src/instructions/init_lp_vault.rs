@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::{Mint, Token, TokenAccount}};
 
-use crate::{error::ErrorCode, LpVault, Permission};
+use crate::{error::ErrorCode, events::NewVault, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct InitLpVault<'info> {
@@ -64,6 +64,8 @@ pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
   lp_vault.vault = ctx.accounts.vault.key();
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
   lp_vault.total_assets = 0;
+
+  emit!(NewVault::new(lp_vault));
 
   Ok(())
 }

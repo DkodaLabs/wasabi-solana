@@ -1,6 +1,7 @@
 import {
   AnchorProvider,
   Program,
+  utils,
   Wallet,
   web3,
   workspace,
@@ -20,6 +21,7 @@ import {
   createMintToCheckedInstruction,
   createMintToInstruction,
   getAssociatedTokenAddress,
+  getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 
@@ -43,9 +45,23 @@ export const SWAP_AUTHORITY = web3.Keypair.generate();
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 
+export const feeWalletKeyPair = web3.Keypair.generate();
+export let feeWalletA: web3.PublicKey;
+export let feeWalletB: web3.PublicKey;
+
 export const mochaHooks = {
   beforeAll: async () => {
     const program = workspace.WasabiSolana as Program<WasabiSolana>;
+    feeWalletA = getAssociatedTokenAddressSync(
+      tokenMintA,
+      feeWalletKeyPair.publicKey,
+      false
+    );
+    feeWalletB = getAssociatedTokenAddressSync(
+      tokenMintB,
+      feeWalletKeyPair.publicKey,
+      false
+    );
     const lamportsForTokenAccount =
       await program.provider.connection.getMinimumBalanceForRentExemption(
         AccountLayout.span
@@ -89,6 +105,20 @@ export const mochaHooks = {
       tokenBKeypair
     );
     tx.add(...uIxes, ...qIxes);
+    const createFeeWalletAtaAIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      feeWalletA,
+      feeWalletKeyPair.publicKey,
+      tokenMintA,
+    );
+    tx.add(createFeeWalletAtaAIx);
+    const createFeeWalletAtaBIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      feeWalletB,
+      feeWalletKeyPair.publicKey,
+      tokenMintB,
+    );    
+    tx.add(createFeeWalletAtaBIx);
     await program.provider.sendAndConfirm(tx, [uMint, qMint]);
 
     // Mint underlying & Quote to the provider wallet
@@ -135,7 +165,7 @@ export const mochaHooks = {
     mintTx.add(mintTokenBToOwnerIx);
     await program.provider.sendAndConfirm(mintTx);
 
-    // TODO: Create a TokenSwap pool for the pair.
+    // Create a TokenSwap pool for the pair.
     const initSwapSetupIxs: web3.TransactionInstruction[] = [];
     const initSwapSetupSigners: web3.Signer[] = [];
     const [swapAuthority] = web3.PublicKey.findProgramAddressSync(

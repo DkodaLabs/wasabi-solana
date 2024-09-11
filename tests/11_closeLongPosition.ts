@@ -7,6 +7,8 @@ import {
 } from "@solana/spl-token";
 import {
   abSwapKey,
+  feeWalletA,
+  feeWalletB,
   NON_SWAP_AUTHORITY,
   poolFeeAccount,
   poolMint,
@@ -30,6 +32,13 @@ describe("CloseLongPosition", () => {
     ],
     program.programId,
   );
+
+  const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("global_settings")],
+    program.programId,
+  );
+
+
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
     program.programId,
@@ -78,6 +87,7 @@ describe("CloseLongPosition", () => {
             expiration: closeRequestExpiration,
             minTargetAmount: new anchor.BN(0),
             interest: new anchor.BN(10),
+            executionFee: new anchor.BN(11),
           })
           .accounts({
             closePositionSetup: {
@@ -125,6 +135,8 @@ describe("CloseLongPosition", () => {
                 pool: longPoolBKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
+                feeWallet: feeWalletA,
+                globalSettings: globalSettingsKey,
               },
             })
             .preInstructions([setupIx, swapIx])
@@ -162,6 +174,7 @@ describe("CloseLongPosition", () => {
             expiration: closeRequestExpiration,
             minTargetAmount: new anchor.BN(0),
             interest: new anchor.BN(10),
+            executionFee: new anchor.BN(11),
           })
           .accounts({
             closePositionSetup: {
@@ -209,6 +222,8 @@ describe("CloseLongPosition", () => {
                 pool: longPoolBKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
+                feeWallet: feeWalletA,
+                globalSettings: globalSettingsKey,
               },
             })
             .preInstructions([setupIx, swapIx])
@@ -235,6 +250,7 @@ describe("CloseLongPosition", () => {
               expiration: closeRequestExpiration,
               minTargetAmount: new anchor.BN(0),
               interest: new anchor.BN(10),
+              executionFee: new anchor.BN(11),
             })
             .accounts({
               closePositionSetup: {
@@ -257,6 +273,8 @@ describe("CloseLongPosition", () => {
                 pool: longPoolBKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
+                feeWallet: feeWalletA,
+                globalSettings: globalSettingsKey,
               },
             })
             .preInstructions([setupIx, setupIx])
@@ -283,6 +301,7 @@ describe("CloseLongPosition", () => {
               expiration: closeRequestExpiration,
               minTargetAmount: new anchor.BN(0),
               interest: new anchor.BN(10),
+              executionFee: new anchor.BN(11),
             })
             .accounts({
               closePositionSetup: {
@@ -313,6 +332,7 @@ describe("CloseLongPosition", () => {
     describe("correct setup", () => {
       it("should close the position and return funds", async () => {
         const interestOwed = new anchor.BN(10);
+        const closeFee = new anchor.BN(11);
         const positionBefore = await program.account.position.fetch(
           positionKey,
         );
@@ -321,15 +341,16 @@ describe("CloseLongPosition", () => {
           lpVaultKey,
           true,
         );
-        const [vaultBefore, ownerABefore] = await getMultipleTokenAccounts(
+        const [vaultBefore, ownerABefore, feeBalanceBefore] = await getMultipleTokenAccounts(
           program.provider.connection,
-          [vaultKey, ownerTokenA],
+          [vaultKey, ownerTokenA, feeWalletA],
         );
         const setupIx = await program.methods
           .closeLongPositionSetup({
             expiration: closeRequestExpiration,
             minTargetAmount: new anchor.BN(0),
             interest: interestOwed,
+            executionFee: new anchor.BN(11),
           })
           .accounts({
             closePositionSetup: {
@@ -376,17 +397,20 @@ describe("CloseLongPosition", () => {
               pool: longPoolBKey,
               position: positionKey,
               lpVault: lpVaultKey,
+              feeWallet: feeWalletA,
+              globalSettings: globalSettingsKey,
             }
           })
           .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc();
 
-        const [positionAfter, [vaultAfter, ownerAAfter]] = await Promise.all([
+        const [positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] = await Promise.all([
           program.account.position.fetchNullable(positionKey),
           getMultipleTokenAccounts(program.provider.connection, [
             vaultKey,
             ownerTokenA,
+            feeWalletA
           ]),
         ]);
         assert.isNull(positionAfter);
@@ -398,7 +422,11 @@ describe("CloseLongPosition", () => {
 
         // Validate the user got the rest
         const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
-        assert.equal(ownerADiff.toString(), "950");
+        assert.equal(ownerADiff.toString(), "915");
+
+        const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
+        const expectedFeeBalanceDiff = positionBefore.feesToBePaid.add(closeFee).addn(14);
+        assert.equal(feeBalanceDiff.toString(), expectedFeeBalanceDiff.toString());
       });
     });
   });

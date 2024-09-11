@@ -3,7 +3,7 @@ use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
     error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds, BasePool,
-    ClosePositionRequest, LpVault, Position,
+    ClosePositionRequest, GlobalSettings, LpVault, Position,
 };
 
 #[derive(Accounts)]
@@ -44,6 +44,11 @@ pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
     /// The LP Vault's token account.
     pub vault: Account<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub fee_wallet: Account<'info, TokenAccount>,
+
+    pub global_settings: Account<'info, GlobalSettings>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -110,6 +115,11 @@ impl<'info> ClosePositionCleanup<'info> {
             return Err(ErrorCode::MaxSwapExceeded.into());
         }
 
+        require!(
+            self.fee_wallet.owner == self.global_settings.protocol_fee_wallet,
+            ErrorCode::IncorrectFeeWallet
+        );
+
         Ok(())
     }
 
@@ -136,9 +146,48 @@ impl<'info> ClosePositionCleanup<'info> {
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
         token::transfer(cpi_ctx, amount)
     }
+
+    pub fn transfer_fees(&self, amount: u64) -> Result<()> {
+        if self.pool.is_long_pool {
+            // Fees for long are paid in Currency token (typically SOL)
+            let cpi_accounts = Transfer {
+                from: self.owner_currency_account.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
+                authority: self.owner.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+            token::transfer(cpi_ctx, amount)
+        } else {
+            // Fees for shorts are paid in collateral token (typically SOL)
+            let cpi_accounts = Transfer {
+                from: self.collateral_vault.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[short_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        }
+    }
 }
 
-pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup, is_liquidation: bool) -> Result<()> {
+#[derive(Default)]
+pub struct CloseAmounts {
+    pub payout: u64,
+    pub interest_paid: u64,
+    pub principal_repaid: u64,
+    pub close_fee: u64,
+}
+
+pub fn shared_position_cleanup(
+    close_position_cleanup: &mut ClosePositionCleanup,
+    is_liquidation: bool,
+) -> Result<CloseAmounts> {
+    let mut close_amounts = CloseAmounts::default();
     // revoke "owner" ability to swap on behalf of the collateral vault
     if close_position_cleanup.pool.is_long_pool {
         close_position_cleanup
@@ -152,7 +201,9 @@ pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup
     let collateral_diff = close_position_cleanup.get_source_delta();
     let currency_diff = close_position_cleanup.get_destination_delta();
 
-    if collateral_diff < close_position_cleanup.position.collateral_amount {
+    if close_position_cleanup.pool.is_long_pool
+        && collateral_diff < close_position_cleanup.position.collateral_amount
+    {
         let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_diff;
         // TODO: What to do with any collateral_dust?
         msg!("collateral_dust: {}", collateral_dust);
@@ -160,16 +211,51 @@ pub fn shared_position_cleanup(close_position_cleanup: &mut ClosePositionCleanup
 
     // TODO: Cap the interest with a max interest ([EVM source](https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/BaseWasabiPool.sol#L188))
 
-    // Transfer the prinicpal and interest amount to the LP Vault
-    let lp_vault_payment = close_position_cleanup
-        .position
+    // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
+    let position = &close_position_cleanup.position;
+    close_amounts.payout = if close_position_cleanup.pool.is_long_pool {
+        // 1. Deduct principal
+        let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
+        close_amounts.principal_repaid = _principal_repaid;
+        // 2. Deduct interest
+        let (_payout, _interest_paid) =
+            crate::utils::deduct(currency_diff, close_position_request.interest);
+        close_amounts.interest_paid = _interest_paid;
+        _payout
+    } else {
+        close_amounts.principal_repaid = currency_diff;
+
+        (close_amounts.interest_paid, close_amounts.principal_repaid) =
+            crate::utils::deduct(close_amounts.principal_repaid, position.principal);
+
+        let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
+        _payout
+    };
+    // Deduct fees
+    let (payout, close_fee) = crate::utils::deduct(
+        close_amounts.payout,
+        position.compute_close_fee(
+            close_amounts.payout,
+            close_position_cleanup.pool.is_long_pool,
+        ) + close_position_request.execution_fee,
+        );
+    close_amounts.payout = payout;
+    close_amounts.close_fee = close_fee;
+
+    // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
+    let lp_vault_payment = position
         .principal
         .checked_add(close_position_request.interest)
         .expect("overflow");
+    // Transfer the prinicpal and interest amount to the LP Vault.
     close_position_cleanup.transfer_from_user_to_vault(lp_vault_payment)?;
     if currency_diff < lp_vault_payment && !is_liquidation {
         return Err(ErrorCode::BadDebt.into());
     }
-    // The rest is left over in the user account
-    Ok(())
+
+    // Pay the fees
+    let position_fees_to_transfer = position.fees_to_be_paid + close_fee;
+    msg!("payout {} | position_fees_to_transfer {}", close_amounts.payout, position_fees_to_transfer);
+    close_position_cleanup.transfer_fees(position_fees_to_transfer)?;
+    Ok(close_amounts)
 }

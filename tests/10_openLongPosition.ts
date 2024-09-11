@@ -106,6 +106,7 @@ describe("OpenLongPosition", () => {
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -152,6 +153,7 @@ describe("OpenLongPosition", () => {
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -212,6 +214,7 @@ describe("OpenLongPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
+          fee: new anchor.BN(10),
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -339,6 +342,7 @@ describe("OpenLongPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -406,6 +410,7 @@ describe("OpenLongPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -511,6 +516,7 @@ describe("OpenLongPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -596,6 +602,7 @@ describe("OpenLongPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -693,6 +700,7 @@ describe("OpenLongPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
+          fee: new anchor.BN(10),
         })
         .accounts({
           owner: program.provider.publicKey,

@@ -16,5 +16,6 @@ impl<'info> CloseLongPositionCleanup<'info> {
 }
 
 pub fn handler(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
-    crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, false)
+    crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, false)?;
+    Ok(())
 }

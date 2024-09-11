@@ -94,6 +94,8 @@ pub struct OpenShortPositionArgs {
     pub currency: Pubkey,
     /// The timestamp when this position request expires.
     pub expiration: i64,
+    /// The fee to be paid for the position
+    pub fee: u64,
 }
 
 impl<'info> OpenShortPositionSetup<'info> {
@@ -185,6 +187,7 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     position.principal = args.principal;
     position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
+    position.fees_to_be_paid = args.fee;
 
     // Transfer the borrowed amount to user's wallet to be used in swap.
     ctx.accounts

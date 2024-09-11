@@ -310,6 +310,7 @@ describe("OpenShortPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
+          fee: new anchor.BN(10),
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -451,6 +452,7 @@ describe("OpenShortPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -519,6 +521,7 @@ describe("OpenShortPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -604,6 +607,7 @@ describe("OpenShortPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -689,6 +693,7 @@ describe("OpenShortPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -781,6 +786,7 @@ describe("OpenShortPosition", () => {
             principal,
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
