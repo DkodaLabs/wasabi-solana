@@ -2,9 +2,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Approve, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
-    utils::position_setup_transaction_introspecation_validation, BasePool, LpVault,
-    OpenPositionRequest, Permission, Position,
+    error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds, utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings, LpVault, OpenPositionRequest, Permission, Position
 };
 
 use super::OpenLongPositionCleanup;
@@ -56,14 +54,19 @@ pub struct OpenLongPositionSetup<'info> {
         bump,
         space = 8 + std::mem::size_of::<Position>(),
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
     pub authority: Signer<'info>,
 
     #[account(
       has_one = authority,
     )]
-    pub permission: Account<'info, Permission>,
+    pub permission: Box<Account<'info, Permission>>,
+
+    #[account(mut)]
+    pub fee_wallet: Box<Account<'info, TokenAccount>>,
+
+    pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -119,6 +122,16 @@ impl<'info> OpenLongPositionSetup<'info> {
         token::transfer(cpi_ctx, amount)
     }
 
+    pub fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.owner_currency_account.to_account_info(),
+            to: self.fee_wallet.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, amount)
+    }
+
     pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
@@ -159,6 +172,9 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         .transfer_borrow_amount_from_vault(args.principal)?;
     ctx.accounts
         .transfer_down_payment_from_user(args.down_payment)?;
+    // Transfer fees
+    msg!("open pos fee {}", args.fee);
+    ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
 
     ctx.accounts.currency_vault.reload()?;
 

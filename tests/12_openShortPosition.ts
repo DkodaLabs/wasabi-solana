@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
   abSwapKey,
+  feeWalletA,
   NON_SWAP_AUTHORITY,
   poolFeeAccount,
   poolMint,
@@ -35,6 +36,10 @@ describe("OpenShortPosition", () => {
     anchor.web3.PublicKey.findProgramAddressSync(
       [anchor.utils.bytes.utf8.encode("super_admin")],
       program.programId
+    );
+    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
+      [anchor.utils.bytes.utf8.encode("global_settings")],
+      program.programId,
     );
   // Collateral currency is tokenMintA (short_pool)
   // Borrowed currency is tokenMintB (lp_vault)
@@ -129,6 +134,7 @@ describe("OpenShortPosition", () => {
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -139,6 +145,8 @@ describe("OpenShortPosition", () => {
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
             position: positionKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         await program.methods
@@ -176,6 +184,7 @@ describe("OpenShortPosition", () => {
             principal: new anchor.BN(1_000),
             currency: tokenMintA,
             expiration: new anchor.BN(now + 3_600),
+            fee: new anchor.BN(10),
           })
           .accounts({
             owner: program.provider.publicKey,
@@ -185,6 +194,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .signers([SWAP_AUTHORITY])
           .rpc();
@@ -236,6 +247,7 @@ describe("OpenShortPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
+          fee: new anchor.BN(10),
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -246,6 +258,8 @@ describe("OpenShortPosition", () => {
           permission: badCoSignerPermission,
           authority: NON_SWAP_AUTHORITY.publicKey,
           position: positionKey,
+          feeWallet: feeWalletA,
+          globalSettings: globalSettingsKey,
         })
         .instruction();
       try {
@@ -275,6 +289,7 @@ describe("OpenShortPosition", () => {
   describe("with one setup and one cleanup", () => {
     it("should open short position", async () => {
       const nonce = 0;
+      const fee = new anchor.BN(10);
       const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [
           anchor.utils.bytes.utf8.encode("position"),
@@ -310,7 +325,7 @@ describe("OpenShortPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
-          fee: new anchor.BN(10),
+          fee,
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -320,6 +335,8 @@ describe("OpenShortPosition", () => {
           shortPool: shortPoolAKey,
           permission: coSignerPermission,
           authority: SWAP_AUTHORITY.publicKey,
+          feeWallet: feeWalletA,
+          globalSettings: globalSettingsKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -406,7 +423,7 @@ describe("OpenShortPosition", () => {
       // Assert user balance decreased by downpayment
       assert.equal(
         ownerTokenAAfter.amount,
-        ownerTokenABefore.amount - BigInt(downPayment.toString())
+        ownerTokenABefore.amount - BigInt(downPayment.toString()) - BigInt(fee.toString())
       );
 
       // Assert collateral vault balance has increased by more than down payment
@@ -418,7 +435,7 @@ describe("OpenShortPosition", () => {
       // Assert user paid full down payment
       assert.equal(
         ownerTokenAAfter.amount,
-        ownerTokenABefore.amount - BigInt(downPayment.toString())
+        ownerTokenABefore.amount - BigInt(downPayment.toString()) - BigInt(fee.toString())
       );
 
       // Assert the borrowed token amount is not left in the user's wallet
@@ -462,6 +479,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         await program.methods
@@ -531,6 +550,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -617,6 +638,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -703,6 +726,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -796,6 +821,8 @@ describe("OpenShortPosition", () => {
             shortPool: shortPoolAKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(

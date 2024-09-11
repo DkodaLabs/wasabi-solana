@@ -451,8 +451,7 @@ describe("CloseShortPosition", () => {
         assert.equal(ownerADiff, BigInt(979));
 
         const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-        const expectedFeeBalanceDiff = positionBefore.feesToBePaid.add(closeExecutionFee);
-        assert.equal(feeBalanceDiff.toString(), expectedFeeBalanceDiff.toString());
+        assert.equal(feeBalanceDiff.toString(), closeExecutionFee.toString());
       });
     });
   });
