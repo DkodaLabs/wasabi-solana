@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{LpVault, Position};
+use crate::{close_position_cleanup::CloseAmounts, LpVault, Position};
 
 #[event]
 pub struct Deposit {
@@ -68,7 +68,19 @@ pub struct PositionClosed {
     pub payout: u64,
     pub principal_repaid: u64,
     pub interest_paid: u64,
-    pub fee_amount: u64
+    pub fee_amount: u64,
+}
+impl PositionClosed {
+    pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
+        Self {
+            position: position.key(),
+            trader: position.trader,
+            payout: close_amounts.payout,
+            principal_repaid: close_amounts.principal_repaid,
+            interest_paid: close_amounts.interest_paid,
+            fee_amount: close_amounts.close_fee,
+        }
+    }
 }
 
 #[event]
@@ -79,17 +91,29 @@ pub struct PositionClosedWithOrder {
     pub payout: u64,
     pub principal_repaid: u64,
     pub interest_paid: u64,
-    pub fee_amount: u64
+    pub fee_amount: u64,
 }
 
 #[event]
-pub struct PositionLiquidated{
+pub struct PositionLiquidated {
     pub position: Pubkey,
     pub trader: Pubkey,
     pub payout: u64,
     pub principal_repaid: u64,
     pub interest_paid: u64,
     pub fee_amount: u64,
+}
+impl PositionLiquidated {
+    pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
+        Self {
+            position: position.key(),
+            trader: position.trader,
+            payout: close_amounts.payout,
+            principal_repaid: close_amounts.principal_repaid,
+            interest_paid: close_amounts.interest_paid,
+            fee_amount: close_amounts.close_fee,
+        }
+    }
 }
 
 #[event]
@@ -99,11 +123,11 @@ pub struct PositionClaimed {
     pub amount_claimed: u64,
     pub principal_repaid: u64,
     pub interest_paid: u64,
-    pub fee_amount: u64
+    pub fee_amount: u64,
 }
 
-pub struct NativeYieldClaimed { 
+pub struct NativeYieldClaimed {
     pub vault: Pubkey,
     pub token: Pubkey,
-    pub amount: u64
+    pub amount: u64,
 }

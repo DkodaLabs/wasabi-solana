@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount};
 
 use crate::{
-    error::ErrorCode, short_pool_signer_seeds, utils::get_function_hash, BasePool,
-    OpenPositionRequest, Position,
+    error::ErrorCode, events::PositionOpened, short_pool_signer_seeds, utils::get_function_hash,
+    BasePool, OpenPositionRequest, Position,
 };
 
 #[derive(Accounts)]
@@ -107,6 +107,11 @@ pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
 
     let position = &mut ctx.accounts.position;
 
-    position.collateral_amount = destination_delta.checked_add(position.down_payment).expect("overflow");
+    position.collateral_amount = destination_delta
+        .checked_add(position.down_payment)
+        .expect("overflow");
+
+    emit!(PositionOpened::new(position));
+
     Ok(())
 }
