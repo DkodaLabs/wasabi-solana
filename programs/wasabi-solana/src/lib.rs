@@ -25,6 +25,13 @@ pub mod wasabi_solana {
         init_global_settings::handler(ctx, args)
     }
 
+    pub fn init_debt_controller(
+        ctx: Context<InitDebtController>,
+        args: InitDebtControllerArgs,
+    ) -> Result<()> {
+        init_debt_controller::handler(ctx, args)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
