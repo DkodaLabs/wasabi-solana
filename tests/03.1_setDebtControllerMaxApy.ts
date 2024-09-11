@@ -27,6 +27,42 @@ describe("setDebtControllerMaxApy", () => {
     }
   });
 
+  it("should fail with invalid max apy", async () => {
+    try {
+      await superAdminProgram.methods.setMaxApy({
+        maxApy: new anchor.BN(0),
+      }).accounts({
+        authority: superAdminProgram.provider.publicKey,
+      }).rpc();
+      assert.fail("Expected error");
+    } catch (err) {
+      if (err instanceof anchor.AnchorError) {
+        assert.equal(err.error.errorCode.number, 6013);
+      } else if (err instanceof anchor.ProgramError) {
+        assert.equal(err.code, 6013);
+      } else {
+        assert.ok(false);
+      }
+    }
+
+    try {
+      await superAdminProgram.methods.setMaxApy({
+        maxApy: new anchor.BN(1001 * 100),
+      }).accounts({
+        authority: superAdminProgram.provider.publicKey,
+      }).rpc();
+      assert.fail("Expected error");
+    } catch (err) {
+      if (err instanceof anchor.AnchorError) {
+        assert.equal(err.error.errorCode.number, 6013);
+      } else if (err instanceof anchor.ProgramError) {
+        assert.equal(err.code, 6013);
+      } else {
+        assert.ok(false);
+      }
+    }
+  });
+
   it("should set max apy", async () => {
     const debtControllerBefore = await program.account.debtController.fetch(debtControllerKey);
     await superAdminProgram.methods.setMaxApy({
