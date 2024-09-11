@@ -2,8 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds, BasePool,
-    ClosePositionRequest, GlobalSettings, LpVault, Position,
+    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, BasePool, ClosePositionRequest, GlobalSettings, LpVault, Position
 };
 
 #[derive(Accounts)]
@@ -251,5 +250,12 @@ pub fn shared_position_cleanup(
     // Pay the fees
     msg!("payout {} | close_fee {}", close_amounts.payout, close_fee);
     close_position_cleanup.transfer_fees(close_fee)?;
+
+    // Emit close events
+    if is_liquidation {
+        emit!(PositionLiquidated::new(position, &close_amounts))
+    } else {
+        emit!(PositionClosed::new(position, &close_amounts))
+    }
     Ok(close_amounts)
 }
