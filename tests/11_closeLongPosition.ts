@@ -422,11 +422,10 @@ describe("CloseLongPosition", () => {
 
         // Validate the user got the rest
         const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
-        assert.equal(ownerADiff.toString(), "915");
+        assert.equal(ownerADiff.toString(), "939");
 
         const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-        const expectedFeeBalanceDiff = positionBefore.feesToBePaid.add(closeFee).addn(14);
-        assert.equal(feeBalanceDiff.toString(), expectedFeeBalanceDiff.toString());
+        assert.equal(feeBalanceDiff.toString(), closeFee.toString());
       });
     });
   });

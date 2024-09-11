@@ -2,9 +2,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Approve, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-    utils::position_setup_transaction_introspecation_validation, BasePool, LpVault,
-    OpenPositionRequest, Permission, Position,
+    error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds, utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings, LpVault, OpenPositionRequest, Permission, Position
 };
 
 use super::OpenShortPositionCleanup;
@@ -40,7 +38,7 @@ pub struct OpenShortPositionSetup<'info> {
     pub short_pool: Account<'info, BasePool>,
     #[account(mut)]
     /// The collateral account that is the destination of the swap
-    pub collateral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Box<Account<'info, TokenAccount>>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
     #[account(mut)]
@@ -53,7 +51,7 @@ pub struct OpenShortPositionSetup<'info> {
       bump,
       space = 8 + std::mem::size_of::<OpenPositionRequest>(),
     )]
-    pub open_position_request: Account<'info, OpenPositionRequest>,
+    pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(
       init,
@@ -69,7 +67,12 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(
       has_one = authority,
     )]
-    pub permission: Account<'info, Permission>,
+    pub permission: Box<Account<'info, Permission>>,
+
+    #[account(mut)]
+    pub fee_wallet: Box<Account<'info, TokenAccount>>,
+
+    pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -123,6 +126,16 @@ impl<'info> OpenShortPositionSetup<'info> {
         token::transfer(cpi_ctx, amount)
     }
 
+    pub fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.owner_target_currency_account.to_account_info(),
+            to: self.fee_wallet.to_account_info(),
+            authority: self.owner.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        token::transfer(cpi_ctx, amount)
+    }
+
     pub fn transfer_from_lp_vault_to_currency_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
@@ -159,6 +172,8 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     // not used for swapping when opening a short position.
     ctx.accounts
         .transfer_from_user_to_collateral_vault(args.down_payment)?;
+    // Transfer fees
+    ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
 
     // Reload the collateral_vault account so we can get the balance after
     // downpayment has been made.

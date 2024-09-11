@@ -8,6 +8,7 @@ import {
 } from "@solana/spl-token";
 import {
   abSwapKey,
+  feeWalletA,
   NON_SWAP_AUTHORITY,
   poolFeeAccount,
   poolMint,
@@ -29,6 +30,11 @@ describe("OpenLongPosition", () => {
       SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
     program.programId
+  );
+
+  const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("global_settings")],
+    program.programId,
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
@@ -116,6 +122,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         await program.methods
@@ -163,6 +171,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .signers([SWAP_AUTHORITY])
           .rpc();
@@ -180,6 +190,7 @@ describe("OpenLongPosition", () => {
   describe("with one setup and one cleanup ", () => {
     it("should open a new position", async () => {
       const nonce = 0;
+      const fee = new anchor.BN(10);
       const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [
           anchor.utils.bytes.utf8.encode("position"),
@@ -214,7 +225,7 @@ describe("OpenLongPosition", () => {
           principal,
           currency: tokenMintA,
           expiration: new anchor.BN(now + 3_600),
-          fee: new anchor.BN(10),
+          fee,
         })
         .accounts({
           owner: program.provider.publicKey,
@@ -224,6 +235,8 @@ describe("OpenLongPosition", () => {
           longPool: longPoolBKey,
           permission: coSignerPermission,
           authority: SWAP_AUTHORITY.publicKey,
+          feeWallet: feeWalletA,
+          globalSettings: globalSettingsKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -306,7 +319,7 @@ describe("OpenLongPosition", () => {
       // Assert user balance decreased by downpayment
       assert.equal(
         ownerTokenAAfter.amount,
-        ownerTokenABefore.amount - BigInt(downPayment.toString())
+        ownerTokenABefore.amount - BigInt(downPayment.toString()) - BigInt(fee.toString())
       );
       // Assert collateral vault balance has increased
       assert.isTrue(longPoolBVaultAfter.amount > longPoolBVaultBefore.amount);
@@ -352,6 +365,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         await program.methods
@@ -420,6 +435,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -526,6 +543,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -612,6 +631,8 @@ describe("OpenLongPosition", () => {
             longPool: longPoolBKey,
             permission: coSignerPermission,
             authority: SWAP_AUTHORITY.publicKey,
+            feeWallet: feeWalletA,
+            globalSettings: globalSettingsKey,
           })
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -710,6 +731,8 @@ describe("OpenLongPosition", () => {
           longPool: longPoolBKey,
           permission: badCoSignerPermission,
           authority: NON_SWAP_AUTHORITY.publicKey,
+          feeWallet: feeWalletA,
+          globalSettings: globalSettingsKey,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(

@@ -232,13 +232,8 @@ pub fn shared_position_cleanup(
         _payout
     };
     // Deduct fees
-    let (payout, close_fee) = crate::utils::deduct(
-        close_amounts.payout,
-        position.compute_close_fee(
-            close_amounts.payout,
-            close_position_cleanup.pool.is_long_pool,
-        ) + close_position_request.execution_fee,
-        );
+    let (payout, close_fee) =
+        crate::utils::deduct(close_amounts.payout, close_position_request.execution_fee);
     close_amounts.payout = payout;
     close_amounts.close_fee = close_fee;
 
@@ -254,8 +249,7 @@ pub fn shared_position_cleanup(
     }
 
     // Pay the fees
-    let position_fees_to_transfer = position.fees_to_be_paid + close_fee;
-    msg!("payout {} | position_fees_to_transfer {}", close_amounts.payout, position_fees_to_transfer);
-    close_position_cleanup.transfer_fees(position_fees_to_transfer)?;
+    msg!("payout {} | close_fee {}", close_amounts.payout, close_fee);
+    close_position_cleanup.transfer_fees(close_fee)?;
     Ok(close_amounts)
 }
