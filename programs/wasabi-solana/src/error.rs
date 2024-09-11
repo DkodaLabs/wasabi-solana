@@ -28,4 +28,6 @@ pub enum ErrorCode {
     BadDebt, // 6011
     #[msg("Wrong fee wallet")]
     IncorrectFeeWallet, // 6012
+    #[msg("Invalid value")]
+    InvalidValue, // 6013
 }

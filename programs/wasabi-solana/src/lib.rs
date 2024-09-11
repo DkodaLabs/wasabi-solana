@@ -25,6 +25,27 @@ pub mod wasabi_solana {
         init_global_settings::handler(ctx, args)
     }
 
+    pub fn init_debt_controller(
+        ctx: Context<InitDebtController>,
+        args: InitDebtControllerArgs,
+    ) -> Result<()> {
+        init_debt_controller::handler(ctx, args)
+    }
+
+    pub fn set_max_apy(
+        ctx: Context<SetMaxApy>,
+        args: SetMaxApyArgs,
+    ) -> Result<()> {
+        set_max_apy::handler(ctx, args)
+    }
+
+    pub fn set_max_leverage(
+        ctx: Context<SetMaxLeverage>,
+        args: SetMaxLeverageArgs,
+    ) -> Result<()> {
+        set_max_leverage::handler(ctx, args)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
