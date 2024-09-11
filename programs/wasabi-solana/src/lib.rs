@@ -39,6 +39,13 @@ pub mod wasabi_solana {
         set_max_apy::handler(ctx, args)
     }
 
+    pub fn set_max_leverage(
+        ctx: Context<SetMaxLeverage>,
+        args: SetMaxLeverageArgs,
+    ) -> Result<()> {
+        set_max_leverage::handler(ctx, args)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,

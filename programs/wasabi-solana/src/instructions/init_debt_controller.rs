@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{error::ErrorCode, state::DebtController, Permission};
+use crate::{state::DebtController, Permission};
 
 #[derive(Accounts)]
 pub struct InitDebtController<'info> {
@@ -25,14 +25,6 @@ pub struct InitDebtControllerArgs {
     pub max_apy: u64,
     pub max_leverage: u64,
 }
-
-impl<'info> InitDebtController<'info> {
-    pub fn validate(&self) -> Result<()> {
-        require!(self.super_admin_permission.is_super_authority, ErrorCode::InvalidPermissions);
-        Ok(())
-    }
-}
-
 
 pub fn handler(ctx: Context<InitDebtController>, args: InitDebtControllerArgs) -> Result<()> {
     let debt_controller = &mut ctx.accounts.debt_controller;
