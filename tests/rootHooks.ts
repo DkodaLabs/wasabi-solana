@@ -24,6 +24,7 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
+import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 
 export let superAdminProgram: Program<WasabiSolana>;
 
@@ -48,6 +49,8 @@ export const user2 = web3.Keypair.generate();
 export const feeWalletKeyPair = web3.Keypair.generate();
 export let feeWalletA: web3.PublicKey;
 export let feeWalletB: web3.PublicKey;
+
+export let openPosLut: web3.PublicKey;
 
 export const mochaHooks = {
   beforeAll: async () => {
@@ -284,5 +287,51 @@ export const mochaHooks = {
     initSwapIxes.push(initPoolIx);
     const initSwapTx = new web3.Transaction().add(...initSwapIxes);
     await program.provider.sendAndConfirm(initSwapTx, [abSwapKey]);
+
+    const provider = AnchorProvider.local();
+    const slot = await provider.connection.getSlot();
+
+    const [createLookupTableIx, lookupTableAddress] =
+      web3.AddressLookupTableProgram.createLookupTable({
+        authority: provider.publicKey,
+        payer: provider.publicKey,
+        recentSlot: slot,
+      });
+    openPosLut = lookupTableAddress;
+
+    const [globalSettingsKey] = web3.PublicKey.findProgramAddressSync(
+      [utils.bytes.utf8.encode("global_settings")],
+      program.programId,
+    );
+    const [lpVaultAKey] = web3.PublicKey.findProgramAddressSync(
+      [utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+      superAdminProgram.programId,
+    );
+    const [lpVaultBKey] = web3.PublicKey.findProgramAddressSync(
+      [utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
+      superAdminProgram.programId,
+    );
+
+    const extendLookupTableIx =
+      web3.AddressLookupTableProgram.extendLookupTable({
+        authority: provider.publicKey,
+        payer: provider.publicKey,
+        lookupTable: lookupTableAddress,
+        addresses: [
+          // General keys
+          globalSettingsKey,
+          feeWalletA,
+          feeWalletB,
+          lpVaultAKey,
+          lpVaultBKey,
+          TOKEN_PROGRAM_ID,
+          SYSTEM_PROGRAM_ID,
+          web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+        ],
+      });
+    const _tx = new web3.Transaction()
+      .add(createLookupTableIx)
+      .add(extendLookupTableIx);
+    const txId = await provider.sendAndConfirm(_tx, [], {skipPreflight: true});
   },
 };

@@ -10,6 +10,7 @@ import {
   abSwapKey,
   feeWalletA,
   NON_SWAP_AUTHORITY,
+  openPosLut,
   poolFeeAccount,
   poolMint,
   superAdminProgram,
@@ -21,6 +22,7 @@ import {
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
+import { web3 } from "@coral-xyz/anchor";
 
 describe("OpenLongPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -29,7 +31,7 @@ describe("OpenLongPosition", () => {
       anchor.utils.bytes.utf8.encode("admin"),
       SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
-    program.programId
+    program.programId,
   );
 
   const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -38,12 +40,12 @@ describe("OpenLongPosition", () => {
   );
   const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    program.programId
+    program.programId,
   );
   const ownerTokenA = getAssociatedTokenAddressSync(
     tokenMintA,
     program.provider.publicKey,
-    false
+    false,
   );
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -51,24 +53,24 @@ describe("OpenLongPosition", () => {
       tokenMintB.toBuffer(),
       tokenMintA.toBuffer(),
     ],
-    program.programId
+    program.programId,
   );
   const longPoolBVaultKey = getAssociatedTokenAddressSync(
     tokenMintB,
     longPoolBKey,
-    true
+    true,
   );
   const longPoolBCurrencyVaultKey = getAssociatedTokenAddressSync(
     tokenMintA,
     longPoolBKey,
-    true
+    true,
   );
   const [openPositionRequestKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("open_pos"),
       program.provider.publicKey.toBuffer(),
     ],
-    program.programId
+    program.programId,
   );
 
   before(async () => {
@@ -76,7 +78,7 @@ describe("OpenLongPosition", () => {
     const [superAdminPermissionKey] =
       anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("super_admin")],
-        program.programId
+        program.programId,
       );
     await superAdminProgram.methods
       .initLongPool()
@@ -100,7 +102,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       try {
         const now = new Date().getTime() / 1_000;
@@ -199,7 +201,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -241,7 +243,7 @@ describe("OpenLongPosition", () => {
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
         [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID
+        TOKEN_SWAP_PROGRAM_ID,
       );
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
@@ -261,7 +263,7 @@ describe("OpenLongPosition", () => {
         TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
         BigInt(swapAmount.toString()),
-        BigInt(minimumAmountOut.toString())
+        BigInt(minimumAmountOut.toString()),
       );
       await program.methods
         .openLongPositionCleanup()
@@ -292,21 +294,21 @@ describe("OpenLongPosition", () => {
       // Assert position has correct values
       assert.equal(
         positionAfter.trader.toString(),
-        program.provider.publicKey.toString()
+        program.provider.publicKey.toString(),
       );
       assert.ok(positionAfter.collateralAmount.gt(new anchor.BN(0)));
       assert.equal(
         positionAfter.collateralCurrency.toString(),
-        tokenMintB.toString()
+        tokenMintB.toString(),
       );
       assert.equal(
         positionAfter.collateralVault.toString(),
-        longPoolBVaultKey.toString()
+        longPoolBVaultKey.toString(),
       );
       assert.equal(positionAfter.currency.toString(), tokenMintA.toString());
       assert.equal(
         positionAfter.downPayment.toString(),
-        downPayment.toString()
+        downPayment.toString(),
       );
       assert.equal(positionAfter.principal.toString(), principal.toString());
       assert.equal(positionAfter.lpVault.toString(), lpVaultKey.toString());
@@ -314,12 +316,14 @@ describe("OpenLongPosition", () => {
       // Assert vault balance decreased by Principal
       assert.equal(
         lpVaultAfter.amount,
-        lpVaultBefore.amount - BigInt(principal.toString())
+        lpVaultBefore.amount - BigInt(principal.toString()),
       );
       // Assert user balance decreased by downpayment
       assert.equal(
         ownerTokenAAfter.amount,
-        ownerTokenABefore.amount - BigInt(downPayment.toString()) - BigInt(fee.toString())
+        ownerTokenABefore.amount -
+          BigInt(downPayment.toString()) -
+          BigInt(fee.toString()),
       );
       // Assert collateral vault balance has increased
       assert.isTrue(longPoolBVaultAfter.amount > longPoolBVaultBefore.amount);
@@ -338,7 +342,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -401,7 +405,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -415,7 +419,7 @@ describe("OpenLongPosition", () => {
           ownerTokenA,
           longPoolBCurrencyVaultKey,
           program.provider.publicKey,
-          transferAmount
+          transferAmount,
         );
         const setupIx = await program.methods
           .openLongPositionSetup({
@@ -441,7 +445,7 @@ describe("OpenLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
 
         const swapIx = TokenSwap.swapInstruction(
@@ -462,7 +466,7 @@ describe("OpenLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(3_000),
-          BigInt(minimumAmountOut.toString())
+          BigInt(minimumAmountOut.toString()),
         );
         await program.methods
           .openLongPositionCleanup()
@@ -479,7 +483,7 @@ describe("OpenLongPosition", () => {
         // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
         // is not delegated more than `down_payment` + `principal
         assert.ok(
-          err.toString().includes(`"InstructionError":[2,{"Custom":1}]`)
+          err.toString().includes(`"InstructionError":[2,{"Custom":1}]`),
         );
       }
     });
@@ -494,12 +498,12 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const [superAdminPermissionKey] =
         anchor.web3.PublicKey.findProgramAddressSync(
           [anchor.utils.bytes.utf8.encode("super_admin")],
-          program.programId
+          program.programId,
         );
       await superAdminProgram.methods
         .initShortPool()
@@ -516,7 +520,7 @@ describe("OpenLongPosition", () => {
           tokenMintB.toBuffer(),
           tokenMintA.toBuffer(),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -549,7 +553,7 @@ describe("OpenLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
 
         const swapIx = TokenSwap.swapInstruction(
@@ -570,9 +574,9 @@ describe("OpenLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(downPayment.add(principal).toString()),
-          BigInt(minimumAmountOut.toString())
+          BigInt(minimumAmountOut.toString()),
         );
-        await program.methods
+        const _tx = await program.methods
           .openLongPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
@@ -580,14 +584,32 @@ describe("OpenLongPosition", () => {
             position: positionKey,
           })
           .preInstructions([setupIx, swapIx])
-          .signers([SWAP_AUTHORITY])
-          .rpc({ skipPreflight: true });
+          // .signers([SWAP_AUTHORITY])
+          .transaction();
+        const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+
+        const tx = new web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: false,
+        });
         assert.ok(false);
       } catch (err) {
+        const regex = /Error Code: InvalidPool. Error Number: 6006/
+        const match = err.toString().match(regex);
         if (err instanceof anchor.AnchorError) {
           assert.equal(err.error.errorCode.number, 6006);
         } else if (err instanceof anchor.ProgramError) {
           assert.equal(err.code, 6006);
+        } else if (match) {
+          assert.ok(true);
         } else {
           assert.ok(false);
         }
@@ -604,7 +626,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(0).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -637,7 +659,7 @@ describe("OpenLongPosition", () => {
           .instruction();
         const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
           [abSwapKey.publicKey.toBuffer()],
-          TOKEN_SWAP_PROGRAM_ID
+          TOKEN_SWAP_PROGRAM_ID,
         );
 
         const swapIx = TokenSwap.swapInstruction(
@@ -658,7 +680,7 @@ describe("OpenLongPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           BigInt(downPayment.add(principal).toString()),
-          BigInt(minimumAmountOut.toString())
+          BigInt(minimumAmountOut.toString()),
         );
         await program.methods
           .openLongPositionCleanup()
@@ -694,7 +716,7 @@ describe("OpenLongPosition", () => {
           lpVaultKey.toBuffer(),
           new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
-        program.programId
+        program.programId,
       );
       const now = new Date().getTime() / 1_000;
 
@@ -710,7 +732,7 @@ describe("OpenLongPosition", () => {
             anchor.utils.bytes.utf8.encode("admin"),
             NON_SWAP_AUTHORITY.publicKey.toBuffer(),
           ],
-          program.programId
+          program.programId,
         );
 
       const setupIx = await program.methods
@@ -737,7 +759,7 @@ describe("OpenLongPosition", () => {
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
         [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID
+        TOKEN_SWAP_PROGRAM_ID,
       );
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
@@ -757,7 +779,7 @@ describe("OpenLongPosition", () => {
         TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
         BigInt(swapAmount.toString()),
-        BigInt(minimumAmountOut.toString())
+        BigInt(minimumAmountOut.toString()),
       );
       try {
         await program.methods
