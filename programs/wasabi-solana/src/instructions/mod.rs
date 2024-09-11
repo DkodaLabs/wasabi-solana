@@ -20,6 +20,7 @@ pub mod open_long_position_setup;
 pub mod open_short_position_cleanup;
 pub mod open_short_position_setup;
 pub mod redeem;
+pub mod set_max_apy;
 pub mod withdraw;
 
 pub use close_long_position_cleanup::*;
@@ -43,4 +44,5 @@ pub use open_long_position_setup::*;
 pub use open_short_position_cleanup::*;
 pub use open_short_position_setup::*;
 pub use redeem::*;
+pub use set_max_apy::*;
 pub use withdraw::*;

@@ -32,6 +32,13 @@ pub mod wasabi_solana {
         init_debt_controller::handler(ctx, args)
     }
 
+    pub fn set_max_apy(
+        ctx: Context<SetMaxApy>,
+        args: SetMaxApyArgs,
+    ) -> Result<()> {
+        set_max_apy::handler(ctx, args)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
