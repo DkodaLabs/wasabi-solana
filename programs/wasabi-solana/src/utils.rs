@@ -64,3 +64,12 @@ pub fn deduct(amount: u64, deducted_amount: u64) -> (u64, u64) {
         (remaining, deducted)
     }
 }
+
+/// Check if amount is within % range. `percentage` must be whole number, i.e. 3 == 3%
+pub fn validate_difference(value: u64, value_to_compare: u64, percentage: u8) -> Result<()> {
+    let difference = value.abs_diff(value_to_compare);
+    
+    require!(difference * 100 <= value.checked_mul(u64::from(percentage)).expect("overflow"), ErrorCode::ValueDeviatedTooMuch);
+
+    Ok(())
+}

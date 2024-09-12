@@ -63,6 +63,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
         let destination_balance_delta = self.get_destination_delta();
 
         if destination_balance_delta < self.open_position_request.min_target_amount {
+            // InsufficientCollateralReceived
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 

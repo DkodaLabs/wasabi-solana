@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, events::PositionOpened, short_pool_signer_seeds, utils::get_function_hash, BasePool, DebtController, LpVault, OpenPositionRequest, Position
+    error::ErrorCode, events::PositionOpened, short_pool_signer_seeds, utils::{get_function_hash, validate_difference}, BasePool, DebtController, LpVault, OpenPositionRequest, Position
 };
 
 #[derive(Accounts)]
@@ -131,11 +131,13 @@ pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
 
     let collateral_received = ctx.accounts.get_destination_delta();
     let principal_used = ctx.accounts.get_source_delta();
+    let principal = ctx.accounts.position.principal;
     let down_payment = ctx.accounts.position.down_payment;
 
     if down_payment.checked_mul(ctx.accounts.debt_controller.max_leverage).expect("overflow") <= collateral_received {
         return Err(ErrorCode::PrincipalTooHigh.into());
     }
+    validate_difference(principal, principal_used, 1)?;
 
     // Return any remaining principal that was transferred to the currency_vault in setup
     let remaining_principal = ctx.accounts.position.principal.checked_sub(principal_used).expect("overflow");

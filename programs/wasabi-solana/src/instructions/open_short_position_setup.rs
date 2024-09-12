@@ -212,6 +212,6 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
     position.fees_to_be_paid = args.fee;
-
+    position.last_funding_timestamp = Clock::get()?.unix_timestamp;
     Ok(())
 }
