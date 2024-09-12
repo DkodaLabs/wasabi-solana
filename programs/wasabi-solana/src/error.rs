@@ -34,4 +34,6 @@ pub enum ErrorCode {
     InsufficientAvailablePrincipal, // 6014
     #[msg("Principal too high")]
     PrincipalTooHigh, // 6015
+    #[msg("Value deviated too much")]
+    ValueDeviatedTooMuch, // 6016
 }

@@ -179,7 +179,6 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     ctx.accounts
         .transfer_down_payment_from_user(args.down_payment)?;
     // Transfer fees
-    msg!("open pos fee {}", args.fee);
     ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
 
     ctx.accounts.currency_vault.reload()?;
@@ -190,13 +189,15 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         return Err(ErrorCode::PrincipalTooHigh.into());
     }
 
-    let total_to_swap = args
+    let total_swap_amount = args
         .principal
         .checked_add(args.down_payment)
         .expect("overflow");
 
     // Approve user to make swap on behalf of `currency_vault`
-    ctx.accounts.approve_owner_delegation(total_to_swap)?;
+    ctx.accounts.approve_owner_delegation(total_swap_amount)?;
+
+    let collateral_amount = ctx.accounts.collateral_vault.amount;
 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.
@@ -209,7 +210,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     open_position_request.pool_key = ctx.accounts.long_pool.key();
     open_position_request.position = ctx.accounts.position.key();
     open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
-    open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
+    open_position_request.swap_cache.destination_bal_before = collateral_amount;
 
     let position = &mut ctx.accounts.position;
     position.trader = ctx.accounts.owner.key();
@@ -220,6 +221,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
     position.fees_to_be_paid = args.fee;
+    position.last_funding_timestamp = Clock::get()?.unix_timestamp;
 
     Ok(())
 }
