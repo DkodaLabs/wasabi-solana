@@ -157,6 +157,7 @@ describe("OpenShortPosition", () => {
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx, setupIx])
           .signers([SWAP_AUTHORITY])
@@ -271,6 +272,7 @@ describe("OpenShortPosition", () => {
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx])
           .signers([NON_SWAP_AUTHORITY])
@@ -307,11 +309,13 @@ describe("OpenShortPosition", () => {
         ownerTokenABefore,
         onwerTokenBBefore,
         shortPoolAVaultBefore,
+        shortPoolACurrencyVaultBefore,
       ] = await getMultipleTokenAccounts(program.provider.connection, [
         lpVault.vault,
         ownerTokenA,
         ownerTokenB,
         shortPoolAVaultKey,
+        shortPoolACurrencyVaultKey,
       ]);
       const now = new Date().getTime() / 1_000;
       const downPayment = new anchor.BN(1_000);
@@ -371,6 +375,7 @@ describe("OpenShortPosition", () => {
           owner: program.provider.publicKey,
           shortPool: shortPoolAKey,
           position: positionKey,
+          lpVault: lpVaultKey,
         })
         .preInstructions([setupIx, swapIx])
         .signers([SWAP_AUTHORITY])
@@ -381,6 +386,7 @@ describe("OpenShortPosition", () => {
           ownerTokenAAfter,
           ownerTokenBAfter,
           shortPoolAVaultAfter,
+          shortPoolACurrencyVaultAfter,
         ],
         positionAfter,
       ] = await Promise.all([
@@ -389,6 +395,7 @@ describe("OpenShortPosition", () => {
           ownerTokenA,
           ownerTokenB,
           shortPoolAVaultKey,
+          shortPoolACurrencyVaultKey,
         ]),
         program.account.position.fetch(positionKey),
       ]);
@@ -446,6 +453,12 @@ describe("OpenShortPosition", () => {
 
       // Assert the borrowed token amount is not left in the user's wallet
       assert.equal(ownerTokenBAfter.amount, onwerTokenBBefore.amount);
+
+      // Assert the currency_vault amount has not changed
+      assert.equal(
+        shortPoolACurrencyVaultAfter.amount,
+        shortPoolACurrencyVaultBefore.amount,
+      );
     });
 
     it("should fail with noop", async () => {
@@ -495,6 +508,7 @@ describe("OpenShortPosition", () => {
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx])
           .signers([SWAP_AUTHORITY])
@@ -591,6 +605,7 @@ describe("OpenShortPosition", () => {
             owner: program.provider.publicKey,
             shortPool: shortPoolBKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx, swapIx])
           .transaction();
@@ -690,18 +705,33 @@ describe("OpenShortPosition", () => {
           BigInt(principal.toString()),
           BigInt(minTargetAmount.toString()),
         );
-        await program.methods
+        const _tx = await program.methods
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: badPositionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx, swapIx])
-          .signers([SWAP_AUTHORITY])
-          .rpc({ skipPreflight: true });
+          .transaction();
+          const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+
+        const tx = new web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: true,
+        });
         assert.ok(false);
-      } catch (err) {
+      } catch (e) {
+        const err = anchor.translateError(e, anchor.parseIdlErrors(program.idl));
         if (err instanceof anchor.AnchorError) {
           assert.equal(err.error.errorCode.number, 6007);
         } else if (err instanceof anchor.ProgramError) {
@@ -784,6 +814,7 @@ describe("OpenShortPosition", () => {
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
@@ -873,16 +904,30 @@ describe("OpenShortPosition", () => {
           BigInt(downPayment.add(principal).toString()),
           BigInt(0),
         );
-        await program.methods
+        const _tx = await program.methods
           .openShortPositionCleanup()
           .accounts({
             owner: program.provider.publicKey,
             shortPool: shortPoolAKey,
             position: positionKey,
+            lpVault: lpVaultKey,
           })
           .preInstructions([transferIX, setupIx, swapIx])
-          .signers([SWAP_AUTHORITY])
-          .rpc({ skipPreflight: true });
+          .transaction();
+          const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+
+        const tx = new web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: true,
+        });
         assert.ok(false);
       } catch (err) {
         // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`

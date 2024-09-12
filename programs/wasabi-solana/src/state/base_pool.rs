@@ -1,7 +1,5 @@
 use anchor_lang::prelude::*;
 
-// TODO add currency vault
-
 #[account]
 pub struct BasePool {
   /// The mint address for the collateral type this pool supports
