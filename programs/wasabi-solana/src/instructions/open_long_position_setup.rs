@@ -2,7 +2,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar};
 use anchor_spl::token::{self, Approve, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds, utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings, LpVault, OpenPositionRequest, Permission, Position
+    error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds, utils::position_setup_transaction_introspecation_validation, BasePool, DebtController, GlobalSettings, LpVault, OpenPositionRequest, Permission, Position
 };
 
 use super::OpenLongPositionCleanup;
@@ -65,6 +65,12 @@ pub struct OpenLongPositionSetup<'info> {
 
     #[account(mut)]
     pub fee_wallet: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+        seeds = [b"debt_controller"],
+        bump,
+    )]
+    pub debt_controller: Account<'info, DebtController>,
 
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
@@ -177,6 +183,12 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
     ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
 
     ctx.accounts.currency_vault.reload()?;
+
+    let max_principal = ctx.accounts.debt_controller.compute_max_principal(args.down_payment);
+
+    if args.principal > max_principal {
+        return Err(ErrorCode::PrincipalTooHigh.into());
+    }
 
     let total_to_swap = args
         .principal
