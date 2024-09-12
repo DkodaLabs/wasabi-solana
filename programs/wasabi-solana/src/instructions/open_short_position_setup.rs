@@ -190,13 +190,8 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     // princpal transfer has been made.
     ctx.accounts.currency_vault.reload()?;
 
-    // TODO Should this be considered max_principal?
-    // If the swap should be exact out, then the transaction sender may not
-    // know the amount of principal they need to borrow.
-    let total_to_swap = args.principal;
-
     // Approve user to make swap on behalf of `currency_vault`
-    ctx.accounts.approve_owner_delegation(total_to_swap)?;
+    ctx.accounts.approve_owner_delegation(args.principal)?;
 
     // Cache data on the `open_position_request` account. We use the value
     // after the borrow in order to track the entire amount being swapped.

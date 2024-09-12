@@ -131,15 +131,13 @@ pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
 
     let collateral_received = ctx.accounts.get_destination_delta();
     let principal_used = ctx.accounts.get_source_delta();
+    let down_payment = ctx.accounts.position.down_payment;
 
-    let swapped_down_payment_amount = ctx.accounts.position.down_payment.checked_mul(principal_used).expect("overflow").checked_div(collateral_received).expect("overflow");
-
-    let max_principal = ctx.accounts.debt_controller.compute_max_principal(swapped_down_payment_amount);
-
-    if ctx.accounts.position.principal > max_principal.checked_add(swapped_down_payment_amount).expect("overflow") {
+    if down_payment.checked_mul(ctx.accounts.debt_controller.max_leverage).expect("overflow") <= collateral_received {
         return Err(ErrorCode::PrincipalTooHigh.into());
     }
 
+    // Return any remaining principal that was transferred to the currency_vault in setup
     let remaining_principal = ctx.accounts.position.principal.checked_sub(principal_used).expect("overflow");
     if remaining_principal > 0 {
         ctx.accounts.transfer_remaining_principal_from_currency_vault(remaining_principal)?;
