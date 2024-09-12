@@ -22,6 +22,7 @@ impl DebtController {
   }
   
   pub fn compute_max_principal(&self, down_payment: u64) -> u64 {
+    msg!("down_payment {:?} max_leverage {:?}", down_payment, self.max_leverage);
     // EVM logic:
     // maxPrincipal = _downPayment * (maxLeverage - LEVERAGE_DENOMINATOR) / LEVERAGE_DENOMINATOR;
     let max_principal = down_payment.checked_mul(self.max_leverage - LEVERAGE_DENOMINATOR).expect("overflow").checked_div(LEVERAGE_DENOMINATOR).expect("overflow");

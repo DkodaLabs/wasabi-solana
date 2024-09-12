@@ -1,9 +1,8 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Revoke, Token, TokenAccount};
+use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, events::PositionOpened, short_pool_signer_seeds, utils::get_function_hash,
-    BasePool, OpenPositionRequest, Position,
+    error::ErrorCode, events::PositionOpened, short_pool_signer_seeds, utils::get_function_hash, BasePool, DebtController, LpVault, OpenPositionRequest, Position
 };
 
 #[derive(Accounts)]
@@ -23,6 +22,15 @@ pub struct OpenShortPositionCleanup<'info> {
     // The token account that is the source of the swap (where principal and downpayment are sent)
     pub currency_vault: Box<Account<'info, TokenAccount>>,
 
+    /// The LP Vault that the user will borrow from
+    #[account(
+        has_one = vault,
+    )]
+    pub lp_vault: Account<'info, LpVault>,
+    #[account(mut)]
+    /// The LP Vault's token account.
+    pub vault: Account<'info, TokenAccount>,
+
     #[account(
       mut,
       close = owner,
@@ -31,8 +39,17 @@ pub struct OpenShortPositionCleanup<'info> {
     )]
     pub open_position_request: Account<'info, OpenPositionRequest>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        has_one = lp_vault,
+    )]
     pub position: Account<'info, Position>,
+
+    #[account(
+        seeds = [b"debt_controller"],
+        bump,
+    )]
+    pub debt_controller: Account<'info, DebtController>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -74,12 +91,6 @@ impl<'info> OpenShortPositionCleanup<'info> {
             return Err(ErrorCode::MinTokensNotMet.into());
         }
 
-        let source_balance_delta = self.get_source_delta();
-
-        if source_balance_delta > 0 {
-            return Err(ErrorCode::MaxSwapExceeded.into());
-        }
-
         Ok(())
     }
 
@@ -96,6 +107,21 @@ impl<'info> OpenShortPositionCleanup<'info> {
         };
         token::revoke(cpi_ctx)
     }
+
+    pub fn transfer_remaining_principal_from_currency_vault(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = Transfer {
+            from: self.currency_vault.to_account_info(),
+            to: self.vault.to_account_info(),
+            authority: self.short_pool.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
+        };
+        token::transfer(cpi_ctx, amount)
+    }
 }
 
 pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
@@ -103,11 +129,27 @@ pub fn handler(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
     // Revoke owner's ability to transfer on behalf of the `currency_vault`
     ctx.accounts.revoke_owner_delegation()?;
 
-    let destination_delta = ctx.accounts.get_destination_delta();
+    let collateral_received = ctx.accounts.get_destination_delta();
+    let principal_used = ctx.accounts.get_source_delta();
+
+    let swapped_down_payment_amount = ctx.accounts.position.down_payment.checked_mul(principal_used).expect("overflow").checked_div(collateral_received).expect("overflow");
+
+    let max_principal = ctx.accounts.debt_controller.compute_max_principal(swapped_down_payment_amount);
+
+    if ctx.accounts.position.principal > max_principal.checked_add(swapped_down_payment_amount).expect("overflow") {
+        return Err(ErrorCode::PrincipalTooHigh.into());
+    }
+
+    let remaining_principal = ctx.accounts.position.principal.checked_sub(principal_used).expect("overflow");
+    if remaining_principal > 0 {
+        ctx.accounts.transfer_remaining_principal_from_currency_vault(remaining_principal)?;
+    }
 
     let position = &mut ctx.accounts.position;
 
-    position.collateral_amount = destination_delta
+    // Update to the actual principal used
+    position.principal = principal_used;
+    position.collateral_amount = collateral_received
         .checked_add(position.down_payment)
         .expect("overflow");
 

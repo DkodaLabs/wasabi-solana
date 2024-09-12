@@ -30,4 +30,8 @@ pub enum ErrorCode {
     IncorrectFeeWallet, // 6012
     #[msg("Invalid value")]
     InvalidValue, // 6013
+    #[msg("Insufficient available principal")]
+    InsufficientAvailablePrincipal, // 6014
+    #[msg("Principal too high")]
+    PrincipalTooHigh, // 6015
 }

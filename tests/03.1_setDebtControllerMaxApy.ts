@@ -66,12 +66,12 @@ describe("setDebtControllerMaxApy", () => {
   it("should set max apy", async () => {
     const debtControllerBefore = await program.account.debtController.fetch(debtControllerKey);
     await superAdminProgram.methods.setMaxApy({
-      maxApy: new anchor.BN(50),
+      maxApy: new anchor.BN(300),
     }).accounts({
       authority: superAdminProgram.provider.publicKey,
     }).rpc();
     const debtControllerAfter = await program.account.debtController.fetch(debtControllerKey);
-    assert.equal(debtControllerAfter.maxApy.toNumber(), 50);
+    assert.equal(debtControllerAfter.maxApy.toNumber(), 300);
     assert.notEqual(debtControllerBefore.maxApy.toString(), debtControllerAfter.maxApy.toString());
   });
   

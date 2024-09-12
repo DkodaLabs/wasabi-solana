@@ -179,6 +179,20 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     // downpayment has been made.
     ctx.accounts.collateral_vault.reload()?;
 
+    if args.principal > ctx.accounts.vault.amount {
+        return Err(ErrorCode::InsufficientAvailablePrincipal.into());
+    }
+
+    // Transfer the borrowed amount to `currency_vault` to be used in swap.
+    ctx.accounts
+        .transfer_from_lp_vault_to_currency_vault(args.principal)?;
+    // Reload the currency_vault account so we can get the balance after
+    // princpal transfer has been made.
+    ctx.accounts.currency_vault.reload()?;
+
+    // TODO Should this be considered max_principal?
+    // If the swap should be exact out, then the transaction sender may not
+    // know the amount of principal they need to borrow.
     let total_to_swap = args.principal;
 
     // Approve user to make swap on behalf of `currency_vault`
@@ -203,10 +217,6 @@ pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs
     position.collateral_vault = ctx.accounts.collateral_vault.key();
     position.lp_vault = ctx.accounts.lp_vault.key();
     position.fees_to_be_paid = args.fee;
-
-    // Transfer the borrowed amount to user's wallet to be used in swap.
-    ctx.accounts
-        .transfer_from_lp_vault_to_currency_vault(args.principal)?;
 
     Ok(())
 }
