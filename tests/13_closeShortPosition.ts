@@ -395,13 +395,13 @@ describe("CloseShortPosition", () => {
             }
           })
           .instruction();
-        // TODO couldn't get the swap pool in a state that wouldn't
-        // cause bad debt. So hacking the "swap" by appending a mint IX.
+        // Hacking the "swap" by appending a mint IX the exact amount needed to pay
+        // back interest and principal.
         const mintTokenBToOwnerIx = createMintToCheckedInstruction(
           tokenBKeypair.publicKey,
           ownerTokenB,
           program.provider.publicKey,
-          100,
+          11,
           6
         );
         const swapIx = TokenSwap.swapInstruction(
@@ -458,10 +458,11 @@ describe("CloseShortPosition", () => {
         const vaultDiff = vaultAfter.amount - vaultBefore.amount;
         assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
 
-        // 
+        // Assert user does not receive payout in tokenB
         const ownerBDiff = ownerBAfter.amount - ownerBBefore.amount;
-        assert.equal(ownerBDiff, BigInt(89));
+        assert.equal(ownerBDiff, BigInt(0));
 
+        // Assert user receives payout in tokenA
         const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
         assert.equal(ownerADiff, BigInt(979));
 

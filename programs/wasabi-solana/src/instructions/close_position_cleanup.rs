@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position
+    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, utils::validate_difference, BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position, INTEREST_DENOMINATOR
 };
 
 #[derive(Accounts)]
@@ -203,26 +203,26 @@ pub fn shared_position_cleanup(
     }
     // Total currency received after the swap.
     let close_position_request = &close_position_cleanup.close_position_request;
-    let collateral_diff = close_position_cleanup.get_source_delta();
+    let collateral_spent = close_position_cleanup.get_source_delta();
     let currency_diff = close_position_cleanup.get_destination_delta();
     let interest = close_position_cleanup.close_position_request.interest;
 
     if close_position_cleanup.pool.is_long_pool
-        && collateral_diff < close_position_cleanup.position.collateral_amount
+        && collateral_spent < close_position_cleanup.position.collateral_amount
     {
-        let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_diff;
+        let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_spent;
         // TODO: What to do with any collateral_dust?
         msg!("collateral_dust: {}", collateral_dust);
     }
 
     // Cap interest based on DebtController
-    let max_interest = close_position_cleanup.debt_controller.compute_max_interest(close_position_cleanup.position.principal, close_position_cleanup.position.last_funding_timestamp)?;
-    let interest = if interest == 0 || interest > max_interest {
+    let now = Clock::get()?.unix_timestamp;
+    let max_interest = close_position_cleanup.debt_controller.compute_max_interest(close_position_cleanup.position.principal, close_position_cleanup.position.last_funding_timestamp, now)?;
+    let interest: u64 = if interest == 0 || interest > max_interest {
         max_interest
     } else {
         interest
     };
-    
 
     // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
     let position = &close_position_cleanup.position;
@@ -238,10 +238,15 @@ pub fn shared_position_cleanup(
     } else {
         close_amounts.principal_repaid = currency_diff;
 
+        // 1. Deduct interest
         (close_amounts.interest_paid, close_amounts.principal_repaid) =
             crate::utils::deduct(close_amounts.principal_repaid, position.principal);
+        if close_amounts.interest_paid > 0 {
+            validate_difference(interest, close_amounts.interest_paid, 3)?;
+        }
 
-        let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_diff);
+        // Payout and fees are paid in collateral
+        let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_spent);
         _payout
     };
     // Deduct fees
@@ -262,7 +267,6 @@ pub fn shared_position_cleanup(
     }
 
     // Pay the fees
-    msg!("payout {} | close_fee {}", close_amounts.payout, close_fee);
     close_position_cleanup.transfer_fees(close_fee)?;
 
     // Emit close events
