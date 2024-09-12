@@ -10,6 +10,7 @@ import {
   abSwapKey,
   feeWalletA,
   NON_SWAP_AUTHORITY,
+  openPosLut,
   poolFeeAccount,
   poolMint,
   SWAP_AUTHORITY,
@@ -141,7 +142,7 @@ describe("CloseShortPosition", () => {
           BigInt(0)
         );
         try {
-          await program.methods
+          const _tx = await program.methods
             .closeShortPositionCleanup()
             .accounts({
               ownerCollateralAccount: ownerTokenA,
@@ -156,9 +157,23 @@ describe("CloseShortPosition", () => {
               }
             })
             .preInstructions([setupIx, swapIx])
-            .signers([SWAP_AUTHORITY, user2])
-            .rpc({ skipPreflight: true });
-        } catch (err) {
+            .transaction();
+            const connection = program.provider.connection;
+            const lookupAccount = await connection
+              .getAddressLookupTable(openPosLut)
+              .catch(() => null);
+            const message = new anchor.web3.TransactionMessage({
+              instructions: _tx.instructions,
+              payerKey: program.provider.publicKey!,
+              recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+            }).compileToV0Message([lookupAccount.value]);
+    
+            const tx = new anchor.web3.VersionedTransaction(message);
+            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY, user2], {
+              skipPreflight: true,
+            });
+        } catch (e) {
+          const err = anchor.translateError(e, anchor.parseIdlErrors(program.idl));
           if (err instanceof anchor.AnchorError) {
             assert.equal(err.error.errorCode.number, 6010);
           } else if (err instanceof anchor.ProgramError) {
