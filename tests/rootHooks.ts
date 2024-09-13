@@ -52,6 +52,8 @@ export let feeWalletB: web3.PublicKey;
 
 export let openPosLut: web3.PublicKey;
 
+export let globalSettingsKey: web3.PublicKey;
+
 export const mochaHooks = {
   beforeAll: async () => {
     const program = workspace.WasabiSolana as Program<WasabiSolana>;
@@ -299,7 +301,7 @@ export const mochaHooks = {
       });
     openPosLut = lookupTableAddress;
 
-    const [globalSettingsKey] = web3.PublicKey.findProgramAddressSync(
+    [globalSettingsKey] = web3.PublicKey.findProgramAddressSync(
       [utils.bytes.utf8.encode("global_settings")],
       program.programId,
     );
