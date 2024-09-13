@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 const ONE_YEAR_IN_SECONDS: u64 = 31536000;
 pub const APY_DENOMINATOR: u64 = 100;
 pub const LEVERAGE_DENOMINATOR: u64 = 100;
-pub const INTEREST_DENOMINATOR: u128 = 1_000_000_000;
 
 #[account]
 pub struct DebtController {

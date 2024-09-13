@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, utils::validate_difference, BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position, INTEREST_DENOMINATOR
+    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, utils::validate_difference, BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position
 };
 
 #[derive(Accounts)]
