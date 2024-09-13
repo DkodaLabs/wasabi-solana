@@ -18,6 +18,7 @@ import {
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
+import { getMultipleTokenAccounts } from "./utils";
 
 describe("ClaimPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -46,6 +47,12 @@ describe("ClaimPosition", () => {
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
     program.programId,
   );
+  const lpVaultBVault = getAssociatedTokenAddressSync(
+    tokenMintB,
+    lpVaultKeyB,
+    true,
+  );
+
   const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("long_pool"),
@@ -165,12 +172,46 @@ describe("ClaimPosition", () => {
         .rpc({ skipPreflight: true });
     });
     it("should successfully pay loan and return collateral to user", async () => {
-      const positionBefore = await program.account.position.fetch(positionKey);
+      const [positionBefore, [ownerTokenABefore, ownerTokenBBefore, lpVaultTokenBBefore]] = await Promise.all([
+        program.account.position.fetch(positionKey),
+        getMultipleTokenAccounts(program.provider.connection, [
+          ownerTokenA,
+          ownerTokenB,
+          lpVaultBVault,
+        ])
+      ]);
 
       assert.ok(positionBefore.trader.equals(program.provider.publicKey));
-      // TODO: validate Position is closed
-      // TODO: validate principal and interest was paid by the trader
-      // TODO: validate the LP Vault received the interest and principal
+
+      const computedMaxInterest = new anchor.BN(1);
+
+      await program.methods
+        .claimPosition({})
+        .accounts({
+          traderCurrencyAccount: ownerTokenB,
+          position: positionKey,
+        })
+        .rpc();
+
+        const [positionAfter, [ownerTokenAAfter, ownerTokenBAfter, lpVaultTokenBAfter]] = await Promise.all([
+          program.account.position.fetchNullable(positionKey),
+          getMultipleTokenAccounts(program.provider.connection, [
+            ownerTokenA,
+            ownerTokenB,
+            lpVaultBVault,
+          ])
+        ]);
+      // validate position was closed
+      assert.ok(positionAfter === null);
+      // validate principal (in tokenB) and interest (in tokenB) was paid by the trader
+      const expectedTokenDeltaB = computedMaxInterest.add(
+        positionBefore.principal,
+      );
+      const ownerBDiff = ownerTokenBAfter.amount - ownerTokenBBefore.amount;
+      assert.equal(ownerBDiff.toString(), expectedTokenDeltaB.neg().toString());
+      // validate the LP Vault received the interest and principal
+      const lpVaultTokenBDiff = lpVaultTokenBAfter.amount - lpVaultTokenBBefore.amount;
+      assert.equal(lpVaultTokenBDiff.toString(), expectedTokenDeltaB.toString());
       // TODO: Validate the Trader recevied the collateral.
       // TODO: Validate the Pool's collateral_vault paid the collateral.
       assert.ok(false);
@@ -260,7 +301,11 @@ describe("ClaimPosition", () => {
       const positionBefore = await program.account.position.fetch(positionKey);
 
       assert.ok(positionBefore.trader.equals(program.provider.publicKey));
-      // TODO: validate Position is closed
+      const positionAfter = await program.account.position.fetchNullable(
+        positionKey,
+      );
+      // validate position was closed
+      assert.ok(positionAfter === null);
       // TODO: validate principal and interest was paid by the trader
       // TODO: validate the LP Vault received the interest and principal
       // TODO: Validate the Trader recevied the collateral.
