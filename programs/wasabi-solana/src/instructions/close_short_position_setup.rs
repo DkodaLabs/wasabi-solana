@@ -30,7 +30,6 @@ pub fn handler(
         ctx.accounts.close_position_setup.pool.to_account_info(),
         &[short_pool_signer_seeds!(ctx.accounts.close_position_setup.pool)],
     )?;
-
     ctx.accounts.close_position_setup.set_close_position_request(&args)?;
 
     Ok(())

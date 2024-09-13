@@ -10,6 +10,7 @@ import {
   abSwapKey,
   feeWalletA,
   NON_SWAP_AUTHORITY,
+  openPosLut,
   poolFeeAccount,
   poolMint,
   SWAP_AUTHORITY,
@@ -141,7 +142,7 @@ describe("CloseShortPosition", () => {
           BigInt(0)
         );
         try {
-          await program.methods
+          const _tx = await program.methods
             .closeShortPositionCleanup()
             .accounts({
               ownerCollateralAccount: ownerTokenA,
@@ -156,9 +157,23 @@ describe("CloseShortPosition", () => {
               }
             })
             .preInstructions([setupIx, swapIx])
-            .signers([SWAP_AUTHORITY, user2])
-            .rpc({ skipPreflight: true });
-        } catch (err) {
+            .transaction();
+            const connection = program.provider.connection;
+            const lookupAccount = await connection
+              .getAddressLookupTable(openPosLut)
+              .catch(() => null);
+            const message = new anchor.web3.TransactionMessage({
+              instructions: _tx.instructions,
+              payerKey: program.provider.publicKey!,
+              recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+            }).compileToV0Message([lookupAccount.value]);
+    
+            const tx = new anchor.web3.VersionedTransaction(message);
+            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY, user2], {
+              skipPreflight: true,
+            });
+        } catch (e) {
+          const err = anchor.translateError(e, anchor.parseIdlErrors(program.idl));
           if (err instanceof anchor.AnchorError) {
             assert.equal(err.error.errorCode.number, 6010);
           } else if (err instanceof anchor.ProgramError) {
@@ -380,13 +395,13 @@ describe("CloseShortPosition", () => {
             }
           })
           .instruction();
-        // TODO couldn't get the swap pool in a state that wouldn't
-        // cause bad debt. So hacking the "swap" by appending a mint IX.
+        // Hacking the "swap" by appending a mint IX the exact amount needed to pay
+        // back interest and principal.
         const mintTokenBToOwnerIx = createMintToCheckedInstruction(
           tokenBKeypair.publicKey,
           ownerTokenB,
           program.provider.publicKey,
-          100,
+          11,
           6
         );
         const swapIx = TokenSwap.swapInstruction(
@@ -443,10 +458,11 @@ describe("CloseShortPosition", () => {
         const vaultDiff = vaultAfter.amount - vaultBefore.amount;
         assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
 
-        // 
+        // Assert user does not receive payout in tokenB
         const ownerBDiff = ownerBAfter.amount - ownerBBefore.amount;
-        assert.equal(ownerBDiff, BigInt(89));
+        assert.equal(ownerBDiff, BigInt(0));
 
+        // Assert user receives payout in tokenA
         const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
         assert.equal(ownerADiff, BigInt(979));
 
