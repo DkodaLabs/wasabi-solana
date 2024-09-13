@@ -172,12 +172,13 @@ describe("ClaimPosition", () => {
         .rpc({ skipPreflight: true });
     });
     it("should successfully pay loan and return collateral to user", async () => {
-      const [positionBefore, [ownerTokenABefore, ownerTokenBBefore, lpVaultTokenBBefore]] = await Promise.all([
+      const [positionBefore, [ownerTokenABefore, ownerTokenBBefore, lpVaultTokenBBefore, collateralVaultBefore]] = await Promise.all([
         program.account.position.fetch(positionKey),
         getMultipleTokenAccounts(program.provider.connection, [
           ownerTokenA,
           ownerTokenB,
           lpVaultBVault,
+          shortPoolAVaultKey,
         ])
       ]);
 
@@ -188,17 +189,20 @@ describe("ClaimPosition", () => {
       await program.methods
         .claimPosition({})
         .accounts({
+          traderCollateralAccount: ownerTokenA,
           traderCurrencyAccount: ownerTokenB,
           position: positionKey,
+          pool: shortPoolAKey,
         })
         .rpc();
 
-        const [positionAfter, [ownerTokenAAfter, ownerTokenBAfter, lpVaultTokenBAfter]] = await Promise.all([
+        const [positionAfter, [ownerTokenAAfter, ownerTokenBAfter, lpVaultTokenBAfter, collateralVaultAfter]] = await Promise.all([
           program.account.position.fetchNullable(positionKey),
           getMultipleTokenAccounts(program.provider.connection, [
             ownerTokenA,
             ownerTokenB,
             lpVaultBVault,
+            shortPoolAVaultKey,
           ])
         ]);
       // validate position was closed
@@ -212,9 +216,15 @@ describe("ClaimPosition", () => {
       // validate the LP Vault received the interest and principal
       const lpVaultTokenBDiff = lpVaultTokenBAfter.amount - lpVaultTokenBBefore.amount;
       assert.equal(lpVaultTokenBDiff.toString(), expectedTokenDeltaB.toString());
-      // TODO: Validate the Trader recevied the collateral.
-      // TODO: Validate the Pool's collateral_vault paid the collateral.
-      assert.ok(false);
+      // Validate the Trader recevied the collateral.
+      const expectedCollateralChange = positionBefore.collateralAmount.sub(positionBefore.feesToBePaid);
+      const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
+      assert.equal(ownerADiff.toString(), expectedCollateralChange.toString());
+      // Validate the Pool's collateral_vault paid the collateral.
+      const collateralVaultDiff = collateralVaultAfter.amount - collateralVaultBefore.amount;
+      assert.equal(collateralVaultDiff.toString(), expectedCollateralChange.neg().toString());
+      // TODO: Validate the close_fee was paid out
+      assert.ok(false); 
     });
   });
 
