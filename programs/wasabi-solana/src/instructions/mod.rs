@@ -1,3 +1,4 @@
+pub mod claim_position;
 pub mod close_long_position_cleanup;
 pub mod close_long_position_setup;
 pub mod close_position_setup;
@@ -24,6 +25,7 @@ pub mod set_max_apy;
 pub mod set_max_leverage;
 pub mod withdraw;
 
+pub use claim_position::*;
 pub use close_long_position_cleanup::*;
 pub use close_long_position_setup::*;
 pub use close_position_setup::*;

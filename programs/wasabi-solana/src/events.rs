@@ -126,6 +126,8 @@ pub struct PositionClaimed {
     pub fee_amount: u64,
 }
 
+// One event for a bunch of things. When donating into a vault they use this. Blast for native 
+//  yeild for ETH and USD (staked and DAI), so they claim that.
 pub struct NativeYieldClaimed {
     pub vault: Pubkey,
     pub token: Pubkey,

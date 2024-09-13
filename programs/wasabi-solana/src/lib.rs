@@ -141,4 +141,8 @@ pub mod wasabi_solana {
     pub fn liquidate_position_cleanup(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
         instructions::liquidate_position_cleanup::handler(ctx)
     }
+
+    pub fn claim_position(ctx: Context<ClaimPosition>, args: ClaimPositionArgs) -> Result<()> {
+        instructions::claim_position::handler(ctx, args)
+    }
 }
