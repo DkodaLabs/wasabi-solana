@@ -2,7 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Revoke, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, events::{PositionClosed, PositionLiquidated}, long_pool_signer_seeds, short_pool_signer_seeds, utils::validate_difference, BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position
+    error::ErrorCode,
+    events::{PositionClosed, PositionLiquidated},
+    long_pool_signer_seeds, short_pool_signer_seeds,
+    utils::validate_difference,
+    BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
 };
 
 #[derive(Accounts)]
@@ -52,7 +56,11 @@ pub struct ClosePositionCleanup<'info> {
       bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
-    
+
+    #[account(
+        seeds = [b"global_settings"],
+        bump,
+    )]
     pub global_settings: Account<'info, GlobalSettings>,
 
     pub token_program: Program<'info, Token>,
@@ -217,7 +225,13 @@ pub fn shared_position_cleanup(
 
     // Cap interest based on DebtController
     let now = Clock::get()?.unix_timestamp;
-    let max_interest = close_position_cleanup.debt_controller.compute_max_interest(close_position_cleanup.position.principal, close_position_cleanup.position.last_funding_timestamp, now)?;
+    let max_interest = close_position_cleanup
+        .debt_controller
+        .compute_max_interest(
+            close_position_cleanup.position.principal,
+            close_position_cleanup.position.last_funding_timestamp,
+            now,
+        )?;
     let interest: u64 = if interest == 0 || interest > max_interest {
         max_interest
     } else {
@@ -231,8 +245,7 @@ pub fn shared_position_cleanup(
         let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
         close_amounts.principal_repaid = _principal_repaid;
         // 2. Deduct interest
-        let (_payout, _interest_paid) =
-            crate::utils::deduct(currency_diff, interest);
+        let (_payout, _interest_paid) = crate::utils::deduct(currency_diff, interest);
         close_amounts.interest_paid = _interest_paid;
         _payout
     } else {

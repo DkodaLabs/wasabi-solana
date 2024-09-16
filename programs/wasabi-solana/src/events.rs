@@ -125,7 +125,21 @@ pub struct PositionClaimed {
     pub interest_paid: u64,
     pub fee_amount: u64,
 }
+impl PositionClaimed {
+    pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
+        Self {
+            position: position.key(),
+            trader: position.trader,
+            amount_claimed: close_amounts.payout,
+            principal_repaid: close_amounts.principal_repaid,
+            interest_paid: close_amounts.interest_paid,
+            fee_amount: close_amounts.close_fee,
+        }
+    }
+}
 
+// One event for a bunch of things. When donating into a vault they use this. Blast for native
+//  yeild for ETH and USD (staked and DAI), so they claim that.
 pub struct NativeYieldClaimed {
     pub vault: Pubkey,
     pub token: Pubkey,
