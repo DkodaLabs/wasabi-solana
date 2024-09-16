@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 use crate::{
-    error::ErrorCode, short_pool_signer_seeds, BasePool, DebtController, GlobalSettings, LpVault,
-    Position,
+    error::ErrorCode, events::PositionClaimed, short_pool_signer_seeds, BasePool, DebtController,
+    GlobalSettings, LpVault, Position,
 };
 
 use super::close_position_cleanup::CloseAmounts;
@@ -156,7 +156,8 @@ pub fn handler(ctx: Context<ClaimPosition>, _args: ClaimPositionArgs) -> Result<
         &[short_pool_signer_seeds!(ctx.accounts.pool)],
     )?;
 
-    // TODO: Emit the PositionClaimed event
+    // Emit the PositionClaimed event
+    emit!(PositionClaimed::new(position, &close_amounts));
 
     Ok(())
 }
