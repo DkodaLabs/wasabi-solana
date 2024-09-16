@@ -43,6 +43,11 @@ describe("ClaimPosition", () => {
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
     program.programId,
   );
+  const lpVaultAVault = getAssociatedTokenAddressSync(
+    tokenMintA,
+    lpVaultKeyA,
+    true,
+  );
   const [lpVaultKeyB] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
     program.programId,
@@ -344,19 +349,94 @@ describe("ClaimPosition", () => {
         .rpc({ skipPreflight: true });
     });
     it("should successfully pay loan and return collateral to user", async () => {
-      const positionBefore = await program.account.position.fetch(positionKey);
+      const [
+        positionBefore,
+        [
+          ownerTokenABefore,
+          ownerTokenBBefore,
+          lpVaultTokenABefore,
+          collateralVaultBefore,
+          feeWalletABefore,
+        ],
+      ] = await Promise.all([
+        program.account.position.fetch(positionKey),
+        getMultipleTokenAccounts(program.provider.connection, [
+          ownerTokenA,
+          ownerTokenB,
+          lpVaultAVault,
+          longPoolBVaultKey,
+          feeWalletA,
+        ]),
+      ]);
 
       assert.ok(positionBefore.trader.equals(program.provider.publicKey));
-      const positionAfter = await program.account.position.fetchNullable(
-        positionKey,
-      );
+
+      const computedMaxInterest = new anchor.BN(1);
+
+      await program.methods
+        .claimPosition({})
+        .accounts({
+          traderCollateralAccount: ownerTokenB,
+          traderCurrencyAccount: ownerTokenA,
+          position: positionKey,
+          pool: longPoolBKey,
+          feeWallet: feeWalletA,
+        })
+        .rpc({skipPreflight: true});
+
+      const [
+        positionAfter,
+        [
+          ownerTokenAAfter,
+          ownerTokenBAfter,
+          lpVaultTokenAAfter,
+          collateralVaultAfter,
+          feeWalletAAfter,
+        ],
+      ] = await Promise.all([
+        program.account.position.fetchNullable(positionKey),
+        getMultipleTokenAccounts(program.provider.connection, [
+          ownerTokenA,
+          ownerTokenB,
+          lpVaultAVault,
+          longPoolBVaultKey,
+          feeWalletA,
+        ]),
+      ]);
+
       // validate position was closed
       assert.ok(positionAfter === null);
-      // TODO: validate principal and interest was paid by the trader
-      // TODO: validate the LP Vault received the interest and principal
-      // TODO: Validate the Trader recevied the collateral.
-      // TODO: Validate the Pool's collateral_vault paid the collateral.
-      assert.ok(false);
+      // validate principal (in tokenA) + interest (in tokenA) + fees was paid by the trader
+      const expectedTokenDeltaA = computedMaxInterest
+        .add(positionBefore.principal)
+        .add(positionBefore.feesToBePaid);
+      const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
+      assert.equal(ownerADiff.toString(), expectedTokenDeltaA.neg().toString());
+      // Validate the close_fee was paid out
+      const expectedCloseFee = positionBefore.feesToBePaid;
+      const feeWalletDiff = feeWalletAAfter.amount - feeWalletABefore.amount;
+      assert.equal(feeWalletDiff.toString(), expectedCloseFee.toString());
+      // validate the LP Vault received the interest and principal
+      const expectedLPVaultDiff = computedMaxInterest.add(
+        positionBefore.principal,
+      );
+      const lpVaultTokenADiff =
+        lpVaultTokenAAfter.amount - lpVaultTokenABefore.amount;
+      assert.equal(
+        lpVaultTokenADiff.toString(),
+        expectedLPVaultDiff.toString(),
+      );
+      // Validate the Trader recevied the collateral.
+      const expectedCollateralChange = positionBefore.collateralAmount;
+      const ownerBDiff = ownerTokenBAfter.amount - ownerTokenBBefore.amount;
+      assert.equal(ownerBDiff.toString(), expectedCollateralChange.toString());
+      // Validate the Pool's collateral_vault paid the collateral.
+      const collateralVaultDiff =
+        collateralVaultAfter.amount - collateralVaultBefore.amount;
+      assert.equal(
+        collateralVaultDiff.toString(),
+        expectedCollateralChange.neg().toString(),
+      );
     });
   });
 });
