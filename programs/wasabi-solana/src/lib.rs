@@ -72,6 +72,10 @@ pub mod wasabi_solana {
         init_take_profit_order::handler(ctx, args)
     }
 
+    pub fn close_take_profit_order(ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
+        close_take_profit_order::handler(ctx)
+    }
+
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }

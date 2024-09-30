@@ -167,6 +167,20 @@ describe("takeProfitOrder", () => {
       assert.equal(takeProfitOrder.position.toString(), positionKey.toString());
     });
 
+    it("should close TP order", async () => {
+      await program.methods
+      .closeTakeProfitOrder()
+      .accounts({
+        trader: program.provider.publicKey,
+        position: positionKey,
+      })
+      .rpc();
+      const takeProfitOrder = await program.account.takeProfitOrder.fetchNullable(
+        takeProfitOrderKey
+      );
+      assert.isNull(takeProfitOrder);
+    })
+
     // it("should revert when close position with TP has not met price requirement", async () => {
     //   await program.methods.initTakeProfitOrder().accounts({});
     // });
