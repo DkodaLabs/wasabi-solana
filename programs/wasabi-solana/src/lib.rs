@@ -68,6 +68,10 @@ pub mod wasabi_solana {
         init_short_pool::handler(ctx)
     }
 
+    pub fn init_take_profit_order(ctx: Context<InitTakeProfitOrder>, args: InitTakeProfitOrderArgs) -> Result<()> {
+        init_take_profit_order::handler(ctx, args)
+    }
+
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
