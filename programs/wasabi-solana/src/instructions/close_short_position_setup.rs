@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
+    error::ErrorCode,
     instructions::close_position_setup::*,
     short_pool_signer_seeds,
     CloseShortPositionCleanup,
@@ -14,10 +15,24 @@ pub struct CloseShortPositionSetup<'info> {
     pub owner: Signer<'info>,
 }
 
+impl<'info> CloseShortPositionSetup<'info> {
+    pub fn validate(&self) -> Result<()> {
+        require!(
+            self.owner.key() == self.close_position_setup.owner.key(),
+            ErrorCode::IncorrectOwner
+        );
+        Ok(())
+    }
+}
+
 pub fn handler(
     ctx: Context<CloseShortPositionSetup>,
     args: ClosePositionArgs,
 ) -> Result<()> {
+    // Local validations
+    ctx.accounts.validate()?;
+
+    // Shared validations
     ClosePositionSetup::validate(
         &ctx.accounts.close_position_setup,
         &args,
