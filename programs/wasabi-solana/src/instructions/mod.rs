@@ -25,6 +25,8 @@ pub mod open_short_position_setup;
 pub mod redeem;
 pub mod set_max_apy;
 pub mod set_max_leverage;
+pub mod take_profit_cleanup;
+pub mod take_profit_setup;
 pub mod withdraw;
 
 pub use claim_position::*;
@@ -53,4 +55,6 @@ pub use open_short_position_setup::*;
 pub use redeem::*;
 pub use set_max_apy::*;
 pub use set_max_leverage::*;
+pub use take_profit_cleanup::*;
+pub use take_profit_setup::*;
 pub use withdraw::*;

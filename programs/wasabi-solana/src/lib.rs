@@ -150,6 +150,14 @@ pub mod wasabi_solana {
         instructions::liquidate_position_cleanup::handler(ctx)
     }
 
+    pub fn take_profit_setup(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
+        instructions::take_profit_setup::handler(ctx, args)
+    }
+
+    pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
+        instructions::take_profit_cleanup::handler(ctx)
+    }
+
     pub fn claim_position(ctx: Context<ClaimPosition>, args: ClaimPositionArgs) -> Result<()> {
         instructions::claim_position::handler(ctx, args)
     }
