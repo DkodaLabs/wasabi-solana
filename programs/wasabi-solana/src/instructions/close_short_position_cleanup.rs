@@ -10,6 +10,10 @@ pub struct CloseShortPositionCleanup<'info> {
     pub close_position_cleanup: ClosePositionCleanup<'info>,
 
     #[account(mut)]
+    /// The wallet that owns the assets
+    pub owner: Signer<'info>,
+
+    #[account(mut)]
     /// Account where user will receive their payout
     pub owner_collateral_account: Account<'info, TokenAccount>,
 }
@@ -39,15 +43,9 @@ impl<'info> CloseShortPositionCleanup<'info> {
 }
 
 pub fn handler(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
-    // make sure all leftover collateral is sent back to the user
-    let close_amounts = crate::instructions::close_position_cleanup::shared_position_cleanup(
+    crate::instructions::close_position_cleanup::shared_position_cleanup(
         &mut ctx.accounts.close_position_cleanup,
         false,
     )?;
-
-    // Transfer collateral back to user
-    ctx.accounts
-        .transfer_collateral_back_to_user(close_amounts.payout)?;
-
     Ok(())
 }

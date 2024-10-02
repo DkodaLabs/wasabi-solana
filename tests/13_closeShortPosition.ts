@@ -24,6 +24,7 @@ import {
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 
+// Shorting token B using token A as collateral
 describe("CloseShortPosition", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -109,7 +110,7 @@ describe("CloseShortPosition", () => {
             closePositionSetup: {
               pool: shortPoolAKey,
               owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
+              currencyVault: shortPoolACurrencyVaultKey,
               position: positionKey,
               permission: coSignerPermission,
               //@ts-ignore
@@ -124,11 +125,11 @@ describe("CloseShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolAVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
-          ownerTokenB,
+          shortPoolACurrencyVaultKey,
           poolMint,
           poolFeeAccount,
           null,
@@ -145,10 +146,13 @@ describe("CloseShortPosition", () => {
           const _tx = await program.methods
             .closeShortPositionCleanup()
             .accounts({
+              owner: user2.publicKey,
               ownerCollateralAccount: ownerTokenA,
               closePositionCleanup: {
                 owner: user2.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
+                ownerCollateralAccount: ownerTokenA,
+                currencyVault: shortPoolACurrencyVaultKey,
                 pool: shortPoolAKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
@@ -211,7 +215,7 @@ describe("CloseShortPosition", () => {
             closePositionSetup: {
               pool: shortPoolAKey,
               owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
+              currencyVault: shortPoolACurrencyVaultKey,
               position: positionKey,
               permission: badCoSignerPermission,
               //@ts-ignore
@@ -226,11 +230,11 @@ describe("CloseShortPosition", () => {
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          NON_SWAP_AUTHORITY.publicKey,
           shortPoolAVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
-          ownerTokenB,
+          shortPoolACurrencyVaultKey,
           poolMint,
           poolFeeAccount,
           null,
@@ -251,6 +255,8 @@ describe("CloseShortPosition", () => {
               closePositionCleanup: {
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
+                ownerCollateralAccount: ownerTokenA,
+                currencyVault: shortPoolACurrencyVaultKey,
                 pool: shortPoolAKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
@@ -288,7 +294,7 @@ describe("CloseShortPosition", () => {
               closePositionSetup: {
                 pool: shortPoolAKey,
                 owner: program.provider.publicKey,
-                ownerCurrencyAccount: ownerTokenB,
+                currencyVault: shortPoolACurrencyVaultKey,
                 position: positionKey,
                 permission: coSignerPermission,
                 //@ts-ignore
@@ -303,6 +309,8 @@ describe("CloseShortPosition", () => {
               closePositionCleanup: {
                 owner: program.provider.publicKey,
                 ownerCurrencyAccount: ownerTokenB,
+                ownerCollateralAccount: ownerTokenA,
+                currencyVault: shortPoolACurrencyVaultKey,
                 pool: shortPoolAKey,
                 position: positionKey,
                 lpVault: lpVaultKey,
@@ -340,7 +348,7 @@ describe("CloseShortPosition", () => {
               closePositionSetup: {
                 pool: shortPoolAKey,
                 owner: program.provider.publicKey,
-                ownerCurrencyAccount: ownerTokenB,
+                currencyVault: shortPoolACurrencyVaultKey,
                 position: positionKey,
                 permission: coSignerPermission,
                 //@ts-ignore
@@ -387,7 +395,7 @@ describe("CloseShortPosition", () => {
             closePositionSetup: {
               pool: shortPoolAKey,
               owner: program.provider.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
+              currencyVault: shortPoolACurrencyVaultKey,
               position: positionKey,
               permission: coSignerPermission,
               //@ts-ignore
@@ -395,23 +403,14 @@ describe("CloseShortPosition", () => {
             }
           })
           .instruction();
-        // Hacking the "swap" by appending a mint IX the exact amount needed to pay
-        // back interest and principal.
-        const mintTokenBToOwnerIx = createMintToCheckedInstruction(
-          tokenBKeypair.publicKey,
-          ownerTokenB,
-          program.provider.publicKey,
-          11,
-          6
-        );
         const swapIx = TokenSwap.swapInstruction(
           abSwapKey.publicKey,
           swapAuthority,
-          program.provider.publicKey,
+          SWAP_AUTHORITY.publicKey,
           shortPoolAVaultKey,
           swapTokenAccountA,
           swapTokenAccountB,
-          ownerTokenB,
+          shortPoolACurrencyVaultKey,
           poolMint,
           poolFeeAccount,
           null,
@@ -421,7 +420,8 @@ describe("CloseShortPosition", () => {
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
           TOKEN_PROGRAM_ID,
-          BigInt(positionBefore.principal.toString()),
+          // Manually adjusting in order to achieve an "exact out".
+          BigInt(positionBefore.principal.add(new anchor.BN(11)).toString()),
           BigInt(0)
         );
         await program.methods
@@ -431,6 +431,8 @@ describe("CloseShortPosition", () => {
             closePositionCleanup: {
               owner: program.provider.publicKey,
               ownerCurrencyAccount: ownerTokenB,
+              ownerCollateralAccount: ownerTokenA,
+              currencyVault: shortPoolACurrencyVaultKey,
               pool: shortPoolAKey,
               position: positionKey,
               lpVault: lpVaultKey,
@@ -438,7 +440,7 @@ describe("CloseShortPosition", () => {
               globalSettings: globalSettingsKey,
             }
           })
-          .preInstructions([setupIx, swapIx, mintTokenBToOwnerIx])
+          .preInstructions([setupIx, swapIx])
           .signers([SWAP_AUTHORITY])
           .rpc({ skipPreflight: true });
 
@@ -464,7 +466,7 @@ describe("CloseShortPosition", () => {
 
         // Assert user receives payout in tokenA
         const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-        assert.equal(ownerADiff, BigInt(979));
+        assert.equal(ownerADiff, BigInt(968));
 
         const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
         assert.equal(feeBalanceDiff.toString(), closeExecutionFee.toString());

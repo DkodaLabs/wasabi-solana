@@ -7,6 +7,10 @@ use crate::{
 #[derive(Accounts)]
 pub struct CloseLongPositionCleanup<'info> {
     pub close_position_cleanup: ClosePositionCleanup<'info>,
+
+    #[account(mut)]
+    /// The wallet that owns the assets
+    pub owner: Signer<'info>,
 }
 
 impl<'info> CloseLongPositionCleanup<'info> {

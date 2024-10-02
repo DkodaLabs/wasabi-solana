@@ -94,6 +94,14 @@ export const mochaHooks = {
         user2.publicKey,
         100_000_000_000
       ),
+      superAdminProgram.provider.connection.requestAirdrop(
+        SWAP_AUTHORITY.publicKey,
+        100_000_000_000
+      ),
+      superAdminProgram.provider.connection.requestAirdrop(
+        NON_SWAP_AUTHORITY.publicKey,
+        100_000_000_000
+      ),
     ]);
 
     const tx = new web3.Transaction();
@@ -128,7 +136,7 @@ export const mochaHooks = {
 
     // Mint underlying & Quote to the provider wallet
     const mintTx = new web3.Transaction();
-    const ataTokenA = await getAssociatedTokenAddress(
+    const ataTokenA = getAssociatedTokenAddressSync(
       tokenAKeypair.publicKey,
       program.provider.publicKey,
       false
@@ -140,7 +148,7 @@ export const mochaHooks = {
       tokenAKeypair.publicKey
     );
     mintTx.add(createAtaTokanAIx);
-    const ataTokenB = await getAssociatedTokenAddress(
+    const ataTokenB = getAssociatedTokenAddressSync(
       tokenBKeypair.publicKey,
       program.provider.publicKey,
       false
@@ -169,6 +177,49 @@ export const mochaHooks = {
     );
     mintTx.add(mintTokenBToOwnerIx);
     await program.provider.sendAndConfirm(mintTx);
+    // Mint to user2
+    const mintUser2Tx = new web3.Transaction();
+    const user2AtaTokenA = getAssociatedTokenAddressSync(
+      tokenAKeypair.publicKey,
+      user2.publicKey,
+      false
+    );
+    const createUser2AtaTokanAIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      user2AtaTokenA,
+      user2.publicKey,
+      tokenAKeypair.publicKey
+    );
+    mintUser2Tx.add(createUser2AtaTokanAIx);
+    const user2AtaTokenB = getAssociatedTokenAddressSync(
+      tokenBKeypair.publicKey,
+      user2.publicKey,
+      false
+    );
+    const createUser2AtaTokanBIx = createAssociatedTokenAccountInstruction(
+      program.provider.publicKey,
+      user2AtaTokenB,
+      user2.publicKey,
+      tokenBKeypair.publicKey
+    );
+    mintUser2Tx.add(createUser2AtaTokanBIx);
+    const mintTokenAToUser2Ix = createMintToCheckedInstruction(
+      tokenAKeypair.publicKey,
+      user2AtaTokenA,
+      program.provider.publicKey,
+      1_000_000_000 * Math.pow(10, 6),
+      6
+    );
+    mintUser2Tx.add(mintTokenAToUser2Ix);
+    const mintTokenBToUser2Ix = createMintToCheckedInstruction(
+      tokenBKeypair.publicKey,
+      user2AtaTokenB,
+      program.provider.publicKey,
+      1_000_000_000 * Math.pow(10, 6),
+      6
+    );
+    mintUser2Tx.add(mintTokenBToUser2Ix);
+    await program.provider.sendAndConfirm(mintUser2Tx);
 
     // Create a TokenSwap pool for the pair.
     const initSwapSetupIxs: web3.TransactionInstruction[] = [];

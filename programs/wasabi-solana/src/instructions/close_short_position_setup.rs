@@ -25,7 +25,7 @@ pub fn handler(
     )?;
     let position = &ctx.accounts.close_position_setup.position;
     // allow "owner" to swap on behalf of the collateral vault
-    ctx.accounts.close_position_setup.approve_owner_delegation(
+    ctx.accounts.close_position_setup.approve_swap_authority_delegation(
         position.collateral_amount,
         ctx.accounts.close_position_setup.pool.to_account_info(),
         &[short_pool_signer_seeds!(ctx.accounts.close_position_setup.pool)],

@@ -28,13 +28,13 @@ pub fn handler(ctx: Context<LiquidatePositionSetup>, args: ClosePositionArgs) ->
     let position = &ctx.accounts.close_position_setup.position;
     // allow "owner" to swap on behalf of the collateral vault
     if ctx.accounts.close_position_setup.pool.is_long_pool {
-      ctx.accounts.close_position_setup.approve_owner_delegation(
+      ctx.accounts.close_position_setup.approve_swap_authority_delegation(
         position.collateral_amount,
         ctx.accounts.close_position_setup.pool.to_account_info(),
         &[long_pool_signer_seeds!(ctx.accounts.close_position_setup.pool)],
       )?;
     } else {
-      ctx.accounts.close_position_setup.approve_owner_delegation(
+      ctx.accounts.close_position_setup.approve_swap_authority_delegation(
         position.collateral_amount,
         ctx.accounts.close_position_setup.pool.to_account_info(),
         &[short_pool_signer_seeds!(ctx.accounts.close_position_setup.pool)],
