@@ -161,8 +161,10 @@ pub fn handler(ctx: Context<ClaimPosition>, _args: ClaimPositionArgs) -> Result<
 
         let close_amounts = CloseAmounts {
             payout: 0,
+            collateral_spent: position.collateral_amount,
             interest_paid,
             principal_repaid: position.principal,
+            past_fees: position.fees_to_be_paid,
             close_fee,
         };
         // pay out the close fees
@@ -176,8 +178,10 @@ pub fn handler(ctx: Context<ClaimPosition>, _args: ClaimPositionArgs) -> Result<
 
         let close_amounts = CloseAmounts {
             payout: claim_amount,
+            collateral_spent: position.collateral_amount,
             interest_paid,
             principal_repaid: position.principal,
+            past_fees: position.fees_to_be_paid,
             close_fee,
         };
         // pay out the collateral (claim_amount)

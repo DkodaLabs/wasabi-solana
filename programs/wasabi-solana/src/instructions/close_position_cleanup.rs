@@ -262,8 +262,10 @@ impl<'info> ClosePositionCleanup<'info> {
 #[derive(Default)]
 pub struct CloseAmounts {
     pub payout: u64,
+    pub collateral_spent: u64,
     pub interest_paid: u64,
     pub principal_repaid: u64,
+    pub past_fees: u64,
     pub close_fee: u64,
 }
 
@@ -338,12 +340,15 @@ pub fn shared_position_cleanup(
         crate::utils::deduct(close_amounts.payout, close_position_request.execution_fee);
     close_amounts.payout = payout;
     close_amounts.close_fee = close_fee;
+    close_amounts.collateral_spent = collateral_spent;
+    close_amounts.past_fees = position.fees_to_be_paid;
 
     // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
     let lp_vault_payment = position
         .principal
         .checked_add(interest)
         .expect("overflow");
+
     // Transfer the prinicpal and interest amount to the LP Vault.
     close_position_cleanup.transfer_from_pool_to_vault(lp_vault_payment)?;
     if currency_diff < lp_vault_payment && !is_liquidation {
