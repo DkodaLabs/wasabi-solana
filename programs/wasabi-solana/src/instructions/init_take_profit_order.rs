@@ -30,13 +30,15 @@ pub struct InitTakeProfitOrder<'info> {
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct InitTakeProfitOrderArgs {
-  min_amount_out: u64,
+  maker_amount: u64,
+  taker_amount: u64,
 }
 
 pub fn handler(ctx: Context<InitTakeProfitOrder>, args: InitTakeProfitOrderArgs) -> Result<()> {
   let take_profit_order = &mut ctx.accounts.take_profit_order;
-  take_profit_order.min_amount_out = args.min_amount_out;
+  take_profit_order.maker_amount = args.maker_amount;
+  take_profit_order.taker_amount = args.taker_amount;
   take_profit_order.position = ctx.accounts.position.key();
-  
+
   Ok(())
 }

@@ -26,7 +26,7 @@ impl<'info> TakeProfitCleanup<'info> {
 pub fn handler(ctx: Context<TakeProfitCleanup>) -> Result<()> {
     let close_amounts = crate::instructions::close_position_cleanup::shared_position_cleanup(
         &mut ctx.accounts.close_position_cleanup,
-        true,
+        false,
     )?;
 
     // uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
@@ -35,9 +35,11 @@ pub fn handler(ctx: Context<TakeProfitCleanup>) -> Result<()> {
         + close_amounts.close_fee
         + close_amounts.interest_paid
         + close_amounts.principal_repaid;
-    if actual_taker_amount < ctx.accounts.take_profit_order.min_amount_out {
+    if actual_taker_amount < ctx.accounts.take_profit_order.taker_amount {
         return Err(ErrorCode::PriceTargetNotReached.into());
     }
+
+    ctx.accounts.take_profit_order.close(ctx.accounts.close_position_cleanup.owner.to_account_info())?;
 
     Ok(())
 }

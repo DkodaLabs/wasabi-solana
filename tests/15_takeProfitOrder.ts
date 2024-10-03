@@ -6,11 +6,9 @@ import {
   openPosLut,
   poolFeeAccount,
   poolMint,
-  superAdminProgram,
   SWAP_AUTHORITY,
   swapTokenAccountA,
   swapTokenAccountB,
-  tokenAKeypair,
   tokenMintA,
   tokenMintB,
   user2,
@@ -174,10 +172,12 @@ describe("takeProfitOrder", () => {
     });
 
     it("should init TP order", async () => {
-      const minAmountOut = new anchor.BN(100);
+      const makerAmount = new anchor.BN(100);
+      const takerAmount = new anchor.BN(200);
       await program.methods
         .initTakeProfitOrder({
-          minAmountOut,
+          makerAmount,
+          takerAmount,
         })
         .accounts({
           trader: user2.publicKey,
@@ -189,8 +189,12 @@ describe("takeProfitOrder", () => {
         takeProfitOrderKey
       );
       assert.equal(
-        takeProfitOrder.minAmountOut.toString(),
-        minAmountOut.toString()
+        takeProfitOrder.makerAmount.toString(),
+        makerAmount.toString()
+      );
+      assert.equal(
+        takeProfitOrder.takerAmount.toString(),
+        takerAmount.toString()
       );
       assert.equal(takeProfitOrder.position.toString(), positionKey.toString());
     });
@@ -209,8 +213,127 @@ describe("takeProfitOrder", () => {
       assert.isNull(takeProfitOrder);
     });
 
+    it("Should fail when the TP taker amount is not met", async () => {
+      const makerAmount = new anchor.BN(100);
+      const takerAmount = new anchor.BN(2_000_000);
+      const closeRequestExpiration = new anchor.BN(
+        Date.now() / 1_000 + 60 * 60
+      );
+      const positionBefore = await program.account.position.fetch(positionKey);
+
+      await program.methods
+        .initTakeProfitOrder({
+          makerAmount,
+          takerAmount,
+        })
+        .accounts({
+          trader: user2.publicKey,
+          position: positionKey,
+        })
+        .signers([user2])
+        .rpc({ skipPreflight: true });
+      const setupIx = await program.methods
+        .takeProfitSetup({
+          expiration: closeRequestExpiration,
+          minTargetAmount: new anchor.BN(0),
+          interest: new anchor.BN(10),
+          executionFee: new anchor.BN(11),
+        })
+        .accounts({
+          closePositionSetup: {
+            pool: longPoolBKey,
+            owner: user2.publicKey,
+            currencyVault: longPoolBCurrencyVaultKey,
+            position: positionKey,
+            permission: coSignerPermission,
+            // @ts-ignore
+            authority: SWAP_AUTHORITY.publicKey,
+          },
+        })
+        .instruction();
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        SWAP_AUTHORITY.publicKey,
+        longPoolBVaultKey,
+        swapTokenAccountB,
+        swapTokenAccountA,
+        longPoolBCurrencyVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintB,
+        tokenMintA,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(positionBefore.collateralAmount.toString()),
+        BigInt(0)
+      );
+      try {
+        const _tx = await program.methods
+          .takeProfitCleanup()
+          .accounts({
+            closePositionCleanup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              ownerCollateralAccount: ownerTokenB,
+              currencyVault: longPoolBCurrencyVaultKey,
+              pool: longPoolBKey,
+              position: positionKey,
+              lpVault: lpVaultKey,
+              feeWallet: feeWalletA,
+              globalSettings: globalSettingsKey,
+            },
+            takeProfitOrder: takeProfitOrderKey,
+          })
+          .preInstructions([setupIx, swapIx])
+          .transaction();
+        const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new anchor.web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+
+        const tx = new anchor.web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: true,
+        });
+        throw new Error("Failed to error");
+      } catch (e) {
+        const err = anchor.translateError(e, anchor.parseIdlErrors(program.idl));
+        if (err instanceof anchor.AnchorError) {
+          assert.equal(err.error.errorCode.number, 6017);
+        } else if (err instanceof anchor.ProgramError) {
+          assert.equal(err.code, 6017);
+        } else {
+          assert.ok(false);
+        }
+      }
+
+      // must close the TP order so new ones can be created on the existing position
+      await program.methods
+        .closeTakeProfitOrder()
+        .accounts({
+          trader: user2.publicKey,
+          position: positionKey,
+        })
+        .signers([user2])
+        .rpc({ skipPreflight: true });
+    });
+
     it("should execute TP order", async () => {
-      const minAmountOut = new anchor.BN(100);
+      const makerAmount = new anchor.BN(100);
+      const takerAmount = new anchor.BN(200);
       const closeRequestExpiration = new anchor.BN(
         Date.now() / 1_000 + 60 * 60
       );
@@ -229,7 +352,8 @@ describe("takeProfitOrder", () => {
 
       await program.methods
         .initTakeProfitOrder({
-          minAmountOut,
+          makerAmount,
+          takerAmount,
         })
         .accounts({
           trader: user2.publicKey,
@@ -313,17 +437,24 @@ describe("takeProfitOrder", () => {
         skipPreflight: true,
       });
 
-      const [positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
-        await Promise.all([
-          program.account.position.fetchNullable(positionKey),
-          getMultipleTokenAccounts(program.provider.connection, [
-            vaultKey,
-            ownerTokenA,
-            feeWalletA,
-          ]),
-        ]);
+      const [
+        takerProfitOrderAfter,
+        positionAfter,
+        [vaultAfter, ownerAAfter, feeBalanceAfter],
+      ] = await Promise.all([
+        program.account.takeProfitOrder.fetchNullable(takeProfitOrderKey),
+        program.account.position.fetchNullable(positionKey),
+        getMultipleTokenAccounts(program.provider.connection, [
+          vaultKey,
+          ownerTokenA,
+          feeWalletA,
+        ]),
+      ]);
       // Position should be cleaned up
       assert.isNull(positionAfter);
+
+      // TP order should be closed
+      assert.isNull(takerProfitOrderAfter);
 
       // should pay back some interest/principal
       const vaultDiff = vaultAfter.amount - vaultBefore.amount;
