@@ -3,6 +3,7 @@ import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
   abSwapKey,
   feeWalletA,
+  NON_SWAP_AUTHORITY,
   openPosLut,
   poolFeeAccount,
   poolMint,
@@ -14,7 +15,6 @@ import {
   user2,
 } from "./rootHooks";
 import {
-  createAssociatedTokenAccountInstruction,
   getAssociatedTokenAddressSync,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
@@ -28,6 +28,13 @@ describe("liquidate", () => {
     [
       anchor.utils.bytes.utf8.encode("admin"),
       SWAP_AUTHORITY.publicKey.toBuffer(),
+    ],
+    program.programId
+  );
+  const [liquidateSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+    [
+      anchor.utils.bytes.utf8.encode("admin"),
+      NON_SWAP_AUTHORITY.publicKey.toBuffer(),
     ],
     program.programId
   );
@@ -196,24 +203,13 @@ describe("liquidate", () => {
       });
     });
 
-    it("should liquidate position", async () => {
+    it("should fail without liquidate permissions", async () => {
       const closeRequestExpiration = new anchor.BN(
         Date.now() / 1_000 + 60 * 60
       );
       const positionBefore = await program.account.position.fetch(
         longPositionKey
       );
-      const vaultKey = getAssociatedTokenAddressSync(
-        positionBefore.currency,
-        lpVaultTokenAKey,
-        true
-      );
-      const [vaultBefore, ownerABefore, feeBalanceBefore] =
-        await getMultipleTokenAccounts(program.provider.connection, [
-          vaultKey,
-          ownerTokenA,
-          feeWalletA,
-        ]);
 
       const setupIx = await program.methods
         .liquidatePositionSetup({
@@ -258,6 +254,116 @@ describe("liquidate", () => {
         BigInt(positionBefore.collateralAmount.toString()),
         BigInt(0)
       );
+      try {
+
+        const _tx = await program.methods
+          .liquidatePositionCleanup()
+          .accounts({
+            closePositionCleanup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              ownerCollateralAccount: ownerTokenB,
+              currencyVault: longPoolBCurrencyVaultKey,
+              pool: longPoolBKey,
+              position: longPositionKey,
+              lpVault: lpVaultTokenAKey,
+              feeWallet: feeWalletA,
+              globalSettings: globalSettingsKey,
+            },
+          })
+          .preInstructions([setupIx, swapIx])
+          .transaction();
+        const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new anchor.web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+  
+        const tx = new anchor.web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: true,
+        });
+      } catch (e) {
+        const err = anchor.translateError(
+          e,
+          anchor.parseIdlErrors(program.idl)
+        );
+        if (err instanceof anchor.AnchorError) {
+          assert.equal(err.error.errorCode.number, 6000);
+        } else if (err instanceof anchor.ProgramError) {
+          assert.equal(err.code, 6000);
+        } else {
+          assert.ok(false);
+        }
+      }
+    });
+
+    it("should liquidate position", async () => {
+      const closeRequestExpiration = new anchor.BN(
+        Date.now() / 1_000 + 60 * 60
+      );
+      const positionBefore = await program.account.position.fetch(
+        longPositionKey
+      );
+      const vaultKey = getAssociatedTokenAddressSync(
+        positionBefore.currency,
+        lpVaultTokenAKey,
+        true
+      );
+      const [vaultBefore, ownerABefore, feeBalanceBefore] =
+        await getMultipleTokenAccounts(program.provider.connection, [
+          vaultKey,
+          ownerTokenA,
+          feeWalletA,
+        ]);
+
+      const setupIx = await program.methods
+        .liquidatePositionSetup({
+          expiration: closeRequestExpiration,
+          minTargetAmount: new anchor.BN(0),
+          interest: new anchor.BN(10),
+          executionFee: new anchor.BN(11),
+        })
+        .accounts({
+          closePositionSetup: {
+            pool: longPoolBKey,
+            owner: user2.publicKey,
+            currencyVault: longPoolBCurrencyVaultKey,
+            position: longPositionKey,
+            permission: liquidateSignerPermission,
+            // @ts-ignore
+            authority: NON_SWAP_AUTHORITY.publicKey,
+          },
+        })
+        .instruction();
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        NON_SWAP_AUTHORITY.publicKey,
+        longPoolBVaultKey,
+        swapTokenAccountB,
+        swapTokenAccountA,
+        longPoolBCurrencyVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintB,
+        tokenMintA,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(positionBefore.collateralAmount.toString()),
+        BigInt(0)
+      );
       const _tx = await program.methods
         .liquidatePositionCleanup()
         .accounts({
@@ -286,7 +392,7 @@ describe("liquidate", () => {
       }).compileToV0Message([lookupAccount.value]);
 
       const tx = new anchor.web3.VersionedTransaction(message);
-      await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+      await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
         skipPreflight: true,
       });
 
@@ -432,9 +538,9 @@ describe("liquidate", () => {
             owner: user2.publicKey,
             currencyVault: shortPoolACurrencyVaultKey,
             position: shortPositionKey,
-            permission: coSignerPermission,
+            permission: liquidateSignerPermission,
             // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+            authority: NON_SWAP_AUTHORITY.publicKey,
           },
         })
         .instruction();
@@ -445,7 +551,7 @@ describe("liquidate", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        SWAP_AUTHORITY.publicKey,
+        NON_SWAP_AUTHORITY.publicKey,
         shortPoolAVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
@@ -490,7 +596,7 @@ describe("liquidate", () => {
       }).compileToV0Message([lookupAccount.value]);
 
       const tx = new anchor.web3.VersionedTransaction(message);
-      await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+      await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
         skipPreflight: true,
       });
 

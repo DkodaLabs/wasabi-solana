@@ -13,25 +13,32 @@ pub struct CloseLongPositionSetup<'info> {
 }
 
 impl<'info> CloseLongPositionSetup<'info> {
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate(ctx: &Context<CloseLongPositionSetup>, args: &ClosePositionArgs) -> Result<()> {
         require!(
-            self.owner.key() == self.close_position_setup.owner.key(),
+            ctx.accounts.owner.key() == ctx.accounts.close_position_setup.owner.key(),
             ErrorCode::IncorrectOwner
         );
+
+        if !ctx
+            .accounts
+            .close_position_setup
+            .permission
+            .can_cosign_swaps()
+        {
+            return Err(ErrorCode::InvalidSwapCosigner.into());
+        }
+
+        ClosePositionSetup::validate(
+            &ctx.accounts.close_position_setup,
+            &args,
+            CloseLongPositionCleanup::get_hash(),
+        )?;
+
         Ok(())
     }
 }
 
 pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) -> Result<()> {
-    // Local validations
-    ctx.accounts.validate()?;
-
-    // Shared validations
-    ClosePositionSetup::validate(
-        &ctx.accounts.close_position_setup,
-        &args,
-        CloseLongPositionCleanup::get_hash(),
-    )?;
     // The user is long WIF and used SOL as downpayment. When closing the long WIF position we
     //  need to take all the WIF collateral and sell it for SOL.
     let position = &ctx.accounts.close_position_setup.position;

@@ -108,6 +108,7 @@ pub mod wasabi_solana {
         open_long_position_cleanup::handler(ctx)
     }
 
+    #[access_control(CloseLongPositionSetup::validate(&ctx, &args))]
     pub fn close_long_position_setup(
         ctx: Context<CloseLongPositionSetup>,
         args: instructions::close_position_setup::ClosePositionArgs,
@@ -131,6 +132,7 @@ pub mod wasabi_solana {
         open_short_position_cleanup::handler(ctx)
     }
 
+    #[access_control(CloseShortPositionSetup::validate(&ctx, &args))]
     pub fn close_short_position_setup(
         ctx: Context<CloseShortPositionSetup>,
         args: ClosePositionArgs,
@@ -142,6 +144,7 @@ pub mod wasabi_solana {
         close_short_position_cleanup::handler(ctx)
     }
     
+    #[access_control(LiquidatePositionSetup::validate(&ctx, &args))]
     pub fn liquidate_position_setup(ctx: Context<LiquidatePositionSetup>, args: ClosePositionArgs) -> Result<()> {
         instructions::liquidate_position_setup::handler(ctx, args)
     }
@@ -150,6 +153,7 @@ pub mod wasabi_solana {
         instructions::liquidate_position_cleanup::handler(ctx)
     }
 
+    #[access_control(TakeProfitSetup::validate(&ctx, &args))]
     pub fn take_profit_setup(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
         instructions::take_profit_setup::handler(ctx, args)
     }

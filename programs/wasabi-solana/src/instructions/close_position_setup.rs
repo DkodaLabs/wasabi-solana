@@ -77,10 +77,6 @@ impl<'info> ClosePositionSetup<'info> {
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(&self.sysvar_info, cleanup_ix_hash)?;
 
-        if !self.permission.can_cosign_swaps() {
-            return Err(ErrorCode::InvalidSwapCosigner.into());
-        }
-
         require!(
             self.owner.key() == self.position.trader,
             ErrorCode::IncorrectOwner
