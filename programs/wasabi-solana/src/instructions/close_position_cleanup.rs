@@ -12,7 +12,13 @@ use crate::{
 #[derive(Accounts)]
 pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
-    owner: Signer<'info>,
+    /// The wallet that owns the assets
+    /// CHECK: No need
+    pub owner: AccountInfo<'info>,
+    #[account(mut)]
+    /// The account that holds the owner's collateral currency.
+    /// NOTE: this account is only used when closing `Short` Positions
+    pub owner_collateral_account: Account<'info, TokenAccount>,
     #[account(mut)]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Account<'info, TokenAccount>,
@@ -23,10 +29,15 @@ pub struct ClosePositionCleanup<'info> {
     /// The Long or Short Pool that owns the Position
     pub pool: Account<'info, BasePool>,
 
+    /// The collateral account that is the source of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    /// The token account that is the destination of the swap
+    pub currency_vault: Box<Account<'info, TokenAccount>>,
+
     #[account(
       mut,
-      close = owner,
+      close = authority,
       seeds = [b"close_pos", owner.key().as_ref()],
       bump,
     )]
@@ -38,6 +49,9 @@ pub struct ClosePositionCleanup<'info> {
       has_one = collateral_vault,
     )]
     pub position: Account<'info, Position>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
 
     /// The LP Vault that the user borrowed from
     #[account(
@@ -69,7 +83,7 @@ pub struct ClosePositionCleanup<'info> {
 impl<'info> ClosePositionCleanup<'info> {
     pub fn get_destination_delta(&self) -> u64 {
         if self.pool.is_long_pool {
-            self.owner_currency_account
+            self.currency_vault
                 .amount
                 .checked_sub(
                     self.close_position_request
@@ -78,7 +92,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 )
                 .expect("overflow")
         } else {
-            self.owner_currency_account
+            self.currency_vault
                 .amount
                 .checked_sub(
                     self.close_position_request
@@ -150,25 +164,51 @@ impl<'info> ClosePositionCleanup<'info> {
         token::revoke(cpi_ctx)
     }
 
-    pub fn transfer_from_user_to_vault(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = Transfer {
-            from: self.owner_currency_account.to_account_info(),
-            to: self.vault.to_account_info(),
-            authority: self.owner.to_account_info(),
-        };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token::transfer(cpi_ctx, amount)
+    /// Transfers funds from the pool account to the LP vault account
+    pub fn transfer_from_pool_to_vault(&self, amount: u64) -> Result<()> {
+        if self.pool.is_long_pool {
+            let cpi_accounts = Transfer {
+                from: self.currency_vault.to_account_info(),
+                to: self.vault.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[long_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        } else {
+            let cpi_accounts = Transfer {
+                from: self.currency_vault.to_account_info(),
+                to: self.vault.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[short_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        }
     }
 
     pub fn transfer_fees(&self, amount: u64) -> Result<()> {
         if self.pool.is_long_pool {
             // Fees for long are paid in Currency token (typically SOL)
             let cpi_accounts = Transfer {
-                from: self.owner_currency_account.to_account_info(),
+                from: self.currency_vault.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
-                authority: self.owner.to_account_info(),
+                authority: self.pool.to_account_info(),
             };
-            let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[long_pool_signer_seeds!(self.pool)],
+            };
             token::transfer(cpi_ctx, amount)
         } else {
             // Fees for shorts are paid in collateral token (typically SOL)
@@ -186,13 +226,46 @@ impl<'info> ClosePositionCleanup<'info> {
             token::transfer(cpi_ctx, amount)
         }
     }
+
+    pub fn transfer_payout_from_pool_to_user(&self, amount: u64) -> Result<()> {
+        if self.pool.is_long_pool {
+            let cpi_accounts = Transfer {
+                from: self.currency_vault.to_account_info(),
+                to: self.owner_currency_account.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[long_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        } else {
+            // short must payout user in collateral (i.e. SOL for WIF/SOL)
+            let cpi_accounts = Transfer {
+                from: self.collateral_vault.to_account_info(),
+                to: self.owner_collateral_account.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[short_pool_signer_seeds!(self.pool)],
+            };
+            token::transfer(cpi_ctx, amount)
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct CloseAmounts {
     pub payout: u64,
+    pub collateral_spent: u64,
     pub interest_paid: u64,
     pub principal_repaid: u64,
+    pub past_fees: u64,
     pub close_fee: u64,
 }
 
@@ -245,7 +318,7 @@ pub fn shared_position_cleanup(
         let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
         close_amounts.principal_repaid = _principal_repaid;
         // 2. Deduct interest
-        let (_payout, _interest_paid) = crate::utils::deduct(currency_diff, interest);
+        let (_payout, _interest_paid) = crate::utils::deduct(_payout, interest);
         close_amounts.interest_paid = _interest_paid;
         _payout
     } else {
@@ -267,20 +340,26 @@ pub fn shared_position_cleanup(
         crate::utils::deduct(close_amounts.payout, close_position_request.execution_fee);
     close_amounts.payout = payout;
     close_amounts.close_fee = close_fee;
+    close_amounts.collateral_spent = collateral_spent;
+    close_amounts.past_fees = position.fees_to_be_paid;
 
     // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
     let lp_vault_payment = position
         .principal
-        .checked_add(close_position_request.interest)
+        .checked_add(interest)
         .expect("overflow");
+
     // Transfer the prinicpal and interest amount to the LP Vault.
-    close_position_cleanup.transfer_from_user_to_vault(lp_vault_payment)?;
+    close_position_cleanup.transfer_from_pool_to_vault(lp_vault_payment)?;
     if currency_diff < lp_vault_payment && !is_liquidation {
         return Err(ErrorCode::BadDebt.into());
     }
 
     // Pay the fees
     close_position_cleanup.transfer_fees(close_fee)?;
+
+    // Transfer payout
+    close_position_cleanup.transfer_payout_from_pool_to_user(close_amounts.payout)?;
 
     // Emit close events
     if is_liquidation {

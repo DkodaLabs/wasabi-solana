@@ -6,6 +6,7 @@ pub mod lp_vault;
 pub mod open_position_request;
 pub mod permission;
 pub mod position;
+pub mod take_profit_order;
 
 pub use base_pool::*;
 pub use close_position_request::*;
@@ -15,3 +16,4 @@ pub use lp_vault::*;
 pub use open_position_request::*;
 pub use permission::*;
 pub use position::*;
+pub use take_profit_order::*;

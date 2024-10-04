@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{instructions::close_position_setup::*, long_pool_signer_seeds};
+use crate::{error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds};
 
 use super::CloseLongPositionCleanup;
 
@@ -12,7 +12,21 @@ pub struct CloseLongPositionSetup<'info> {
     pub owner: Signer<'info>,
 }
 
+impl<'info> CloseLongPositionSetup<'info> {
+    pub fn validate(&self) -> Result<()> {
+        require!(
+            self.owner.key() == self.close_position_setup.owner.key(),
+            ErrorCode::IncorrectOwner
+        );
+        Ok(())
+    }
+}
+
 pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) -> Result<()> {
+    // Local validations
+    ctx.accounts.validate()?;
+
+    // Shared validations
     ClosePositionSetup::validate(
         &ctx.accounts.close_position_setup,
         &args,
@@ -22,12 +36,16 @@ pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) ->
     //  need to take all the WIF collateral and sell it for SOL.
     let position = &ctx.accounts.close_position_setup.position;
     // allow "owner" to swap on behalf of the collateral vault
-    ctx.accounts.close_position_setup.approve_owner_delegation(
-        position.collateral_amount,
-        ctx.accounts.close_position_setup.pool.to_account_info(),
-        &[long_pool_signer_seeds!(ctx.accounts.close_position_setup.pool)],
-    )?;
-    // TODO: Pull the collateral from the LongPool vault
+    ctx.accounts
+        .close_position_setup
+        .approve_swap_authority_delegation(
+            position.collateral_amount,
+            ctx.accounts.close_position_setup.pool.to_account_info(),
+            &[long_pool_signer_seeds!(
+                ctx.accounts.close_position_setup.pool
+            )],
+        )?;
+
     // Create a close position request
     ctx.accounts
         .close_position_setup

@@ -68,6 +68,14 @@ pub mod wasabi_solana {
         init_short_pool::handler(ctx)
     }
 
+    pub fn init_take_profit_order(ctx: Context<InitTakeProfitOrder>, args: InitTakeProfitOrderArgs) -> Result<()> {
+        init_take_profit_order::handler(ctx, args)
+    }
+
+    pub fn close_take_profit_order(ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
+        close_take_profit_order::handler(ctx)
+    }
+
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
@@ -140,6 +148,14 @@ pub mod wasabi_solana {
 
     pub fn liquidate_position_cleanup(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
         instructions::liquidate_position_cleanup::handler(ctx)
+    }
+
+    pub fn take_profit_setup(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
+        instructions::take_profit_setup::handler(ctx, args)
+    }
+
+    pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
+        instructions::take_profit_cleanup::handler(ctx)
     }
 
     pub fn claim_position(ctx: Context<ClaimPosition>, args: ClaimPositionArgs) -> Result<()> {

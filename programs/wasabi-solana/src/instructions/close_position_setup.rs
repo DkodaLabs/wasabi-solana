@@ -7,14 +7,14 @@ use crate::{
     Permission, Position,
 };
 
+// Makes a swap using balances in the vault, but settles the payout to user account
+
 #[derive(Accounts)]
 pub struct ClosePositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     /// CHECK: No need
     pub owner: AccountInfo<'info>,
-    /// The account that holds the owner's base currency
-    pub owner_currency_account: Account<'info, TokenAccount>,
 
     #[account(
       mut,
@@ -31,6 +31,11 @@ pub struct ClosePositionSetup<'info> {
     /// The collateral account that is the source of the swap
     pub collateral_vault: Account<'info, TokenAccount>,
 
+    /// The token account that is the destination of the swap
+    #[account(mut)]
+    pub currency_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
@@ -40,7 +45,7 @@ pub struct ClosePositionSetup<'info> {
 
     #[account(
       init,
-      payer = owner,
+      payer = authority,
       seeds = [b"close_pos", owner.key().as_ref()],
       bump,
       space = 8 + std::mem::size_of::<ClosePositionRequest>(),
@@ -96,7 +101,7 @@ impl<'info> ClosePositionSetup<'info> {
         let close_position_request = &mut self.close_position_request;
         close_position_request.swap_cache.source_bal_before = self.collateral_vault.amount;
         close_position_request.swap_cache.destination_bal_before =
-            self.owner_currency_account.amount;
+            self.currency_vault.amount;
         close_position_request.interest = args.interest;
         close_position_request.max_amount_in = position.collateral_amount;
         close_position_request.min_target_amount = args.min_target_amount;
@@ -106,7 +111,8 @@ impl<'info> ClosePositionSetup<'info> {
         Ok(())
     }
 
-    pub fn approve_owner_delegation(
+    /// Approves the SWAP_AUTHORITY key to sign for the swap
+    pub fn approve_swap_authority_delegation(
         &self,
         amount: u64,
         pool: AccountInfo<'info>,
@@ -114,7 +120,7 @@ impl<'info> ClosePositionSetup<'info> {
     ) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.collateral_vault.to_account_info(),
-            delegate: self.owner.to_account_info(),
+            delegate: self.authority.to_account_info(),
             authority: pool,
         };
         let cpi_ctx = CpiContext {

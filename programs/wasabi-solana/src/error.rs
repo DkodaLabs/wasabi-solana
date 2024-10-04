@@ -36,4 +36,6 @@ pub enum ErrorCode {
     PrincipalTooHigh, // 6015
     #[msg("Value deviated too much")]
     ValueDeviatedTooMuch, // 6016
+    #[msg("Price target not reached")]
+    PriceTargetNotReached,  // 6017
 }
