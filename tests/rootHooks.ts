@@ -43,6 +43,7 @@ export let poolMint: web3.PublicKey;
 export let poolFeeAccount: web3.PublicKey;
 
 export const SWAP_AUTHORITY = web3.Keypair.generate();
+/** Can liquidate AND init vaults */
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 

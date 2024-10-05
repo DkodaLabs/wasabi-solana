@@ -13,7 +13,7 @@ pub struct TakeProfitSetup<'info> {
 }
 
 impl<'info> TakeProfitSetup<'info> {
-    pub fn validate(ctx: Context<TakeProfitSetup>) -> Result<()> {
+    pub fn validate(ctx: &Context<TakeProfitSetup>, args: &ClosePositionArgs) -> Result<()> {
         // Validate the authority can co-sign swaps
         require!(
             ctx.accounts
@@ -23,16 +23,17 @@ impl<'info> TakeProfitSetup<'info> {
             ErrorCode::InvalidPermissions
         );
 
+        ClosePositionSetup::validate(
+            &ctx.accounts.close_position_setup,
+            &args,
+            TakeProfitCleanup::get_hash(),
+        )?;
+
         Ok(())
     }
 }
 
 pub fn handler(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
-    ClosePositionSetup::validate(
-        &ctx.accounts.close_position_setup,
-        &args,
-        TakeProfitCleanup::get_hash(),
-    )?;
     let position = &ctx.accounts.close_position_setup.position;
 
     // allow "authority" to swap on behalf of the collateral vault

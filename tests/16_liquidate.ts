@@ -22,7 +22,7 @@ import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import { assert } from "chai";
 import { getMultipleTokenAccounts } from "./utils";
 
-describe("takeProfitOrder", () => {
+describe("liquidate", () => {
   const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
   const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
     [
@@ -31,7 +31,7 @@ describe("takeProfitOrder", () => {
     ],
     program.programId
   );
-  const [nonSwapAuthSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+  const [liquidateSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("admin"),
       NON_SWAP_AUTHORITY.publicKey.toBuffer(),
@@ -97,7 +97,7 @@ describe("takeProfitOrder", () => {
     shortPoolAKey,
     true
   );
-  const nonce = 15;
+  const nonce = 16;
   const [longPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [
       anchor.utils.bytes.utf8.encode("position"),
@@ -118,21 +118,6 @@ describe("takeProfitOrder", () => {
     ],
     program.programId
   );
-  const [longTakeProfitOrderKey] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      anchor.utils.bytes.utf8.encode("take_profit_order"),
-      longPositionKey.toBuffer(),
-    ],
-    program.programId
-  );
-  const [shortTakeProfitOrderKey] =
-    anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode("take_profit_order"),
-        shortPositionKey.toBuffer(),
-      ],
-      program.programId
-    );
 
   describe("Long", () => {
     before(async () => {
@@ -218,56 +203,7 @@ describe("takeProfitOrder", () => {
       });
     });
 
-    it("should init TP order", async () => {
-      const makerAmount = new anchor.BN(100);
-      const takerAmount = new anchor.BN(200);
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc();
-      const takeProfitOrder = await program.account.takeProfitOrder.fetch(
-        longTakeProfitOrderKey
-      );
-      assert.equal(
-        takeProfitOrder.makerAmount.toString(),
-        makerAmount.toString()
-      );
-      assert.equal(
-        takeProfitOrder.takerAmount.toString(),
-        takerAmount.toString()
-      );
-      assert.equal(
-        takeProfitOrder.position.toString(),
-        longPositionKey.toString()
-      );
-    });
-
-    it("should close TP order", async () => {
-      await program.methods
-        .closeTakeProfitOrder()
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc();
-      const takeProfitOrder =
-        await program.account.takeProfitOrder.fetchNullable(
-          longTakeProfitOrderKey
-        );
-      assert.isNull(takeProfitOrder);
-    });
-
-    it("Should fail when authority cannot co-sign swaps", async () => {
-      const makerAmount = new anchor.BN(100);
-      const takerAmount = new anchor.BN(2_000_000);
+    it("should fail without liquidate permissions", async () => {
       const closeRequestExpiration = new anchor.BN(
         Date.now() / 1_000 + 60 * 60
       );
@@ -275,19 +211,8 @@ describe("takeProfitOrder", () => {
         longPositionKey
       );
 
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
       const setupIx = await program.methods
-        .takeProfitSetup({
+        .liquidatePositionSetup({
           expiration: closeRequestExpiration,
           minTargetAmount: new anchor.BN(0),
           interest: new anchor.BN(10),
@@ -299,7 +224,117 @@ describe("takeProfitOrder", () => {
             owner: user2.publicKey,
             currencyVault: longPoolBCurrencyVaultKey,
             position: longPositionKey,
-            permission: nonSwapAuthSignerPermission,
+            permission: coSignerPermission,
+            // @ts-ignore
+            authority: SWAP_AUTHORITY.publicKey,
+          },
+        })
+        .instruction();
+      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+        [abSwapKey.publicKey.toBuffer()],
+        TOKEN_SWAP_PROGRAM_ID
+      );
+      const swapIx = TokenSwap.swapInstruction(
+        abSwapKey.publicKey,
+        swapAuthority,
+        SWAP_AUTHORITY.publicKey,
+        longPoolBVaultKey,
+        swapTokenAccountB,
+        swapTokenAccountA,
+        longPoolBCurrencyVaultKey,
+        poolMint,
+        poolFeeAccount,
+        null,
+        tokenMintB,
+        tokenMintA,
+        TOKEN_SWAP_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        BigInt(positionBefore.collateralAmount.toString()),
+        BigInt(0)
+      );
+      try {
+
+        const _tx = await program.methods
+          .liquidatePositionCleanup()
+          .accounts({
+            closePositionCleanup: {
+              owner: user2.publicKey,
+              ownerCurrencyAccount: ownerTokenA,
+              ownerCollateralAccount: ownerTokenB,
+              currencyVault: longPoolBCurrencyVaultKey,
+              pool: longPoolBKey,
+              position: longPositionKey,
+              lpVault: lpVaultTokenAKey,
+              feeWallet: feeWalletA,
+              globalSettings: globalSettingsKey,
+            },
+          })
+          .preInstructions([setupIx, swapIx])
+          .transaction();
+        const connection = program.provider.connection;
+        const lookupAccount = await connection
+          .getAddressLookupTable(openPosLut)
+          .catch(() => null);
+        const message = new anchor.web3.TransactionMessage({
+          instructions: _tx.instructions,
+          payerKey: program.provider.publicKey!,
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        }).compileToV0Message([lookupAccount.value]);
+  
+        const tx = new anchor.web3.VersionedTransaction(message);
+        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+          skipPreflight: true,
+        });
+      } catch (e) {
+        const err = anchor.translateError(
+          e,
+          anchor.parseIdlErrors(program.idl)
+        );
+        if (err instanceof anchor.AnchorError) {
+          assert.equal(err.error.errorCode.number, 6000);
+        } else if (err instanceof anchor.ProgramError) {
+          assert.equal(err.code, 6000);
+        } else {
+          assert.ok(false);
+        }
+      }
+    });
+
+    it("should liquidate position", async () => {
+      const closeRequestExpiration = new anchor.BN(
+        Date.now() / 1_000 + 60 * 60
+      );
+      const positionBefore = await program.account.position.fetch(
+        longPositionKey
+      );
+      const vaultKey = getAssociatedTokenAddressSync(
+        positionBefore.currency,
+        lpVaultTokenAKey,
+        true
+      );
+      const [vaultBefore, ownerABefore, feeBalanceBefore] =
+        await getMultipleTokenAccounts(program.provider.connection, [
+          vaultKey,
+          ownerTokenA,
+          feeWalletA,
+        ]);
+
+      const setupIx = await program.methods
+        .liquidatePositionSetup({
+          expiration: closeRequestExpiration,
+          minTargetAmount: new anchor.BN(0),
+          interest: new anchor.BN(10),
+          executionFee: new anchor.BN(11),
+        })
+        .accounts({
+          closePositionSetup: {
+            pool: longPoolBKey,
+            owner: user2.publicKey,
+            currencyVault: longPoolBCurrencyVaultKey,
+            position: longPositionKey,
+            permission: liquidateSignerPermission,
             // @ts-ignore
             authority: NON_SWAP_AUTHORITY.publicKey,
           },
@@ -329,265 +364,8 @@ describe("takeProfitOrder", () => {
         BigInt(positionBefore.collateralAmount.toString()),
         BigInt(0)
       );
-      try {
-        const _tx = await program.methods
-          .takeProfitCleanup()
-          .accounts({
-            closePositionCleanup: {
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              ownerCollateralAccount: ownerTokenB,
-              currencyVault: longPoolBCurrencyVaultKey,
-              pool: longPoolBKey,
-              position: longPositionKey,
-              lpVault: lpVaultTokenAKey,
-              feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
-            },
-            takeProfitOrder: longTakeProfitOrderKey,
-          })
-          .preInstructions([setupIx, swapIx])
-          .transaction();
-        const connection = program.provider.connection;
-        const lookupAccount = await connection
-          .getAddressLookupTable(openPosLut)
-          .catch(() => null);
-        const message = new anchor.web3.TransactionMessage({
-          instructions: _tx.instructions,
-          payerKey: program.provider.publicKey!,
-          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        }).compileToV0Message([lookupAccount.value]);
-
-        const tx = new anchor.web3.VersionedTransaction(message);
-        await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
-          skipPreflight: true,
-        });
-        throw new Error("Failed to error");
-      } catch (e) {
-        const err = anchor.translateError(
-          e,
-          anchor.parseIdlErrors(program.idl)
-        );
-        if (err instanceof anchor.AnchorError) {
-          assert.equal(err.error.errorCode.number, 6000);
-        } else if (err instanceof anchor.ProgramError) {
-          assert.equal(err.code, 6000);
-        } else {
-          assert.ok(false);
-        }
-      }
-
-      // must close the TP order so new ones can be created on the existing position
-      await program.methods
-        .closeTakeProfitOrder()
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-    });
-
-    it("Should fail when the TP taker amount is not met", async () => {
-      const makerAmount = new anchor.BN(100);
-      const takerAmount = new anchor.BN(2_000_000);
-      const closeRequestExpiration = new anchor.BN(
-        Date.now() / 1_000 + 60 * 60
-      );
-      const positionBefore = await program.account.position.fetch(
-        longPositionKey
-      );
-
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .takeProfitSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
-        .accounts({
-          closePositionSetup: {
-            pool: longPoolBKey,
-            owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
-            position: longPositionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
-          },
-        })
-        .instruction();
-      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID
-      );
-      const swapIx = TokenSwap.swapInstruction(
-        abSwapKey.publicKey,
-        swapAuthority,
-        SWAP_AUTHORITY.publicKey,
-        longPoolBVaultKey,
-        swapTokenAccountB,
-        swapTokenAccountA,
-        longPoolBCurrencyVaultKey,
-        poolMint,
-        poolFeeAccount,
-        null,
-        tokenMintB,
-        tokenMintA,
-        TOKEN_SWAP_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        BigInt(positionBefore.collateralAmount.toString()),
-        BigInt(0)
-      );
-      try {
-        const _tx = await program.methods
-          .takeProfitCleanup()
-          .accounts({
-            closePositionCleanup: {
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              ownerCollateralAccount: ownerTokenB,
-              currencyVault: longPoolBCurrencyVaultKey,
-              pool: longPoolBKey,
-              position: longPositionKey,
-              lpVault: lpVaultTokenAKey,
-              feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
-            },
-            takeProfitOrder: longTakeProfitOrderKey,
-          })
-          .preInstructions([setupIx, swapIx])
-          .transaction();
-        const connection = program.provider.connection;
-        const lookupAccount = await connection
-          .getAddressLookupTable(openPosLut)
-          .catch(() => null);
-        const message = new anchor.web3.TransactionMessage({
-          instructions: _tx.instructions,
-          payerKey: program.provider.publicKey!,
-          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        }).compileToV0Message([lookupAccount.value]);
-
-        const tx = new anchor.web3.VersionedTransaction(message);
-        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
-          skipPreflight: true,
-        });
-        throw new Error("Failed to error");
-      } catch (e) {
-        const err = anchor.translateError(
-          e,
-          anchor.parseIdlErrors(program.idl)
-        );
-        if (err instanceof anchor.AnchorError) {
-          assert.equal(err.error.errorCode.number, 6017);
-        } else if (err instanceof anchor.ProgramError) {
-          assert.equal(err.code, 6017);
-        } else {
-          assert.ok(false);
-        }
-      }
-
-      // must close the TP order so new ones can be created on the existing position
-      await program.methods
-        .closeTakeProfitOrder()
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-    });
-
-    it("should execute TP order", async () => {
-      const makerAmount = new anchor.BN(100);
-      const takerAmount = new anchor.BN(200);
-      const closeRequestExpiration = new anchor.BN(
-        Date.now() / 1_000 + 60 * 60
-      );
-      const positionBefore = await program.account.position.fetch(
-        longPositionKey
-      );
-      const vaultKey = getAssociatedTokenAddressSync(
-        positionBefore.currency,
-        lpVaultTokenAKey,
-        true
-      );
-      const [vaultBefore, ownerABefore, feeBalanceBefore] =
-        await getMultipleTokenAccounts(program.provider.connection, [
-          vaultKey,
-          ownerTokenA,
-          feeWalletA,
-        ]);
-
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: longPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .takeProfitSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
-        .accounts({
-          closePositionSetup: {
-            pool: longPoolBKey,
-            owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
-            position: longPositionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
-          },
-        })
-        .instruction();
-      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID
-      );
-      const swapIx = TokenSwap.swapInstruction(
-        abSwapKey.publicKey,
-        swapAuthority,
-        SWAP_AUTHORITY.publicKey,
-        longPoolBVaultKey,
-        swapTokenAccountB,
-        swapTokenAccountA,
-        longPoolBCurrencyVaultKey,
-        poolMint,
-        poolFeeAccount,
-        null,
-        tokenMintB,
-        tokenMintA,
-        TOKEN_SWAP_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        BigInt(positionBefore.collateralAmount.toString()),
-        BigInt(0)
-      );
       const _tx = await program.methods
-        .takeProfitCleanup()
+        .liquidatePositionCleanup()
         .accounts({
           closePositionCleanup: {
             owner: user2.publicKey,
@@ -600,7 +378,6 @@ describe("takeProfitOrder", () => {
             feeWallet: feeWalletA,
             globalSettings: globalSettingsKey,
           },
-          takeProfitOrder: longTakeProfitOrderKey,
         })
         .preInstructions([setupIx, swapIx])
         .transaction();
@@ -615,16 +392,14 @@ describe("takeProfitOrder", () => {
       }).compileToV0Message([lookupAccount.value]);
 
       const tx = new anchor.web3.VersionedTransaction(message);
-      await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+      await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
         skipPreflight: true,
       });
 
       const [
-        takerProfitOrderAfter,
         positionAfter,
         [vaultAfter, ownerAAfter, feeBalanceAfter],
       ] = await Promise.all([
-        program.account.takeProfitOrder.fetchNullable(longTakeProfitOrderKey),
         program.account.position.fetchNullable(longPositionKey),
         getMultipleTokenAccounts(program.provider.connection, [
           vaultKey,
@@ -634,9 +409,6 @@ describe("takeProfitOrder", () => {
       ]);
       // Position should be cleaned up
       assert.isNull(positionAfter);
-
-      // TP order should be closed
-      assert.isNull(takerProfitOrderAfter);
 
       // should pay back some interest/principal
       const vaultDiff = vaultAfter.amount - vaultBefore.amount;
@@ -734,134 +506,7 @@ describe("takeProfitOrder", () => {
       });
     });
 
-    it("Should fail when the TP taker amount is not met", async () => {
-      // very low price 0.0001
-      const makerAmount = new anchor.BN(1);
-      const takerAmount = new anchor.BN(1_000);
-      const closeRequestExpiration = new anchor.BN(
-        Date.now() / 1_000 + 60 * 60
-      );
-      const positionBefore = await program.account.position.fetch(
-        shortPositionKey
-      );
-
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: shortPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .takeProfitSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
-        .accounts({
-          closePositionSetup: {
-            pool: shortPoolAKey,
-            owner: user2.publicKey,
-            currencyVault: shortPoolACurrencyVaultKey,
-            position: shortPositionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
-          },
-        })
-        .instruction();
-      const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        [abSwapKey.publicKey.toBuffer()],
-        TOKEN_SWAP_PROGRAM_ID
-      );
-      const swapIx = TokenSwap.swapInstruction(
-        abSwapKey.publicKey,
-        swapAuthority,
-        SWAP_AUTHORITY.publicKey,
-        shortPoolAVaultKey,
-        swapTokenAccountA,
-        swapTokenAccountB,
-        shortPoolACurrencyVaultKey,
-        poolMint,
-        poolFeeAccount,
-        null,
-        tokenMintA,
-        tokenMintB,
-        TOKEN_SWAP_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        BigInt(positionBefore.principal.add(new anchor.BN(12)).toString()),
-        BigInt(0)
-      );
-      try {
-        const _tx = await program.methods
-          .takeProfitCleanup()
-          .accounts({
-            closePositionCleanup: {
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              ownerCollateralAccount: ownerTokenA,
-              currencyVault: shortPoolACurrencyVaultKey,
-              pool: shortPoolAKey,
-              position: shortPositionKey,
-              lpVault: lpVaultTokenBKey,
-              feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
-            },
-            takeProfitOrder: shortTakeProfitOrderKey,
-          })
-          .preInstructions([setupIx, swapIx])
-          .transaction();
-        const connection = program.provider.connection;
-        const lookupAccount = await connection
-          .getAddressLookupTable(openPosLut)
-          .catch(() => null);
-        const message = new anchor.web3.TransactionMessage({
-          instructions: _tx.instructions,
-          payerKey: program.provider.publicKey!,
-          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        }).compileToV0Message([lookupAccount.value]);
-
-        const tx = new anchor.web3.VersionedTransaction(message);
-        await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
-          skipPreflight: true,
-        });
-        throw new Error("Failed to error");
-      } catch (e) {
-        const err = anchor.translateError(
-          e,
-          anchor.parseIdlErrors(program.idl)
-        );
-        if (err instanceof anchor.AnchorError) {
-          assert.equal(err.error.errorCode.number, 6017);
-        } else if (err instanceof anchor.ProgramError) {
-          assert.equal(err.code, 6017);
-        } else {
-          assert.ok(false);
-        }
-      }
-
-      // must close the TP order so new ones can be created on the existing position
-      await program.methods
-        .closeTakeProfitOrder()
-        .accounts({
-          trader: user2.publicKey,
-          position: shortPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
-    });
-
-    it("Should execute the TP order", async () => {
-      // high price of 2
-      const makerAmount = new anchor.BN(2_000);
-      const takerAmount = new anchor.BN(1_000);
+    it("Should liquidate position", async () => {
       const closeRequestExpiration = new anchor.BN(
         Date.now() / 1_000 + 60 * 60
       );
@@ -880,19 +525,8 @@ describe("takeProfitOrder", () => {
           feeWalletA,
         ]);
 
-      await program.methods
-        .initTakeProfitOrder({
-          makerAmount,
-          takerAmount,
-        })
-        .accounts({
-          trader: user2.publicKey,
-          position: shortPositionKey,
-        })
-        .signers([user2])
-        .rpc({ skipPreflight: true });
       const setupIx = await program.methods
-        .takeProfitSetup({
+        .liquidatePositionSetup({
           expiration: closeRequestExpiration,
           minTargetAmount: new anchor.BN(0),
           interest: new anchor.BN(10),
@@ -904,9 +538,9 @@ describe("takeProfitOrder", () => {
             owner: user2.publicKey,
             currencyVault: shortPoolACurrencyVaultKey,
             position: shortPositionKey,
-            permission: coSignerPermission,
+            permission: liquidateSignerPermission,
             // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+            authority: NON_SWAP_AUTHORITY.publicKey,
           },
         })
         .instruction();
@@ -917,7 +551,7 @@ describe("takeProfitOrder", () => {
       const swapIx = TokenSwap.swapInstruction(
         abSwapKey.publicKey,
         swapAuthority,
-        SWAP_AUTHORITY.publicKey,
+        NON_SWAP_AUTHORITY.publicKey,
         shortPoolAVaultKey,
         swapTokenAccountA,
         swapTokenAccountB,
@@ -935,7 +569,7 @@ describe("takeProfitOrder", () => {
         BigInt(0)
       );
       const _tx = await program.methods
-        .takeProfitCleanup()
+        .liquidatePositionCleanup()
         .accounts({
           closePositionCleanup: {
             owner: user2.publicKey,
@@ -948,7 +582,6 @@ describe("takeProfitOrder", () => {
             feeWallet: feeWalletA,
             globalSettings: globalSettingsKey,
           },
-          takeProfitOrder: shortTakeProfitOrderKey,
         })
         .preInstructions([setupIx, swapIx])
         .transaction();
@@ -963,16 +596,14 @@ describe("takeProfitOrder", () => {
       }).compileToV0Message([lookupAccount.value]);
 
       const tx = new anchor.web3.VersionedTransaction(message);
-      await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+      await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
         skipPreflight: true,
       });
 
       const [
-        takerProfitOrderAfter,
         positionAfter,
         [vaultAfter, ownerAAfter, feeBalanceAfter],
       ] = await Promise.all([
-        program.account.takeProfitOrder.fetchNullable(shortTakeProfitOrderKey),
         program.account.position.fetchNullable(shortPositionKey),
         getMultipleTokenAccounts(program.provider.connection, [
           vaultKey,
@@ -983,9 +614,6 @@ describe("takeProfitOrder", () => {
 
       // Position should be cleaned up
       assert.isNull(positionAfter);
-
-      // TP order should be closed
-      assert.isNull(takerProfitOrderAfter);
 
       // should pay back some interest/principal
       const vaultDiff = vaultAfter.amount - vaultBefore.amount;
