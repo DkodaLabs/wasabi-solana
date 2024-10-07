@@ -1,0 +1,44 @@
+use anchor_lang::prelude::*;
+
+use crate::{Position, StopLossOrder};
+
+// Only Position's trader can invoke InitStopLossOrder.
+// Limitation of 1 SL Order per Position. To modify, user must close the
+// SL order and init a new one.
+
+#[derive(Accounts)]
+pub struct InitStopLossOrder<'info> {
+  #[account(mut)]
+  pub trader: Signer<'info>,
+  
+  #[account(
+    has_one = trader,
+  )]
+  pub position: Account<'info, Position>,
+
+  #[account(
+    init,
+    payer = trader,
+    seeds = [b"stop_loss_order", position.key().as_ref()],
+    bump,
+    space = 8 + std::mem::size_of::<StopLossOrder>(),
+  )]
+  pub stop_loss_order: Account<'info, StopLossOrder>,
+
+  pub system_program: Program<'info, System>,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct InitStopLossOrderArgs {
+  maker_amount: u64,
+  taker_amount: u64,
+}
+
+pub fn handler(ctx: Context<InitStopLossOrder>, args: InitStopLossOrderArgs) -> Result<()> {
+  let stop_loss_order = &mut ctx.accounts.stop_loss_order;
+  stop_loss_order.maker_amount = args.maker_amount;
+  stop_loss_order.taker_amount = args.taker_amount;
+  stop_loss_order.position = ctx.accounts.position.key();
+
+  Ok(())
+}

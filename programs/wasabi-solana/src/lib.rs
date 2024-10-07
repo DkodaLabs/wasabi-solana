@@ -76,6 +76,14 @@ pub mod wasabi_solana {
         close_take_profit_order::handler(ctx)
     }
 
+    pub fn init_stop_loss_order(ctx: Context<InitStopLossOrder>, args: InitStopLossOrderArgs) -> Result<()> {
+        instructions::init_stop_loss_order::handler(ctx, args)
+    }
+
+    pub fn close_stop_loss_order(ctx: Context<CloseStopLossOrder>) -> Result<()> {
+        instructions::close_stop_loss_order::handler(ctx)
+    }
+
     pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
         deposit::handler(ctx, args)
     }
@@ -160,6 +168,15 @@ pub mod wasabi_solana {
 
     pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
         instructions::take_profit_cleanup::handler(ctx)
+    }
+
+    #[access_control(StopLossSetup::validate(&ctx, &args))]
+    pub fn stop_loss_setup(ctx: Context<StopLossSetup>, args: ClosePositionArgs) -> Result<()> {
+        instructions::stop_loss_setup::handler(ctx, args)
+    }
+
+    pub fn stop_loss_cleanup(ctx: Context<StopLossCleanup>) -> Result<()> {
+        instructions::stop_loss_cleanup::handler(ctx)
     }
 
     pub fn claim_position(ctx: Context<ClaimPosition>, args: ClaimPositionArgs) -> Result<()> {
