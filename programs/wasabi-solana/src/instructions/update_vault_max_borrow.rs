@@ -25,7 +25,7 @@ pub struct UpdateVaultMaxBorrowArgs {
 
 impl<'info> UpdateVaultMaxBorrow<'info> {
   pub fn validate(ctx: &Context<UpdateVaultMaxBorrow>) -> Result<()> {
-    require!(ctx.accounts.permission.can_borrow_from_vault(), ErrorCode::InvalidPermissions);
+    require!(ctx.accounts.permission.can_init_vault(), ErrorCode::InvalidPermissions);
     Ok(())
   }
 }
