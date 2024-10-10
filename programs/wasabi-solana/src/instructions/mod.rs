@@ -1,3 +1,4 @@
+pub mod admin_borrow;
 pub mod claim_position;
 pub mod close_long_position_cleanup;
 pub mod close_long_position_setup;
@@ -34,6 +35,7 @@ pub mod take_profit_setup;
 pub mod update_vault_max_borrow;
 pub mod withdraw;
 
+pub use admin_borrow::*;
 pub use claim_position::*;
 pub use close_long_position_cleanup::*;
 pub use close_long_position_setup::*;

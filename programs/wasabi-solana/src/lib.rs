@@ -63,6 +63,11 @@ pub mod wasabi_solana {
         instructions::update_vault_max_borrow::handler(ctx, args)
     }
 
+    #[access_control(AdminBorrow::validate(&ctx, &args))]
+    pub fn admin_borrow(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
+        instructions::admin_borrow::handler(ctx, args)
+    }
+
     #[access_control(InitLongPool::validate(&ctx))]
     pub fn init_long_pool(ctx: Context<InitLongPool>) -> Result<()> {
         init_long_pool::handler(ctx)

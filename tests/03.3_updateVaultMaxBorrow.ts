@@ -35,6 +35,7 @@ describe("UpdateVaultMaxBorrow", () => {
         })
         .signers([SWAP_AUTHORITY])
         .rpc();
+      throw new Error("should fail");
     } catch (err) {
       if (err instanceof anchor.AnchorError) {
         assert.equal(err.error.errorCode.number, 6000);
@@ -55,7 +56,7 @@ describe("UpdateVaultMaxBorrow", () => {
       })
       .signers([NON_SWAP_AUTHORITY])
       .rpc();
-      const lpVault = await program.account.lpVault.fetch(lpVaultKey);
-      assert.ok(lpVault.maxBorrow.eq(maxBorrow))
+    const lpVault = await program.account.lpVault.fetch(lpVaultKey);
+    assert.ok(lpVault.maxBorrow.eq(maxBorrow));
   });
 });
