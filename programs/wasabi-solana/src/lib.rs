@@ -68,6 +68,11 @@ pub mod wasabi_solana {
         instructions::admin_borrow::handler(ctx, args)
     }
 
+    #[access_control(Repay::validate(&ctx, &args))]
+    pub fn repay(ctx: Context<Repay>, args: RepayArgs) -> Result<()> {
+        instructions::repay::handler(ctx, args)
+    }
+
     #[access_control(InitLongPool::validate(&ctx))]
     pub fn init_long_pool(ctx: Context<InitLongPool>) -> Result<()> {
         init_long_pool::handler(ctx)

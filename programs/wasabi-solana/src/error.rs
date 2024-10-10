@@ -40,4 +40,6 @@ pub enum ErrorCode {
     PriceTargetNotReached,  // 6017
     #[msg("Max borrow exceeded")]
     MaxBorrowExceeded, // 6018
+    #[msg("Max repay exceeded")]
+    MaxRepayExceeded, // 6019
 }
