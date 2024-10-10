@@ -31,6 +31,7 @@ pub mod stop_loss_cleanup;
 pub mod stop_loss_setup;
 pub mod take_profit_cleanup;
 pub mod take_profit_setup;
+pub mod update_vault_max_borrow;
 pub mod withdraw;
 
 pub use claim_position::*;
@@ -65,4 +66,5 @@ pub use stop_loss_cleanup::*;
 pub use stop_loss_setup::*;
 pub use take_profit_cleanup::*;
 pub use take_profit_setup::*;
+pub use update_vault_max_borrow::*;
 pub use withdraw::*;

@@ -64,6 +64,9 @@ pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
   lp_vault.vault = ctx.accounts.vault.key();
   lp_vault.shares_mint = ctx.accounts.shares_mint.key();
   lp_vault.total_assets = 0;
+  lp_vault.total_borrowed = 0;
+  // TODO should this be able to be set at time of initialization?
+  lp_vault.max_borrow = 0;
 
   emit!(NewVault::new(lp_vault));
 
