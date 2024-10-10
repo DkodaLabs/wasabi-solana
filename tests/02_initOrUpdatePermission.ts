@@ -11,9 +11,10 @@ describe("InitOrUpdatePermission", () => {
     );
     const tx = await superAdminProgram.methods
       .initOrUpdatePermission({
-        canCosignSwaps: false,
-        canInitVaults: true,
-        canLiquidate: true,
+        canCosignSwaps: false, // 4
+        canInitVaults: true, // 1
+        canLiquidate: true, // 2
+        canBorrowFromVaults: true, // 8
         status: {active: {}}
       })
       .accounts({
@@ -26,6 +27,6 @@ describe("InitOrUpdatePermission", () => {
     assert.ok(!permissionAfter.isSuperAuthority);
     assert.equal(permissionAfter.authority.toString(), newAuthority.toString());
     assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({active: {}}));
-    assert.equal(permissionAfter.permissionsMap, 3);
+    assert.equal(permissionAfter.permissionsMap, 11);
   });
 });

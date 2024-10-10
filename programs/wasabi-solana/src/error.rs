@@ -38,4 +38,8 @@ pub enum ErrorCode {
     ValueDeviatedTooMuch, // 6016
     #[msg("Price target not reached")]
     PriceTargetNotReached,  // 6017
+    #[msg("Max borrow exceeded")]
+    MaxBorrowExceeded, // 6018
+    #[msg("Max repay exceeded")]
+    MaxRepayExceeded, // 6019
 }

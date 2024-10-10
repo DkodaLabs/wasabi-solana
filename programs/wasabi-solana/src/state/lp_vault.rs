@@ -12,4 +12,8 @@ pub struct LpVault {
   pub shares_mint: Pubkey,
   /// Count of the total assets owned by the vault, including tokens that are currently borrowed
   pub total_assets: u64,
+  /// Maximum amount that can be borrowed by admin
+  pub max_borrow: u64,
+  /// Total amount currently borrowed from the vault that is to be paid back by the admin
+  pub total_borrowed: u64,
 }
