@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION};
+use crate::{AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION};
 
 #[derive(Accounts)]
 pub struct InitOrUpdatePermission<'info> {
@@ -41,6 +41,7 @@ pub struct InitOrUpdatePermissionArgs {
     can_init_vaults: bool,
     can_liquidate: bool,
     can_cosign_swaps: bool,
+    can_borrow_from_vaults: bool,
 }
 
 impl InitOrUpdatePermissionArgs {
@@ -54,6 +55,9 @@ impl InitOrUpdatePermissionArgs {
     }
     if self.can_cosign_swaps {
       res += COSIGN_PERMISSION;
+    }
+    if self.can_borrow_from_vaults {
+      res += VAULT_BORROW_PERMISSION;
     }
     res
   }
