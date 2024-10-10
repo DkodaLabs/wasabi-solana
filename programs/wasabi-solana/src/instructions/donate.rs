@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::LpVault;
+use crate::{events::NativeYieldClaimed, LpVault};
 
 #[derive(Accounts)]
 pub struct Donate<'info> {
@@ -52,6 +52,13 @@ pub fn handler(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
         .total_assets
         .checked_add(args.amount)
         .expect("overflow");
+
+    emit!(NativeYieldClaimed {
+        source: ctx.accounts.owner.key(),
+        vault: ctx.accounts.vault.key(),
+        token: ctx.accounts.lp_vault.asset,
+        amount: args.amount,
+    });
 
     Ok(())
 }
