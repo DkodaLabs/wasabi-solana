@@ -172,4 +172,58 @@ describe("Deposit", () => {
     const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
     assert.equal(sharesSupplyDiff, BigInt(expectedSharesAmount.toString()));
   });
+
+  it("should not allow a user to withdraw more than deposited", async () => {
+    const totalDeposits = 100;
+    const amount = new anchor.BN(2_000_000);
+    const tokenAAta = getAssociatedTokenAddressSync(
+      tokenMintA,
+      program.provider.publicKey,
+      false
+    );
+    const [[ownerTokenABefore, ownerSharesBefore]] = await Promise.all([
+      getMultipleTokenAccounts(program.provider.connection, [
+        tokenAAta,
+        ownerSharesAccount,
+      ]),
+    ]);
+
+    for (let i = 0; i < totalDeposits; i++) {
+      await program.methods
+        .deposit({ amount })
+        .accounts({
+          owner: program.provider.publicKey,
+          ownerAssetAccount: tokenAAta,
+          ownerSharesAccount,
+          lpVault: lpVaultKey,
+        })
+        .rpc();
+    }
+
+    for (let j = 0; j < totalDeposits; j++) {
+      await program.methods
+        .withdraw({ amount })
+        .accounts({
+          owner: program.provider.publicKey,
+          ownerAssetAccount: tokenAAta,
+          ownerSharesAccount,
+          lpVault: lpVaultKey,
+        })
+        .rpc();
+    }
+
+    const [
+      [ownerTokenAAfter, ownerSharesAfter],
+    ] = await Promise.all([
+      getMultipleTokenAccounts(program.provider.connection, [
+        tokenAAta,
+        ownerSharesAccount,
+      ]),
+    ]);
+
+    // Assert user has less than or equal to the amount of shares prior
+    assert.ok(ownerSharesAfter.amount <= ownerSharesBefore.amount);
+    // Assert user has less than or equal to the amount of tokens prior
+    assert.ok(ownerTokenAAfter.amount <= ownerTokenABefore.amount);
+  });
 });
