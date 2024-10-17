@@ -22,113 +22,117 @@ pub mod wasabi_solana {
         ctx: Context<InitGlobalSettings>,
         args: InitGlobalSettingsArgs,
     ) -> Result<()> {
-        init_global_settings::handler(ctx, args)
+        ctx.accounts.init_global_settings(&args)
     }
 
     pub fn init_debt_controller(
         ctx: Context<InitDebtController>,
         args: InitDebtControllerArgs,
     ) -> Result<()> {
-        init_debt_controller::handler(ctx, args)
+        ctx.accounts.init_debt_controller(&args)
     }
 
-    pub fn set_max_apy(
-        ctx: Context<SetMaxApy>,
-        args: SetMaxApyArgs,
-    ) -> Result<()> {
-        set_max_apy::handler(ctx, args)
+    pub fn set_max_apy(ctx: Context<SetMaxApy>, args: SetMaxApyArgs) -> Result<()> {
+        ctx.accounts.set_max_apy(&args)
     }
 
-    pub fn set_max_leverage(
-        ctx: Context<SetMaxLeverage>,
-        args: SetMaxLeverageArgs,
-    ) -> Result<()> {
-        set_max_leverage::handler(ctx, args)
+    pub fn set_max_leverage(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
+        ctx.accounts.set_max_leverage(&args)
     }
 
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
     ) -> Result<()> {
-        init_or_update_permission::handler(ctx, args)
+        ctx.accounts.init_or_update_permission(&args)
     }
 
     #[access_control(InitLpVault::validate(&ctx))]
     pub fn init_lp_vault(ctx: Context<InitLpVault>) -> Result<()> {
-        init_lp_vault::handler(ctx)
+        ctx.accounts.init_lp_vault(&ctx.bumps)
     }
 
     #[access_control(UpdateVaultMaxBorrow::validate(&ctx))]
-    pub fn update_lp_vault_max_borrow(ctx: Context<UpdateVaultMaxBorrow>, args: UpdateVaultMaxBorrowArgs) -> Result<()> {
-        instructions::update_vault_max_borrow::handler(ctx, args)
+    pub fn update_lp_vault_max_borrow(
+        ctx: Context<UpdateVaultMaxBorrow>,
+        args: UpdateVaultMaxBorrowArgs,
+    ) -> Result<()> {
+        ctx.accounts.update_lp_vault_max_borrow(&args)
     }
 
     #[access_control(AdminBorrow::validate(&ctx, &args))]
     pub fn admin_borrow(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-        instructions::admin_borrow::handler(ctx, args)
+        ctx.accounts.admin_borrow(&args)
     }
 
     #[access_control(Repay::validate(&ctx, &args))]
     pub fn repay(ctx: Context<Repay>, args: RepayArgs) -> Result<()> {
-        instructions::repay::handler(ctx, args)
+        ctx.accounts.repay(&args)
     }
 
     #[access_control(InitLongPool::validate(&ctx))]
     pub fn init_long_pool(ctx: Context<InitLongPool>) -> Result<()> {
-        init_long_pool::handler(ctx)
+        ctx.accounts.init_long_pool(&ctx.bumps)
     }
 
     #[access_control(InitShortPool::validate(&ctx))]
     pub fn init_short_pool(ctx: Context<InitShortPool>) -> Result<()> {
-        init_short_pool::handler(ctx)
+        ctx.accounts.init_short_pool(&ctx.bumps)
     }
 
-    pub fn init_take_profit_order(ctx: Context<InitTakeProfitOrder>, args: InitTakeProfitOrderArgs) -> Result<()> {
-        init_take_profit_order::handler(ctx, args)
+    pub fn init_take_profit_order(
+        ctx: Context<InitTakeProfitOrder>,
+        args: InitTakeProfitOrderArgs,
+    ) -> Result<()> {
+        ctx.accounts.init_take_profit_order(&args)
     }
 
     pub fn close_take_profit_order(ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
-        close_take_profit_order::handler(ctx)
+        ctx.accounts.close_take_profit_order()
     }
 
-    pub fn init_stop_loss_order(ctx: Context<InitStopLossOrder>, args: InitStopLossOrderArgs) -> Result<()> {
-        instructions::init_stop_loss_order::handler(ctx, args)
+    pub fn init_stop_loss_order(
+        ctx: Context<InitStopLossOrder>,
+        args: InitStopLossOrderArgs,
+    ) -> Result<()> {
+        ctx.accounts.init_stop_loss_order(&args)
     }
 
     pub fn close_stop_loss_order(ctx: Context<CloseStopLossOrder>) -> Result<()> {
-        instructions::close_stop_loss_order::handler(ctx)
+        ctx.accounts.close_stop_loss_order()
     }
 
-    pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
-        deposit::handler(ctx, args)
+    pub fn deposit(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.deposit(amount)
     }
 
-    pub fn withdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
-        withdraw::handler(ctx, args)
+    pub fn withdraw(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.withdraw(amount)
     }
 
-    pub fn mint(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
-        mint::handler(ctx, args)
+    pub fn mint(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.mint(amount)
     }
 
-    pub fn redeem(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> {
-        redeem::handler(ctx, args)
+    pub fn redeem(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.redeem(amount)
     }
 
-    pub fn donate(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
-        donate::handler(ctx, args)
+    pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
+        ctx.accounts.donate(amount)
     }
 
+    // Maybe remove the `&ctx`
     #[access_control(OpenLongPositionSetup::validate(&ctx, &args))]
     pub fn open_long_position_setup(
         ctx: Context<OpenLongPositionSetup>,
         args: OpenLongPositionArgs,
     ) -> Result<()> {
-        open_long_position_setup::handler(ctx, args)
+        ctx.accounts.open_long_position_setup(&args)
     }
 
     pub fn open_long_position_cleanup(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
-        open_long_position_cleanup::handler(ctx)
+        ctx.accounts.open_long_position_cleanup()
     }
 
     #[access_control(CloseLongPositionSetup::validate(&ctx, &args))]
@@ -136,11 +140,11 @@ pub mod wasabi_solana {
         ctx: Context<CloseLongPositionSetup>,
         args: instructions::close_position_setup::ClosePositionArgs,
     ) -> Result<()> {
-        close_long_position_setup::handler(ctx, args)
+        ctx.accounts.close_long_position_setup(&args)
     }
 
     pub fn close_long_position_cleanup(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
-        close_long_position_cleanup::handler(ctx)
+        ctx.accounts.close_long_position_cleanup()
     }
 
     #[access_control(OpenShortPositionSetup::validate(&ctx, &args))]
@@ -148,11 +152,11 @@ pub mod wasabi_solana {
         ctx: Context<OpenShortPositionSetup>,
         args: OpenShortPositionArgs,
     ) -> Result<()> {
-        open_short_position_setup::handler(ctx, args)
+        ctx.accounts.open_short_position_setup(&args)
     }
 
     pub fn open_short_position_cleanup(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
-        open_short_position_cleanup::handler(ctx)
+        ctx.accounts.open_short_position_cleanup()
     }
 
     #[access_control(CloseShortPositionSetup::validate(&ctx, &args))]
@@ -160,41 +164,44 @@ pub mod wasabi_solana {
         ctx: Context<CloseShortPositionSetup>,
         args: ClosePositionArgs,
     ) -> Result<()> {
-        close_short_position_setup::handler(ctx, args)
+        ctx.accounts.close_short_position_setup(&args)
     }
 
     pub fn close_short_position_cleanup(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
-        close_short_position_cleanup::handler(ctx)
+        ctx.accounts.close_short_position_cleanup()
     }
-    
+
     #[access_control(LiquidatePositionSetup::validate(&ctx, &args))]
-    pub fn liquidate_position_setup(ctx: Context<LiquidatePositionSetup>, args: ClosePositionArgs) -> Result<()> {
-        instructions::liquidate_position_setup::handler(ctx, args)
+    pub fn liquidate_position_setup(
+        ctx: Context<LiquidatePositionSetup>,
+        args: ClosePositionArgs,
+    ) -> Result<()> {
+        ctx.accounts.liquidate_position_setup(&args)
     }
 
     pub fn liquidate_position_cleanup(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
-        instructions::liquidate_position_cleanup::handler(ctx)
+        ctx.accounts.liquidate_position_cleanup()
     }
 
     #[access_control(TakeProfitSetup::validate(&ctx, &args))]
     pub fn take_profit_setup(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
-        instructions::take_profit_setup::handler(ctx, args)
+        ctx.accounts.take_profit_setup(&args)
     }
 
     pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
-        instructions::take_profit_cleanup::handler(ctx)
+        ctx.accounts.take_profit_cleanup()
     }
 
     #[access_control(StopLossSetup::validate(&ctx, &args))]
     pub fn stop_loss_setup(ctx: Context<StopLossSetup>, args: ClosePositionArgs) -> Result<()> {
-        instructions::stop_loss_setup::handler(ctx, args)
+        ctx.accounts.stop_loss_setup(&args)
     }
 
     pub fn stop_loss_cleanup(ctx: Context<StopLossCleanup>) -> Result<()> {
-        instructions::stop_loss_cleanup::handler(ctx)
+        ctx.accounts.stop_loss_cleanup()
     }
 
-    pub fn claim_position(ctx: Context<ClaimPosition>, args: ClaimPositionArgs) -> Result<()> {
-        instructions::claim_position::handler(ctx, args)
+    pub fn claim_position(ctx: Context<ClaimPosition>) -> Result<()> {
+        ctx.accounts.claim_position()
     }
 }

@@ -63,12 +63,25 @@ impl InitOrUpdatePermissionArgs {
   }
 }
 
-pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissionArgs) -> Result<()> {
-    let permission = &mut ctx.accounts.permission;
+impl<'info> InitOrUpdatePermission<'info> {
+    pub fn init_or_update_permission(&mut self, args: &InitOrUpdatePermissionArgs) -> Result<()> {
+        self.permission.set_inner(Permission {
+            authority: self.new_authority.key(),
+            is_super_authority: false,
+            permissions_map: args.permissions_map(),
+            status: args.status,
+        });
 
-    permission.authority = ctx.accounts.new_authority.key();
-    permission.is_super_authority = false;
-    permission.permissions_map = args.permissions_map();
-    permission.status = args.status;
-    Ok(())
+        Ok(())
+    }
 }
+
+//pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissionArgs) -> Result<()> {
+//    let permission = &mut ctx.accounts.permission;
+//
+//    permission.authority = ctx.accounts.new_authority.key();
+//    permission.is_super_authority = false;
+//    permission.permissions_map = args.permissions_map();
+//    permission.status = args.status;
+//    Ok(())
+//}

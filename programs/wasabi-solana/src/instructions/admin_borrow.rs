@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-use crate::{error::ErrorCode, lp_vault, lp_vault_signer_seeds, LpVault, Permission};
+use crate::{error::ErrorCode, lp_vault_signer_seeds, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct AdminBorrow<'info> {
@@ -11,8 +11,8 @@ pub struct AdminBorrow<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-    has_one = authority,
-  )]
+        has_one = authority,
+    )]
     pub permission: Account<'info, Permission>,
 
     #[account(mut)]
@@ -24,9 +24,9 @@ pub struct AdminBorrow<'info> {
     pub destination: Account<'info, TokenAccount>,
 
     #[account(
-    mut,
-    has_one = vault,
-  )]
+        mut,
+        has_one = vault,
+    )]
     pub lp_vault: Account<'info, LpVault>,
 
     pub token_program: Program<'info, Token>,
@@ -44,14 +44,21 @@ impl<'info> AdminBorrow<'info> {
             ErrorCode::InvalidPermissions
         );
 
-        if ctx.accounts.lp_vault.total_borrowed.checked_add(args.amount).expect("overflow") > ctx.accounts.lp_vault.max_borrow {
-          return Err(ErrorCode::MaxBorrowExceeded.into());
+        if ctx
+            .accounts
+            .lp_vault
+            .total_borrowed
+            .checked_add(args.amount)
+            .expect("overflow")
+            > ctx.accounts.lp_vault.max_borrow
+        {
+            return Err(ErrorCode::MaxBorrowExceeded.into());
         }
-        
+
         Ok(())
     }
 
-    pub fn transfer_from_vault(&self, amount: u64) -> Result<()> {
+    fn transfer_from_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Transfer {
             from: self.vault.to_account_info(),
             to: self.destination.to_account_info(),
@@ -65,14 +72,26 @@ impl<'info> AdminBorrow<'info> {
         };
         token::transfer(cpi_ctx, amount)
     }
+
+    pub fn admin_borrow(&mut self, args: &AdminBorrowArgs) -> Result<()> {
+        // Transfer from vault to destination
+        self.transfer_from_vault(args.amount)?;
+
+        // increment total borrowed of the vault
+        // NOTE: Does this increment? It seems to just replace `total_borrowed` with `args.amount`
+        self.lp_vault.total_borrowed = args.amount;
+
+        Ok(())
+    }
 }
 
-pub fn handler(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-  // Transfer from vault to destination
-  ctx.accounts.transfer_from_vault(args.amount)?;
-
-  // increment total borrowed of the vault
-  let lp_vault = &mut ctx.accounts.lp_vault;
-  lp_vault.total_borrowed = args.amount;
-    Ok(())
-}
+//pub fn handler(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
+//    // Transfer from vault to destination
+//    ctx.accounts.transfer_from_vault(args.amount)?;
+//
+//    // increment total borrowed of the vault
+//    let lp_vault = &mut ctx.accounts.lp_vault;
+//    lp_vault.total_borrowed = args.amount;
+//
+//    Ok(())
+//}

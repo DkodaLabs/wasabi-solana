@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{Mint, Token, TokenAccount},
+    token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
 use crate::{error::ErrorCode, BasePool, Permission};
@@ -14,15 +14,16 @@ pub struct InitShortPool<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
+        has_one = authority,
     )]
     pub permission: Account<'info, Permission>,
 
+    // TODO: Provide these as arguments
     // NOTE: This may be unnecessary as an account
-    pub asset_mint: Account<'info, Mint>,
+    pub asset_mint: InterfaceAccount<'info, Mint>,
 
     // NOTE: This may be unnecessary as an account
-    pub currency_mint: Account<'info, Mint>,
+    pub currency_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
       init,
@@ -34,22 +35,24 @@ pub struct InitShortPool<'info> {
     pub short_pool: Account<'info, BasePool>,
 
     #[account(
-      init,
-      payer = payer,
-      associated_token::mint = asset_mint,
-      associated_token::authority = short_pool,
+        init,
+        payer = payer,
+        associated_token::mint = asset_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
     )]
-    pub collateral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-      init,
-      payer = payer,
-      associated_token::mint = currency_mint,
-      associated_token::authority = short_pool,
+        init,
+        payer = payer,
+        associated_token::mint = currency_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
     )]
-    pub currency_vault: Account<'info, TokenAccount>,
+    pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
@@ -62,16 +65,29 @@ impl<'info> InitShortPool<'info> {
         );
         Ok(())
     }
+
+    pub fn init_short_pool(&mut self, bumps: &InitShortPoolBumps) -> Result<()> {
+        self.short_pool.set_inner(BasePool {
+            is_long_pool: false,
+            collateral: self.asset_mint.key(),
+            collateral_vault: self.collateral_vault.key(),
+            currency: self.currency_mint.key(),
+            currency_vault: self.currency_vault.key(),
+            bump: bumps.short_pool,
+        });
+
+        Ok(())
+    }
 }
 
-pub fn handler(ctx: Context<InitShortPool>) -> Result<()> {
-    let short_pool = &mut ctx.accounts.short_pool;
-    short_pool.is_long_pool = false;
-    short_pool.collateral = ctx.accounts.asset_mint.key();
-    short_pool.collateral_vault = ctx.accounts.collateral_vault.key();
-    short_pool.currency = ctx.accounts.currency_mint.key();
-    short_pool.currency_vault = ctx.accounts.currency_vault.key();
-    short_pool.bump = ctx.bumps.short_pool;
-
-    Ok(())
-}
+//pub fn handler(ctx: Context<InitShortPool>) -> Result<()> {
+//    let short_pool = &mut ctx.accounts.short_pool;
+//    short_pool.is_long_pool = false;
+//    short_pool.collateral = ctx.accounts.asset_mint.key();
+//    short_pool.collateral_vault = ctx.accounts.collateral_vault.key();
+//    short_pool.currency = ctx.accounts.currency_mint.key();
+//    short_pool.currency_vault = ctx.accounts.currency_vault.key();
+//    short_pool.bump = ctx.bumps.short_pool;
+//
+//    Ok(())
+//}

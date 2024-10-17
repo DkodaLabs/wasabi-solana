@@ -31,37 +31,60 @@ impl<'info> StopLossSetup<'info> {
 
         Ok(())
     }
-}
 
-pub fn handler(ctx: Context<StopLossSetup>, args: ClosePositionArgs) -> Result<()> {
-    let position = &ctx.accounts.close_position_setup.position;
+    pub fn stop_loss_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+        if self.close_position_setup.pool.is_long_pool {
+            self.close_position_setup
+                .approve_swap_authority_delegation(
+                    self.close_position_setup.position.collateral_amount,
+                    self.close_position_setup.pool.to_account_info(),
+                    &[long_pool_signer_seeds!(self.close_position_setup.pool)],
+                )?;
+        } else {
+            self.close_position_setup
+                .approve_swap_authority_delegation(
+                    self.close_position_setup.position.collateral_amount,
+                    self.close_position_setup.pool.to_account_info(),
+                    &[short_pool_signer_seeds!(self.close_position_setup.pool)],
+                )?;
+        }
 
-    // allow "authority" to swap on behalf of the collateral vault
-    if ctx.accounts.close_position_setup.pool.is_long_pool {
-        ctx.accounts
-            .close_position_setup
-            .approve_swap_authority_delegation(
-                position.collateral_amount,
-                ctx.accounts.close_position_setup.pool.to_account_info(),
-                &[long_pool_signer_seeds!(
-                    ctx.accounts.close_position_setup.pool
-                )],
-            )?;
-    } else {
-        ctx.accounts
-            .close_position_setup
-            .approve_swap_authority_delegation(
-                position.collateral_amount,
-                ctx.accounts.close_position_setup.pool.to_account_info(),
-                &[short_pool_signer_seeds!(
-                    ctx.accounts.close_position_setup.pool
-                )],
-            )?;
+        self.close_position_setup
+            .set_close_position_request(&args)?;
+
+        Ok(())
     }
-
-    // Create a close position request
-    ctx.accounts
-        .close_position_setup
-        .set_close_position_request(&args)?;
-    Ok(())
 }
+
+//pub fn handler(ctx: Context<StopLossSetup>, args: ClosePositionArgs) -> Result<()> {
+//    let position = &ctx.accounts.close_position_setup.position;
+//
+//    // allow "authority" to swap on behalf of the collateral vault
+//    if ctx.accounts.close_position_setup.pool.is_long_pool {
+//        ctx.accounts
+//            .close_position_setup
+//            .approve_swap_authority_delegation(
+//                position.collateral_amount,
+//                ctx.accounts.close_position_setup.pool.to_account_info(),
+//                &[long_pool_signer_seeds!(
+//                    ctx.accounts.close_position_setup.pool
+//                )],
+//            )?;
+//    } else {
+//        ctx.accounts
+//            .close_position_setup
+//            .approve_swap_authority_delegation(
+//                position.collateral_amount,
+//                ctx.accounts.close_position_setup.pool.to_account_info(),
+//                &[short_pool_signer_seeds!(
+//                    ctx.accounts.close_position_setup.pool
+//                )],
+//            )?;
+//    }
+//
+//    // Create a close position request
+//    ctx.accounts
+//        .close_position_setup
+//        .set_close_position_request(&args)?;
+//    Ok(())
+//}

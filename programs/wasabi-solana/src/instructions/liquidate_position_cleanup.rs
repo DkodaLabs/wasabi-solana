@@ -13,9 +13,14 @@ impl<'info> LiquidatePositionCleanup<'info> {
     pub fn get_hash() -> [u8; 8] {
         get_function_hash("global", "liquidate_position_cleanup")
     }
+    
+    pub fn liquidate_position_cleanup(&mut self) -> Result<()> {
+        self.close_position_cleanup.close_position_cleanup(true);
+        Ok(())
+    }
 }
 
-pub fn handler(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
-    crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, true)?;
-    Ok(())
-}
+//pub fn handler(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
+//    crate::instructions::close_position_cleanup::shared_position_cleanup(&mut ctx.accounts.close_position_cleanup, true)?;
+//    Ok(())
+//}

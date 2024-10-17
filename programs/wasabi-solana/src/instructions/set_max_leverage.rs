@@ -28,7 +28,7 @@ pub struct SetMaxLeverageArgs {
 }
 
 impl<'info> SetMaxLeverage<'info> {
-    pub fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
+    fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
         if args.max_leverage == 0 {
             return Err(ErrorCode::InvalidValue.into());
         }
@@ -37,13 +37,20 @@ impl<'info> SetMaxLeverage<'info> {
         }
         Ok(())
     }
+
+    pub fn set_max_leverage(&mut self, args: &SetMaxLeverageArgs) -> Result<()> {
+        self.validate(args)?;
+
+        self.debt_controller.max_leverage = args.max_leverage;
+
+        Ok(())
+    }
 }
 
-pub fn handler(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
-    ctx.accounts.validate(&args)?;
-
-    let debt_controller = &mut ctx.accounts.debt_controller;
-    debt_controller.max_leverage = args.max_leverage;
-    Ok(())
-}
-        
+//pub fn handler(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
+//    ctx.accounts.validate(&args)?;
+//
+//    let debt_controller = &mut ctx.accounts.debt_controller;
+//    debt_controller.max_leverage = args.max_leverage;
+//    Ok(())
+//}

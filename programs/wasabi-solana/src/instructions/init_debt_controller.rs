@@ -26,9 +26,20 @@ pub struct InitDebtControllerArgs {
     pub max_leverage: u64,
 }
 
-pub fn handler(ctx: Context<InitDebtController>, args: InitDebtControllerArgs) -> Result<()> {
-    let debt_controller = &mut ctx.accounts.debt_controller;
-    debt_controller.max_apy = args.max_apy;
-    debt_controller.max_leverage = args.max_leverage;
-    Ok(())
+impl<'info> InitDebtController<'info> {
+    pub fn init_debt_controller(&mut self, args: &InitDebtControllerArgs) -> Result<()> {
+        self.debt_controller.set_inner(DebtController {
+            max_apy: args.max_apy,
+            max_leverage: args.max_leverage,
+        });
+
+        Ok(())
+    }
 }
+
+//pub fn handler(ctx: Context<InitDebtController>, args: InitDebtControllerArgs) -> Result<()> {
+//    let debt_controller = &mut ctx.accounts.debt_controller;
+//    debt_controller.max_apy = args.max_apy;
+//    debt_controller.max_leverage = args.max_leverage;
+//    Ok(())
+//}
