@@ -44,10 +44,17 @@ impl<'info> AdminBorrow<'info> {
             ErrorCode::InvalidPermissions
         );
 
-        if ctx.accounts.lp_vault.total_borrowed.checked_add(args.amount).expect("overflow") > ctx.accounts.lp_vault.max_borrow {
-          return Err(ErrorCode::MaxBorrowExceeded.into());
+        if ctx
+            .accounts
+            .lp_vault
+            .total_borrowed
+            .checked_add(args.amount)
+            .expect("overflow")
+            > ctx.accounts.lp_vault.max_borrow
+        {
+            return Err(ErrorCode::MaxBorrowExceeded.into());
         }
-        
+
         Ok(())
     }
 
@@ -68,11 +75,14 @@ impl<'info> AdminBorrow<'info> {
 }
 
 pub fn handler(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-  // Transfer from vault to destination
-  ctx.accounts.transfer_from_vault(args.amount)?;
+    // Transfer from vault to destination
+    ctx.accounts.transfer_from_vault(args.amount)?;
 
-  // increment total borrowed of the vault
-  let lp_vault = &mut ctx.accounts.lp_vault;
-  lp_vault.total_borrowed = args.amount;
+    // increment total borrowed of the vault
+    let lp_vault: &mut Account<'_, LpVault> = &mut ctx.accounts.lp_vault;
+    lp_vault.total_borrowed = lp_vault
+        .total_borrowed
+        .checked_add(args.amount)
+        .expect("overflow");
     Ok(())
 }
