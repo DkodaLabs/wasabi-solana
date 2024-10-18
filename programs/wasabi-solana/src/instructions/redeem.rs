@@ -32,8 +32,8 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> 
 
     emit!(Withdraw {
         sender: ctx.accounts.owner.key(),
-        owner: ctx.accounts.owner.key(),
-        receiver: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner_shares_account.owner.key(),
+        receiver: ctx.accounts.owner_asset_account.owner.key(),
         assets: token_transfer_amt,
         shares: args.shares_amount,
     });

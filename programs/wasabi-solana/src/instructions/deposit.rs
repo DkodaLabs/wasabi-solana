@@ -119,7 +119,7 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()>
 
     emit!(Deposit {
         sender: ctx.accounts.owner.key(),
-        owner: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner_asset_account.owner.key(),
         assets: args.amount,
         shares: shares_to_mint,
     });
