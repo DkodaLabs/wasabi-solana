@@ -18,48 +18,52 @@ pub struct ClosePositionCleanup<'info> {
     /// The wallet that owns the assets
     /// CHECK: No need
     pub owner: AccountInfo<'info>,
-    #[account(
-        mut,
-        associated_token::mint = collateral_mint,
-        associated_token::authority = owner,
-        associated_token::token_program = token_program,
-    )]
+
     /// The account that holds the owner's collateral currency.
     /// NOTE: this account is only used when closing `Short` Positions
-    pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = collateral,
         associated_token::authority = owner,
         associated_token::token_program = token_program,
     )]
+    pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     /// The account that holds the owner's base currency
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-      has_one = collateral_vault,
-    )]
     /// The Long or Short Pool that owns the Position
+    #[account(
+        has_one = currency,
+        has_one = collateral,
+    )]
     pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the source of the swap
     #[account(
-        associated_token::mint = collateral_mint,
+        associated_token::mint = collateral,
         associated_token::authority = pool,
         associated_token::token_program = token_program,
     )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+
+    /// The token account that is the destination of the swap
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = pool,
         associated_token::token_program = token_program,
     )]
-    /// The token account that is the destination of the swap
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
@@ -72,23 +76,32 @@ pub struct ClosePositionCleanup<'info> {
     #[account(
         mut,
         close = owner,
-        has_one = collateral_vault,
+        has_one = collateral,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    // TODO: See what can be inferred
     /// The LP Vault that the user borrowed from
+    // The following three (3) addresses are dependent on whether the position is a long or short.
+    // For example: If the position is long, we are borrowing the `currency` from the `lp_vault`
+    // and thus the `vault` and the `fee_wallet` have the same mint as the `currency`.
+    // If the position is short, we are borrowing the `collateral` from the `lp_vault` and thus the
+    // `vault` and the `fee_wallet` have the same mint as the `collateral`
+    //
+    // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
+    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation 
+    // of the `fee_wallet` is done in the `validate` function.
     #[account(
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
-    #[account(mut)]
     /// The LP Vault's token account.
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    // NOTE: Need validation
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -148,14 +161,14 @@ impl<'info> ClosePositionCleanup<'info> {
 
     fn validate(&self) -> Result<()> {
         // Validate the same position was used in setup and cleanup
-        require_eq!(
+        require_keys_eq!(
             self.position.key(),
             self.close_position_request.position,
             ErrorCode::InvalidPosition
         );
 
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
-        require_eq!(
+        require_keys_eq!(
             self.pool.key(),
             self.close_position_request.pool_key,
             ErrorCode::InvalidPool
@@ -170,7 +183,8 @@ impl<'info> ClosePositionCleanup<'info> {
 
         require_gt!(self.get_source_delta()?, 0, ErrorCode::MaxSwapExceeded);
 
-        require_eq!(
+        // NOTE: This check is performed as the clean-up function can't really infer the addresses
+        require_keys_eq!(
             self.fee_wallet.owner,
             self.global_settings.protocol_fee_wallet,
             ErrorCode::IncorrectFeeWallet
@@ -198,7 +212,7 @@ impl<'info> ClosePositionCleanup<'info> {
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
-                mint: self.currency_mint.to_account_info(),
+                mint: self.currency.to_account_info(),
                 to: self.vault.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -208,11 +222,11 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
         } else {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
-                mint: self.currency_mint.to_account_info(),
+                mint: self.currency.to_account_info(),
                 to: self.vault.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -222,7 +236,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
         }
     }
 
@@ -231,7 +245,7 @@ impl<'info> ClosePositionCleanup<'info> {
             // Fees for long are paid in Currency token (typically SOL)
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
-                mint: self.currency_mint.to_account_info(),
+                mint: self.currency.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -241,12 +255,12 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
         } else {
             // Fees for shorts are paid in collateral token (typically SOL)
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
-                mint: self.collateral_mint.to_account_info(),
+                mint: self.collateral.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -256,7 +270,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
         }
     }
 
@@ -264,7 +278,7 @@ impl<'info> ClosePositionCleanup<'info> {
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
-                mint: self.currency_mint.to_account_info(),
+                mint: self.currency.to_account_info(),
                 to: self.owner_currency_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -274,12 +288,12 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
         } else {
             // short must payout user in collateral (i.e. SOL for WIF/SOL)
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
-                mint: self.collateral_mint.to_account_info(),
+                mint: self.collateral.to_account_info(),
                 to: self.owner_collateral_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
@@ -289,7 +303,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
             };
-            token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
+            token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
         }
     }
 

@@ -60,9 +60,9 @@ pub mod wasabi_solana {
         ctx.accounts.update_lp_vault_max_borrow(&args)
     }
 
-    #[access_control(AdminBorrow::validate(&ctx, amount))]
-    pub fn admin_borrow(ctx: Context<AdminBorrow>, amount: u64) -> Result<()> {
-        ctx.accounts.admin_borrow(amount)
+    #[access_control(AdminBorrow::validate(&ctx, &args))]
+    pub fn admin_borrow(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
+        ctx.accounts.admin_borrow(&args)
     }
 
     #[access_control(Repay::validate(&ctx, &args))]
@@ -102,24 +102,24 @@ pub mod wasabi_solana {
         ctx.accounts.close_stop_loss_order()
     }
 
-    pub fn deposit(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
-        ctx.accounts.deposit(amount)
+    pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
+        ctx.accounts.deposit(&args)
     }
 
-    pub fn withdraw(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
-        ctx.accounts.withdraw(amount)
+    pub fn withdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
+        ctx.accounts.withdraw(&args)
     }
 
-    pub fn mint(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
-        ctx.accounts.mint(amount)
+    pub fn mint(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
+        ctx.accounts.mint(&args)
     }
 
-    pub fn redeem(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
-        ctx.accounts.redeem(amount)
+    pub fn redeem(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> {
+        ctx.accounts.redeem(&args)
     }
 
-    pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
-        ctx.accounts.donate(amount)
+    pub fn donate(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
+        ctx.accounts.donate(&args)
     }
 
     // Maybe remove the `&ctx`

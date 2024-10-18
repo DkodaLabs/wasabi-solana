@@ -1,7 +1,7 @@
 use {
     crate::{
         error::ErrorCode,
-        events::{Deposit, Withdraw},
+        events::Deposit,
         lp_vault_signer_seeds, LpVault,
     },
     anchor_lang::prelude::*,
@@ -57,8 +57,13 @@ pub struct DepositOrWithdraw<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct DepositArgs {
+    amount: u64,
+}
+
 impl<'info> DepositOrWithdraw<'info> {
-    fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
+    pub(crate) fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_asset_account.to_account_info(),
             mint: self.asset_mint.to_account_info(),
@@ -69,7 +74,7 @@ impl<'info> DepositOrWithdraw<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
     }
 
-    fn mint_shares_to_user(&self, amount: u64) -> Result<()> {
+    pub(crate) fn mint_shares_to_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = MintTo {
             mint: self.shares_mint.to_account_info(),
             to: self.owner_shares_account.to_account_info(),
@@ -84,7 +89,7 @@ impl<'info> DepositOrWithdraw<'info> {
         token_interface::mint_to(cpi_ctx, amount)
     }
 
-    fn burn_shares_from_user(&self, amount: u64) -> Result<()> {
+    pub(crate) fn burn_shares_from_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Burn {
             mint: self.shares_mint.to_account_info(),
             from: self.owner_shares_account.to_account_info(),
@@ -94,7 +99,7 @@ impl<'info> DepositOrWithdraw<'info> {
         token_interface::burn(cpi_ctx, amount)
     }
 
-    fn transfer_token_from_vault_to_owner(&self, amount: u64) -> Result<()> {
+    pub(crate) fn transfer_token_from_vault_to_owner(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
             mint: self.asset_mint.to_account_info(),
@@ -110,15 +115,15 @@ impl<'info> DepositOrWithdraw<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
     }
 
-    pub fn deposit(&mut self, amount: u64) -> Result<()> {
-        self.transfer_token_from_owner_to_vault(amount)?;
+    pub fn deposit(&mut self, args: &DepositArgs) -> Result<()> {
+        self.transfer_token_from_owner_to_vault(args.amount)?;
 
         let shares_supply = self.shares_mint.supply;
         let shares_to_mint = if shares_supply == 0 {
-            amount
+            args.amount
         } else {
             shares_supply
-                .checked_mul(amount)
+                .checked_mul(args.amount)
                 .ok_or(ErrorCode::Overflow)?
                 .checked_div(self.lp_vault.total_assets)
                 .ok_or(ErrorCode::Overflow)?
@@ -129,119 +134,22 @@ impl<'info> DepositOrWithdraw<'info> {
         self.lp_vault.total_assets = self
             .lp_vault
             .total_assets
-            .checked_add(amount)
+            .checked_add(args.amount)
             .ok_or(ErrorCode::Overflow)?;
 
         let sender_owner = self.owner.key();
         emit!(Deposit {
             sender: sender_owner,
             owner: sender_owner,
-            assets: amount,
+            assets: args.amount,
             shares: shares_to_mint,
         });
 
         Ok(())
     }
 
-    pub fn withdraw(&mut self, amount: u64) -> Result<()> {
-        self.transfer_token_from_vault_to_owner(amount)?;
-        let total_assets = self.shares_mint.supply;
-
-        let shares_burn_amount = amount
-            .checked_mul(self.shares_mint.supply)
-            .ok_or(ErrorCode::Overflow)?
-            .checked_add(total_assets)
-            .ok_or(ErrorCode::Overflow)?
-            .checked_div(total_assets)
-            .ok_or(ErrorCode::Overflow)?;
-
-        self.burn_shares_from_user(shares_burn_amount)?;
-
-        self.lp_vault.total_assets = self
-            .lp_vault
-            .total_assets
-            .checked_sub(amount)
-            .ok_or(ErrorCode::Overflow)?;
-
-        // TODO: Check this
-        let sender_owner_receiver = self.owner.key();
-        emit!(Withdraw {
-            sender: sender_owner_receiver,
-            owner: sender_owner_receiver,
-            receiver: sender_owner_receiver,
-            assets: amount,
-            shares: shares_burn_amount,
-        });
-
-        Ok(())
-    }
-
-    pub fn redeem(&mut self, amount: u64) -> Result<()> {
-        let token_transfer_amount = amount
-            .checked_mul(self.lp_vault.total_assets)
-            .ok_or(ErrorCode::Overflow)?
-            .checked_div(self.shares_mint.supply)
-            .ok_or(ErrorCode::Overflow)?;
-
-        self.transfer_token_from_vault_to_owner(token_transfer_amount)?;
-        self.burn_shares_from_user(amount)?;
-
-        self.lp_vault
-            .total_assets
-            .checked_sub(token_transfer_amount)
-            .ok_or(ErrorCode::Overflow)?;
-
-        let sender_owner_receiver = self.owner.key();
-
-        emit!(Withdraw {
-            sender: sender_owner_receiver,
-            owner: sender_owner_receiver,
-            receiver: sender_owner_receiver,
-            assets: token_transfer_amount,
-            shares: amount,
-        });
-
-        Ok(())
-    }
-
-    pub fn mint(&mut self, amount: u64) -> Result<()> {
-        self.mint_shares_to_user(amount)?;
-        let shares_supply = self.shares_mint.supply;
-
-        let tokens_in = if shares_supply == 0 {
-            amount
-        } else {
-            (self
-                .lp_vault
-                .total_assets
-                .checked_mul(amount)
-                .ok_or(ErrorCode::Overflow)?
-                .checked_add(shares_supply)
-                .ok_or(ErrorCode::Overflow)?)
-            .checked_div(shares_supply)
-            .ok_or(ErrorCode::Overflow)?
-        };
-
-        self.transfer_token_from_owner_to_vault(tokens_in)?;
-
-        self.lp_vault.total_assets = self
-            .lp_vault
-            .total_assets
-            .checked_add(tokens_in)
-            .ok_or(ErrorCode::Overflow)?;
-
-        let sender_owner = self.owner.key();
-
-        emit!(Deposit {
-            sender: sender_owner,
-            owner: sender_owner,
-            assets: tokens_in,
-            shares: amount,
-        });
-
-        Ok(())
-    }
 }
+
 
 //pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
 //    // transfer tokens from user's asset account

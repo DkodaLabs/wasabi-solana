@@ -3,7 +3,7 @@ use {
         instructions::close_position_cleanup::*, short_pool_signer_seeds, utils::get_function_hash,
     },
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{self, TokenAccount, TransferChecked, Mint},
+    anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 #[derive(Accounts)]
@@ -14,11 +14,18 @@ pub struct CloseShortPositionCleanup<'info> {
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// Account where user will receive their payout
     pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral_mint: InterfaceAccount<'info, Mint>,
+
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> CloseShortPositionCleanup<'info> {

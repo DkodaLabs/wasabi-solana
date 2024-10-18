@@ -25,11 +25,11 @@ pub struct OpenLongPositionCleanup<'info> {
     pub currency_vault: InterfaceAccount<'info, TokenAccount>,
 
     #[account(
-    mut,
-    close = owner,
-    seeds = [b"open_pos", owner.key().as_ref()],
-    bump,
-  )]
+        mut,
+        close = owner,
+        seeds = [b"open_pos", owner.key().as_ref()],
+        bump,
+    )]
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(mut)]
@@ -52,14 +52,14 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
     fn validate(&self) -> Result<()> {
         // Validate the same position was used in setup and cleanup
-        require_eq!(
+        require_keys_eq!(
             self.position.key(),
             self.open_position_request.position,
             ErrorCode::InvalidPosition
         );
 
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
-        require_eq!(
+        require_keys_eq!(
             self.long_pool.key(),
             self.open_position_request.pool_key,
             ErrorCode::InvalidPool

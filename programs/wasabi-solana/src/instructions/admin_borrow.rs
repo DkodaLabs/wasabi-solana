@@ -4,6 +4,11 @@ use {
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
+// NOTE: Might decide to go with a different implementation
+// WORMHOLE: Bridgable token on both chains - so might have an ix where we pull out funds, wrap
+// half of it in USDC and then put it into an AMM on both chains
+// THEN: Wormhole permission messaging across chains (burn/mint)
+// Removes admin controls - and having to call this ourselves
 #[derive(Accounts)]
 pub struct AdminBorrow<'info> {
     #[account(mut)]
@@ -16,19 +21,25 @@ pub struct AdminBorrow<'info> {
     )]
     pub permission: Account<'info, Permission>,
 
-    #[account(mut)]
     /// Source of the borrowed tokens
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
+    )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
     /// TokenAccount that will receive borrowed tokens
+    // NOTE: (Andrew) - Maybe this should be the wallet and we infer the ATA
+    #[account(mut)]
     pub destination: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub mint: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        has_one = vault,
+        has_one = currency,
     )]
     pub lp_vault: Account<'info, LpVault>,
 
@@ -41,7 +52,7 @@ pub struct AdminBorrowArgs {
 }
 
 impl<'info> AdminBorrow<'info> {
-    pub fn validate(ctx: &Context<AdminBorrow>, amount: u64) -> Result<()> {
+    pub fn validate(ctx: &Context<AdminBorrow>, args: &AdminBorrowArgs) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vault(),
             ErrorCode::InvalidPermissions
@@ -52,18 +63,17 @@ impl<'info> AdminBorrow<'info> {
             ctx.accounts
                 .lp_vault
                 .total_borrowed
-                .checked_add(amount)
+                .checked_add(args.amount)
                 .ok_or(ErrorCode::Overflow)?
         );
 
         Ok(())
     }
 
-    // NOTE: Pattern appears a lot - abstract
     fn transfer_from_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
-            mint: self.mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.destination.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
@@ -73,16 +83,16 @@ impl<'info> AdminBorrow<'info> {
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
-        token_interface::transfer_checked(cpi_ctx, amount, self.mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
-    pub fn admin_borrow(&mut self, amount: u64) -> Result<()> {
+    pub fn admin_borrow(&mut self, args: &AdminBorrowArgs) -> Result<()> {
         // Transfer from vault to destination
-        self.transfer_from_vault(amount)?;
+        self.transfer_from_vault(args.amount)?;
 
         // increment total borrowed of the vault
         // NOTE: Does this increment? It seems to just replace `total_borrowed` with `args.amount`
-        self.lp_vault.total_borrowed = amount;
+        self.lp_vault.total_borrowed = args.amount; //CHECKED ADD
 
         Ok(())
     }

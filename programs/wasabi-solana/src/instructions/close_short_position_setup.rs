@@ -26,7 +26,7 @@ impl<'info> CloseShortPositionSetup<'info> {
         );
 
         require!(
-            !ctx.accounts
+            ctx.accounts
                 .close_position_setup
                 .permission
                 .can_cosign_swaps(),

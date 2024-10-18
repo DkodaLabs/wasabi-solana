@@ -12,8 +12,6 @@ pub struct InitTakeProfitOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
-    // NOTE: Considering changing this to address = trader @ ErrorCode::Unauthorised
-    // Reason: IDL inference
     #[account(
         has_one = trader,
     )]

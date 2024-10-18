@@ -5,7 +5,7 @@ use {
         ClosePositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface},
+    anchor_spl::token_interface::{self, Approve, Mint, TokenAccount, TokenInterface},
 };
 
 // Makes a swap using balances in the vault, but settles the payout to user account
@@ -23,25 +23,32 @@ pub struct ClosePositionSetup<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
-    // NOTE: (Andrew) - The vaults are initialized in the pool setup
-    // a) The vaults can be derived from the mints (understood they are not provided here as there
-    // is no need, however they also exist as fields in the pool's state and could be used to
-    // derive the vault addresses)
-    // b) Another approach is to infer using `address = pool.the_vault @ ErrorCode::InvalidVault`
-    // NOTE: Understand they are being used to validate `pool` and `position` see if these are
-    // derived in any other manner
     #[account(
-        has_one = collateral_vault,
+        has_one = collateral,
+        has_one = currency,
     )]
     /// The pool that owns the Position
     pub pool: Account<'info, BasePool>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = pool,
+        associated_token::token_program = token_program,
+    )]
     /// The collateral account that is the source of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The token account that is the destination of the swap
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = pool,
+        associated_token::token_program = token_program,
+    )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -106,7 +113,7 @@ impl<'info> ClosePositionSetup<'info> {
                 destination_bal_before: self.currency_vault.amount,
             },
             interest: args.interest,
-            max_amount_in: self.position.collateral_amount,
+            max_amount_in: self.position.collateral_amount, // Check
             min_target_amount: args.min_target_amount,
             pool_key: self.position.collateral_vault,
             position: self.position.key(),

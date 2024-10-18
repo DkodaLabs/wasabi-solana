@@ -7,7 +7,7 @@ pub struct Position {
     /// The address of the currency to be paid for the position.
     pub currency: Pubkey,
     /// The address of the currency to be received for the position.
-    pub collateral_currency: Pubkey,
+    pub collateral: Pubkey,
     /// The timestamp of the last funding payment.
     pub last_funding_timestamp: i64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)

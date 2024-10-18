@@ -13,9 +13,19 @@ pub struct ClaimPosition<'info> {
     #[account(mut)]
     /// The wallet that owns the Position
     pub trader: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = trader,
+        associated_token::token_program = token_program,
+    )]
     pub trader_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = trader,
+        associated_token::token_program = token_program,
+    )]
     pub trader_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -23,21 +33,35 @@ pub struct ClaimPosition<'info> {
         close = trader,
         has_one = trader,
         has_one = lp_vault,
-        has_one = collateral_vault,
+        has_one = collateral,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(
-        has_one = collateral_vault,
+        has_one = collateral,
+        has_one = currency,
     )]
     pub pool: Account<'info, BasePool>,
-
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = pool,
+        associated_token::token_program = token_program,
+    )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
+    // The following three (3) addresses are dependent on whether the position is a long or short.
+    // For example: If the position is long, we are borrowing the `currency` from the `lp_vault`
+    // and thus the `vault` and the `fee_wallet` have the same mint as the `currency`.
+    // If the position is short, we are borrowing the `collateral` from the `lp_vault` and thus the
+    // `vault` and the `fee_wallet` have the same mint as the `collateral`
+    //
+    // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
+    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation 
+    // of the `fee_wallet` is done in the `validate` function.
     #[account(
         has_one = vault,
     )]
@@ -76,12 +100,12 @@ impl<'info> ClaimPosition<'info> {
     pub fn transfer_from_trader_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.trader_currency_account.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.vault.to_account_info(),
             authority: self.trader.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     pub fn transfer_from_collateral_vault_to_trader(
@@ -91,7 +115,7 @@ impl<'info> ClaimPosition<'info> {
     ) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.collateral_vault.to_account_info(),
-            mint: self.collateral_mint.to_account_info(),
+            mint: self.collateral.to_account_info(),
             to: self.trader_collateral_account.to_account_info(),
             authority: self.pool.to_account_info(),
         };
@@ -101,7 +125,7 @@ impl<'info> ClaimPosition<'info> {
             remaining_accounts: Vec::new(),
             signer_seeds: pool_signer,
         };
-        token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
     pub fn transfer_fees(&self, amount: u64, pool_signer: &[&[&[u8]]]) -> Result<()> {
@@ -109,19 +133,19 @@ impl<'info> ClaimPosition<'info> {
         let signers: &[&[&[u8]]];
         let cpi_accounts = if self.pool.is_long_pool {
             signers = &[];
-            decimals = self.currency_mint.decimals;
+            decimals = self.currency.decimals;
             TransferChecked {
                 from: self.trader_currency_account.to_account_info(),
-                mint: self.currency_mint.to_account_info(),
+                mint: self.currency.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.trader.to_account_info(),
             }
         } else {
             signers = pool_signer;
-            decimals = self.collateral_mint.decimals;
+            decimals = self.collateral.decimals;
             TransferChecked {
                 from: self.collateral_vault.to_account_info(),
-                mint: self.collateral_mint.to_account_info(),
+                mint: self.collateral.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             }

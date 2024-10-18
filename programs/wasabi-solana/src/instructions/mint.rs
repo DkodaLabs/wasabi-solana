@@ -1,13 +1,56 @@
-//use anchor_lang::prelude::*;
-//
-//use crate::events::Deposit;
-//
-//use super::DepositOrWithdraw;
-//
-//#[derive(AnchorDeserialize, AnchorSerialize)]
-//pub struct MintArgs {
-//    pub shares_amount: u64,
-//}
+use {
+    super::DepositOrWithdraw,
+    crate::{error::ErrorCode, events::Deposit},
+    anchor_lang::prelude::*,
+};
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct MintArgs {
+    pub shares_amount: u64,
+}
+
+pub trait Mint {
+    fn mint(&mut self, args: &MintArgs) -> Result<()>;
+}
+
+impl Mint for DepositOrWithdraw<'_> {
+    fn mint(&mut self, args: &MintArgs) -> Result<()> {
+        self.mint_shares_to_user(args.shares_amount)?;
+        let shares_supply = self.shares_mint.supply;
+
+        let tokens_in = if shares_supply == 0 {
+            args.shares_amount
+        } else {
+            (self
+                .lp_vault
+                .total_assets
+                .checked_mul(args.shares_amount)
+                .ok_or(ErrorCode::Overflow)?
+                .checked_add(shares_supply)
+                .ok_or(ErrorCode::Overflow)?)
+            .checked_div(shares_supply)
+            .ok_or(ErrorCode::Overflow)?
+        };
+
+        self.transfer_token_from_owner_to_vault(tokens_in)?;
+
+        self.lp_vault.total_assets = self
+            .lp_vault
+            .total_assets
+            .checked_add(tokens_in)
+            .ok_or(ErrorCode::Overflow)?;
+
+        let sender_owner = self.owner.key();
+
+        emit!(Deposit {
+            sender: sender_owner,
+            owner: sender_owner,
+            assets: tokens_in,
+            shares: args.shares_amount,
+        });
+
+        Ok(())
+    }
+}
 //
 //pub fn handler(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
 //    ctx.accounts.mint_shares_to_user(args.shares_amount)?;

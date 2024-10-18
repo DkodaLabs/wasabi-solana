@@ -18,18 +18,17 @@ pub struct OpenShortPositionCleanup<'info> {
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
 
-    // NOTE: I think these should be the mints rather than the vault addresses
     /// The ShortPool that owns the Position
     #[account(
-      has_one = collateral_vault,
-      has_one = currency_vault,
+        has_one = collateral,
+        has_one = currency,
     )]
     pub short_pool: Account<'info, BasePool>,
 
     /// The collateral account that is the destination of the swap
     #[account(
         mut,
-        associated_token::mint = collateral_mint,
+        associated_token::mint = collateral,
         associated_token::authority = short_pool,
         associated_token::token_program = token_program,
     )]
@@ -37,36 +36,37 @@ pub struct OpenShortPositionCleanup<'info> {
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
     #[account(
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = short_pool,
         associated_token::token_program = token_program,
     )]
     pub currency_vault: InterfaceAccount<'info, TokenAccount>,
 
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     /// The LP Vault that the user will borrow from
-    // NOTE: I think this should be the LP Vault mint rather than the vault address
+    /// In a 
     #[account(
-        has_one = vault,
+        constraint = lp_vault.currency == collateral.key(),
+        //has_one = vault, // Naming conventions make this one confusing
     )]
     pub lp_vault: Account<'info, LpVault>,
 
     /// The LP Vault's token account.
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = collateral,
         associated_token::authority = lp_vault,
         associated_token::token_program = token_program,
     )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-      mut,
-      close = owner,
-      seeds = [b"open_pos", owner.key().as_ref()],
-      bump,
+        mut,
+        close = owner,
+        seeds = [b"open_pos", owner.key().as_ref()],
+        bump,
     )]
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
@@ -146,7 +146,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
     fn transfer_remaining_principal_from_currency_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.currency_vault.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.vault.to_account_info(),
             authority: self.short_pool.to_account_info(),
         };
@@ -156,7 +156,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
             remaining_accounts: Vec::new(),
             signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
         };
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     pub fn open_short_position_cleanup(&mut self) -> Result<()> {

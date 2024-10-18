@@ -14,42 +14,46 @@ use {
 #[derive(Accounts)]
 #[instruction(args: OpenLongPositionArgs)]
 pub struct OpenLongPositionSetup<'info> {
-    #[account(mut)]
     /// The wallet that owns the assets
+    #[account(mut)]
     pub owner: Signer<'info>,
+
+    /// The account that holds the owner's quote currency
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = owner,
         associated_token::token_program = token_program,
     )]
-    /// The account that holds the owner's base currency
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
     /// The LP Vault that the user will borrow from
+    /// For long positions, this is the `currency`
     #[account(
-        has_one = vault,
+        has_one = currency,
     )]
     pub lp_vault: Account<'info, LpVault>,
+
+    /// The LP Vault's token account.
     #[account(
         mut,
-        associated_token::mint = currency_mint, // Check this is correct - my understanding is:
-        // getting leverage is increasing size of position, so borrowing currency
+        associated_token::mint = currency,
         associated_token::authority = lp_vault,
         associated_token::token_program = token_program,
     )]
-    /// The LP Vault's token account.
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        has_one = collateral_vault,
-        has_one = currency_vault,
-    )]
     /// The LongPool that owns the Position
+    #[account(
+        has_one = collateral,
+        has_one = currency,
+    )]
     pub long_pool: Account<'info, BasePool>,
+
     /// The collateral account that is the destination of the swap
     #[account(
         mut,
-        associated_token::mint = collateral_mint,
+        associated_token::mint = collateral,
         associated_token::authority = long_pool,
         associated_token::token_program = token_program,
     )]
@@ -58,14 +62,14 @@ pub struct OpenLongPositionSetup<'info> {
     // The token account that is the source of the swap (where principal and downpayment are sent)
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = long_pool,
         associated_token::token_program = token_program,
     )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
@@ -84,13 +88,15 @@ pub struct OpenLongPositionSetup<'info> {
             owner.key().as_ref(), 
             long_pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
-            &args.nonce.to_le_bytes()
+            &args.nonce.to_le_bytes() // Ensures user can have multiple positions for this
+            // particular pool
         ],
         bump,
         space = 8 + std::mem::size_of::<Position>(),
     )]
     pub position: Box<Account<'info, Position>>,
 
+    // Backend authority
     pub authority: Signer<'info>,
 
     #[account(
@@ -98,8 +104,7 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    // NOTE: There's no real validation on the fee wallet - this should probably be set in the LP
-    // Vault
+    /// Fee wallet needs to be unique per market 
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -109,6 +114,7 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub debt_controller: Account<'info, DebtController>,
 
+    // derive
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -126,7 +132,7 @@ impl<'info> OpenLongPositionSetup<'info> {
 
         require_gt!(args.expiration, now, ErrorCode::PositionReqExpired);
 
-        require!(!ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
+        require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(
@@ -139,7 +145,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     fn transfer_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.currency_vault.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
@@ -149,30 +155,30 @@ impl<'info> OpenLongPositionSetup<'info> {
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.currency_vault.to_account_info(),
             authority: self.owner.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.fee_wallet.to_account_info(),
             authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
@@ -207,7 +213,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             .checked_add(args.down_payment)
             .ok_or(ErrorCode::Overflow)?;
 
-        // Approve user to make a swap on behalf of the `currency_vault`
+        // Approve authority to make a swap on behalf of the `currency_vault`
         self.approve_owner_delegation(total_swap_amount)?;
 
         // Cache data on the `open_position_request` account. We use the value after the borrow in
@@ -227,8 +233,8 @@ impl<'info> OpenLongPositionSetup<'info> {
         });
         self.position.set_inner(Position {
             trader: self.owner.key(),
-            currency: self.currency_mint.key(),
-            collateral_currency: self.collateral_mint.key(),
+            currency: self.currency.key(),
+            collateral: self.collateral.key(),
             down_payment: args.down_payment,
             principal: args.principal,
             collateral_vault: self.collateral_vault.key(),
@@ -249,7 +255,8 @@ pub struct OpenLongPositionArgs {
     pub nonce: u16,
     /// The minimum amount out required when swapping
     pub min_target_amount: u64,
-    /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
+    /// The initial down payment amount required to open the position (is in `currency` for long, `
+    /// collateralCurrency` for short positions)
     pub down_payment: u64,
     /// The total principal amount to be borrowed for the position.
     pub principal: u64,

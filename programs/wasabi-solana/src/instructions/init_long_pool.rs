@@ -12,7 +12,6 @@ pub struct InitLongPool<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     /// The key that has permission to init the long_pool
-    // NOTE: Why are both signers
     pub authority: Signer<'info>,
 
     #[account(
@@ -20,14 +19,14 @@ pub struct InitLongPool<'info> {
     )]
     pub permission: Account<'info, Permission>,
 
-    pub asset_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
         payer = payer,
-        seeds = [b"long_pool", asset_mint.key().as_ref(), currency_mint.key().as_ref()],
+        seeds = [b"long_pool", collateral.key().as_ref(), currency.key().as_ref()],
         bump,
         space = 8 + std::mem::size_of::<BasePool>(),
     )]
@@ -36,7 +35,7 @@ pub struct InitLongPool<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::mint = asset_mint,
+        associated_token::mint = collateral,
         associated_token::authority = long_pool,
         associated_token::token_program = token_program,
     )]
@@ -45,7 +44,7 @@ pub struct InitLongPool<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = long_pool,
         associated_token::token_program = token_program,
     )]
@@ -68,9 +67,9 @@ impl<'info> InitLongPool<'info> {
     pub fn init_long_pool(&mut self, bumps: &InitLongPoolBumps) -> Result<()> {
         self.long_pool.set_inner(BasePool {
             is_long_pool: true,
-            collateral: self.asset_mint.key(),
+            collateral: self.collateral.key(),
             collateral_vault: self.collateral_vault.key(),
-            currency: self.currency_mint.key(),
+            currency: self.currency.key(),
             currency_vault: self.currency_vault.key(),
             bump: bumps.long_pool,
         });

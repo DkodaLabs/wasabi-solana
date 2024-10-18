@@ -12,7 +12,7 @@ pub struct Deposit {
 }
 
 #[event]
-pub struct Withdraw {
+pub struct WithdrawEvent {
     pub sender: Pubkey,
     pub receiver: Pubkey,
     pub owner: Pubkey,
@@ -31,7 +31,7 @@ impl NewVault {
     pub fn new(lp_vault: &Account<'_, LpVault>) -> Self {
         Self {
             pool: lp_vault.key(),
-            asset: lp_vault.asset,
+            asset: lp_vault.currency,
             vault: lp_vault.vault,
         }
     }
@@ -55,7 +55,7 @@ impl PositionOpened {
             position: position.key(),
             trader: position.trader,
             currency: position.currency,
-            collateral_currency: position.collateral_currency,
+            collateral_currency: position.collateral,
             down_payment: position.down_payment,
             principal: position.principal,
             collateral_amount: position.collateral_amount,

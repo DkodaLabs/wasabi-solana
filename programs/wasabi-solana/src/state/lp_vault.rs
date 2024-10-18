@@ -7,7 +7,7 @@ pub struct LpVault {
   /// Bump seed for the LpVault's PDA
   pub bump: u8,
   /// The SPL Mint address of the token that sits in this vault
-  pub asset: Pubkey,
+  pub currency: Pubkey, // 20241018 - Change from `asset` to `currency` for easier validation
   /// The SPL Token account that stores the unborrowed tokens
   pub vault: Pubkey,
   /// The SPL Mint address that represents shares in the vault

@@ -19,14 +19,14 @@ pub struct InitShortPool<'info> {
     )]
     pub permission: Account<'info, Permission>,
 
-    pub asset_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
       init,
       payer = payer,
-      seeds = [b"short_pool", asset_mint.key().as_ref(), currency_mint.key().as_ref()],
+      seeds = [b"short_pool", collateral.key().as_ref(), currency.key().as_ref()],
       bump,
       space = 8 + std::mem::size_of::<BasePool>(),
     )]
@@ -35,7 +35,7 @@ pub struct InitShortPool<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::mint = asset_mint,
+        associated_token::mint = collateral,
         associated_token::authority = short_pool,
         associated_token::token_program = token_program,
     )]
@@ -44,7 +44,7 @@ pub struct InitShortPool<'info> {
     #[account(
         init,
         payer = payer,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = short_pool,
         associated_token::token_program = token_program,
     )]
@@ -67,9 +67,9 @@ impl<'info> InitShortPool<'info> {
     pub fn init_short_pool(&mut self, bumps: &InitShortPoolBumps) -> Result<()> {
         self.short_pool.set_inner(BasePool {
             is_long_pool: false,
-            collateral: self.asset_mint.key(),
+            collateral: self.collateral.key(),
             collateral_vault: self.collateral_vault.key(),
-            currency: self.currency_mint.key(),
+            currency: self.currency.key(),
             currency_vault: self.currency_vault.key(),
             bump: bumps.short_pool,
         });

@@ -228,7 +228,8 @@ impl<'info> OpenShortPositionSetup<'info> {
             position: self.position.key(),
             pool_key: self.short_pool.key(),
             min_target_amount: args.min_target_amount,
-            max_amount_in: 0, // CHECK: Why isn't this being set
+            max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
+            // collateral_amount - set to the `args.principal`
             swap_cache: SwapCache {
                 destination_bal_before: self.collateral_vault.amount,
                 source_bal_before: self.currency_vault.amount,
@@ -240,12 +241,12 @@ impl<'info> OpenShortPositionSetup<'info> {
         self.position.set_inner(Position {
             trader: self.owner.key(),
             currency: self.currency_mint.key(),
-            collateral_currency: self.collateral_mint.key(),
+            collateral: self.collateral_mint.key(),
             down_payment: args.down_payment,
             principal: args.principal,
             collateral_vault: self.collateral_vault.key(),
-            collateral_amount: self.collateral_vault.amount, // This doesn't seem right, check why
-            // this isn't being set
+            collateral_amount: 0, // This doesn't seem right, check why
+            // this isn't being set - set after we do the swap
             lp_vault: self.lp_vault.key(),
             fees_to_be_paid: args.fee,
             last_funding_timestamp: Clock::get()?.unix_timestamp,
