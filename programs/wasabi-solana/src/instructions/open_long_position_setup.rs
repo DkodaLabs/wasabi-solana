@@ -14,7 +14,7 @@ pub struct OpenLongPositionSetup<'info> {
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
     #[account(mut)]
-    /// The account that holds the owner's base currency
+    /// The account that holds the owner's quote currency
     pub owner_currency_account: Account<'info, TokenAccount>,
     /// The LP Vault that the user will borrow from
     #[account(
@@ -194,7 +194,7 @@ pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) 
         .checked_add(args.down_payment)
         .expect("overflow");
 
-    // Approve user to make swap on behalf of `currency_vault`
+    // Approve authority to make swap on behalf of `currency_vault`
     ctx.accounts.approve_owner_delegation(total_swap_amount)?;
 
     let collateral_amount = ctx.accounts.collateral_vault.amount;

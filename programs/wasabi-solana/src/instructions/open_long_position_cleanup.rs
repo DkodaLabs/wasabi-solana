@@ -82,7 +82,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
         Ok(())
     }
 
-    pub fn revoke_owner_delegation(&self) -> Result<()> {
+    pub fn revoke_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
             source: self.currency_vault.to_account_info(),
             authority: self.long_pool.to_account_info(),
@@ -99,8 +99,8 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
 pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
     ctx.accounts.validate()?;
-    // Revoke owner's ability to transfer on behalf of the `currency_vault`
-    ctx.accounts.revoke_owner_delegation()?;
+    // Revoke auhtority's ability to transfer on behalf of the `currency_vault`
+    ctx.accounts.revoke_delegation()?;
 
     let destination_delta = ctx.accounts.get_destination_delta();
 

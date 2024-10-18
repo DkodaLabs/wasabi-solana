@@ -39,7 +39,7 @@ pub fn handler(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
 
     emit!(Deposit {
         sender: ctx.accounts.owner.key(),
-        owner: ctx.accounts.owner.key(),
+        owner: ctx.accounts.owner_asset_account.owner.key(),
         assets: tokens_in,
         shares: args.shares_amount,
     });
