@@ -9,7 +9,12 @@ pub struct Donate<'info> {
     /// The key of the address donating
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The Payer's token account that holds the assets
     pub owner_asset_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -19,7 +24,12 @@ pub struct Donate<'info> {
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
+    )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub asset_mint: InterfaceAccount<'info, Mint>,

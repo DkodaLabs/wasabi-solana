@@ -19,16 +19,16 @@ pub struct ClaimPosition<'info> {
     pub trader_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-      mut,
-      close = trader,
-      has_one = trader,
-      has_one = lp_vault,
-      has_one = collateral_vault,
+        mut,
+        close = trader,
+        has_one = trader,
+        has_one = lp_vault,
+        has_one = collateral_vault,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(
-      has_one = collateral_vault,
+        has_one = collateral_vault,
     )]
     pub pool: Account<'info, BasePool>,
 
@@ -39,7 +39,7 @@ pub struct ClaimPosition<'info> {
     pub currency_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-      has_one = vault,
+        has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
 
@@ -50,14 +50,14 @@ pub struct ClaimPosition<'info> {
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-      seeds = [b"debt_controller"],
-      bump,
+        seeds = [b"debt_controller"],
+        bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
 
     #[account(
-      seeds = [b"global_settings"],
-      bump,
+        seeds = [b"global_settings"],
+        bump,
     )]
     pub global_settings: Account<'info, GlobalSettings>,
 
@@ -65,8 +65,9 @@ pub struct ClaimPosition<'info> {
 }
 impl<'info> ClaimPosition<'info> {
     pub fn validate(&self) -> Result<()> {
-        require!(
-            self.fee_wallet.owner == self.global_settings.protocol_fee_wallet,
+        require_keys_eq!(
+            self.fee_wallet.owner,
+            self.global_settings.protocol_fee_wallet,
             ErrorCode::IncorrectFeeWallet
         );
         Ok(())
@@ -104,42 +105,42 @@ impl<'info> ClaimPosition<'info> {
     }
 
     pub fn transfer_fees(&self, amount: u64, pool_signer: &[&[&[u8]]]) -> Result<()> {
-        if self.pool.is_long_pool {
-            let cpi_accounts = TransferChecked {
+        let decimals: u8;
+        let signers: &[&[&[u8]]];
+        let cpi_accounts = if self.pool.is_long_pool {
+            signers = &[];
+            decimals = self.currency_mint.decimals;
+            TransferChecked {
                 from: self.trader_currency_account.to_account_info(),
                 mint: self.currency_mint.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.trader.to_account_info(),
-            };
-            let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
-                accounts: cpi_accounts,
-                remaining_accounts: Vec::new(),
-                signer_seeds: &[],
-            };
-            token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+            }
         } else {
-            let cpi_accounts = TransferChecked {
+            signers = pool_signer;
+            decimals = self.collateral_mint.decimals;
+            TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral_mint.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
-            };
-            let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
-                accounts: cpi_accounts,
-                remaining_accounts: Vec::new(),
-                signer_seeds: pool_signer,
-            };
-            token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
-        }
+            }
+        };
+
+        let cpi_ctx = CpiContext {
+            program: self.token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: signers,
+        };
+
+        token_interface::transfer_checked(cpi_ctx, amount, decimals)
     }
 
     pub fn claim_position(&mut self) -> Result<()> {
         self.validate()?;
         let now = Clock::get()?.unix_timestamp;
 
-        // Can optimise this
         let interest_paid = self.debt_controller.compute_max_interest(
             self.position.principal,
             self.position.last_funding_timestamp,

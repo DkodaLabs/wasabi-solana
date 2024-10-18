@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{state::DebtController, Permission};
+use {
+    crate::{state::DebtController, Permission},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct InitDebtController<'info> {
@@ -8,13 +9,19 @@ pub struct InitDebtController<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
-      seeds = [b"super_admin"],
-      bump,
+        has_one = authority,
+        seeds = [b"super_admin"],
+        bump,
     )]
     pub super_admin_permission: Account<'info, Permission>,
 
-    #[account(init,  payer = authority, seeds = [b"debt_controller"], bump, space = 8 + std::mem::size_of::<DebtController>(),)]
+    #[account(
+        init,  
+        payer = authority, 
+        seeds = [b"debt_controller"], 
+        bump, 
+        space = 8 + std::mem::size_of::<DebtController>()
+    )]
     pub debt_controller: Account<'info, DebtController>,
 
     pub system_program: Program<'info, System>,

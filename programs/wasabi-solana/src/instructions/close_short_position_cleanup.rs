@@ -46,7 +46,7 @@ impl<'info> CloseShortPositionCleanup<'info> {
     }
 
     pub fn close_short_position_cleanup(&mut self) -> Result<()> {
-        self.close_position_cleanup.close_position_cleanup(false);
+        let _ = self.close_position_cleanup.close_position_cleanup(false);
         Ok(())
     }
 }

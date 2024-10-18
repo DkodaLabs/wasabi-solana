@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+// NOTE: This is another place where i'm not sure it's necessary to store the vault key just the
+// mint
 #[account]
 pub struct LpVault {
   /// Bump seed for the LpVault's PDA

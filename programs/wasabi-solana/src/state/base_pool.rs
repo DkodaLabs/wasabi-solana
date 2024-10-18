@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+// NOTE: I don't necessarily think that the vault addresses need to be stored in the pool account,
+// just the mint - the vaults can be derived
 #[account]
 pub struct BasePool {
   /// The mint address for the collateral type this pool supports

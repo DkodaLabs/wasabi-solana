@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, DebtController, Permission, LEVERAGE_DENOMINATOR};
+use {
+    crate::{error::ErrorCode, DebtController, Permission, LEVERAGE_DENOMINATOR},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct SetMaxLeverage<'info> {
@@ -29,12 +30,12 @@ pub struct SetMaxLeverageArgs {
 
 impl<'info> SetMaxLeverage<'info> {
     fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
-        if args.max_leverage == 0 {
-            return Err(ErrorCode::InvalidValue.into());
-        }
-        if args.max_leverage > 100 * LEVERAGE_DENOMINATOR {
-            return Err(ErrorCode::InvalidValue.into());
-        }
+        require_neq!(args.max_leverage, 0, ErrorCode::InvalidValue);
+        require_gt!(
+            100 * LEVERAGE_DENOMINATOR,
+            args.max_leverage,
+            ErrorCode::InvalidValue
+        );
         Ok(())
     }
 

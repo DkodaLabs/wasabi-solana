@@ -1,10 +1,11 @@
-use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+use {
+    crate::{error::ErrorCode, BasePool, Permission},
+    anchor_lang::prelude::*,
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token_interface::{Mint, TokenAccount, TokenInterface},
+    },
 };
-
-use crate::{error::ErrorCode, BasePool, Permission};
 
 #[derive(Accounts)]
 pub struct InitLongPool<'info> {
@@ -15,25 +16,20 @@ pub struct InitLongPool<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
+        has_one = authority,
     )]
     pub permission: Account<'info, Permission>,
 
-    // NOTE: (Andrew) These don't really need to be passed in as accounts and increases the call
-    // data size, they should really be provided as arguments, but should be validated.
-    // TODO: Provide these as arguments
-    // NOTE: This may be unnecessary as an account
     pub asset_mint: InterfaceAccount<'info, Mint>,
 
-    // NOTE: This may be unnecessary as an account
     pub currency_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-      init,
-      payer = payer,
-      seeds = [b"long_pool", asset_mint.key().as_ref(), currency_mint.key().as_ref()],
-      bump,
-      space = 8 + std::mem::size_of::<BasePool>(),
+        init,
+        payer = payer,
+        seeds = [b"long_pool", asset_mint.key().as_ref(), currency_mint.key().as_ref()],
+        bump,
+        space = 8 + std::mem::size_of::<BasePool>(),
     )]
     pub long_pool: Box<Account<'info, BasePool>>,
 

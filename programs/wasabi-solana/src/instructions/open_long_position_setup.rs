@@ -17,7 +17,12 @@ pub struct OpenLongPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
     /// The LP Vault that the user will borrow from
@@ -25,7 +30,13 @@ pub struct OpenLongPositionSetup<'info> {
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint, // Check this is correct - my understanding is:
+        // getting leverage is increasing size of position, so borrowing currency
+        associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
+    )]
     /// The LP Vault's token account.
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -36,10 +47,21 @@ pub struct OpenLongPositionSetup<'info> {
     /// The LongPool that owns the Position
     pub long_pool: Account<'info, BasePool>,
     /// The collateral account that is the destination of the swap
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = long_pool,
+        associated_token::token_program = token_program,
+    )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = long_pool,
+        associated_token::token_program = token_program,
+    )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral_mint: InterfaceAccount<'info, Mint>,
@@ -76,6 +98,8 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
+    // NOTE: There's no real validation on the fee wallet - this should probably be set in the LP
+    // Vault
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -100,13 +124,10 @@ impl<'info> OpenLongPositionSetup<'info> {
     pub fn validate(ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
 
-        if now > args.expiration {
-            return Err(ErrorCode::PositionReqExpired.into());
-        }
+        require_gt!(args.expiration, now, ErrorCode::PositionReqExpired);
 
-        if !ctx.accounts.permission.can_cosign_swaps() {
-            return Err(ErrorCode::InvalidSwapCosigner.into());
-        }
+        require!(!ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
+
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(
             &ctx.accounts.sysvar_info,
@@ -179,7 +200,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             .debt_controller
             .compute_max_principal(args.down_payment);
 
-        require!(args.principal > max_principal, ErrorCode::PrincipalTooHigh);
+        require_gt!(max_principal, args.principal, ErrorCode::PrincipalTooHigh);
 
         let total_swap_amount = args
             .principal

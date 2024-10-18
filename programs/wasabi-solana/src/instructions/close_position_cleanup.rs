@@ -18,11 +18,21 @@ pub struct ClosePositionCleanup<'info> {
     /// The wallet that owns the assets
     /// CHECK: No need
     pub owner: AccountInfo<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The account that holds the owner's collateral currency.
     /// NOTE: this account is only used when closing `Short` Positions
     pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -33,8 +43,18 @@ pub struct ClosePositionCleanup<'info> {
     pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the source of the swap
+    #[account(
+        associated_token::mint = collateral_mint,
+        associated_token::authority = pool,
+        associated_token::token_program = token_program,
+    )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = pool,
+        associated_token::token_program = token_program,
+    )]
     /// The token account that is the destination of the swap
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -42,26 +62,27 @@ pub struct ClosePositionCleanup<'info> {
     pub currency_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-      mut,
-      close = authority,
-      seeds = [b"close_pos", owner.key().as_ref()],
-      bump,
+        mut,
+        close = authority,
+        seeds = [b"close_pos", owner.key().as_ref()],
+        bump,
     )]
-    pub close_position_request: Account<'info, ClosePositionRequest>,
+    pub close_position_request: Box<Account<'info, ClosePositionRequest>>,
 
     #[account(
-      mut,
-      close = owner,
-      has_one = collateral_vault,
+        mut,
+        close = owner,
+        has_one = collateral_vault,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
+    // TODO: See what can be inferred
     /// The LP Vault that the user borrowed from
     #[account(
-      has_one = vault,
+        has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
     #[account(mut)]
@@ -72,8 +93,8 @@ pub struct ClosePositionCleanup<'info> {
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-      seeds = [b"debt_controller"],
-      bump,
+        seeds = [b"debt_controller"],
+        bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
 
@@ -308,8 +329,6 @@ impl<'info> ClosePositionCleanup<'info> {
         };
 
         // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
-        // NOTE: (Andrew) - Unsure as to why this is assigned to the struct to later be reassigned
-        // - is this memory management?
         close_amounts.payout = if self.pool.is_long_pool {
             // Deduct principal
             let (payout, principal_repaid) =

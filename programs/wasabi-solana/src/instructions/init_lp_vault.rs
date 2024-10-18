@@ -1,10 +1,11 @@
-use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+use {
+    crate::{error::ErrorCode, events::NewVault, LpVault, Permission},
+    anchor_lang::prelude::*,
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token_interface::{Mint, TokenAccount, TokenInterface},
+    },
 };
-
-use crate::{error::ErrorCode, events::NewVault, LpVault, Permission};
 
 #[derive(Accounts)]
 pub struct InitLpVault<'info> {
@@ -34,6 +35,7 @@ pub struct InitLpVault<'info> {
         payer = payer,
         associated_token::mint = asset_mint,
         associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
     )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -44,6 +46,7 @@ pub struct InitLpVault<'info> {
         bump,
         mint::authority = lp_vault,
         mint::decimals = asset_mint.decimals,
+        mint::token_program = token_program,
     )]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -93,4 +96,3 @@ impl<'info> InitLpVault<'info> {
 //
 //    Ok(())
 //}
-

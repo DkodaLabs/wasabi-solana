@@ -16,13 +16,21 @@ pub struct DepositOrWithdraw<'info> {
     /// The key of the user that owns the assets
     pub owner: Signer<'info>,
 
-    // NOTE: Infer
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The Owner's token account that holds the assets
     pub owner_asset_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // NOTE: Infer
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = shares_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The Owner's token account that stores share tokens
     pub owner_shares_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -33,7 +41,12 @@ pub struct DepositOrWithdraw<'info> {
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
+    )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub asset_mint: InterfaceAccount<'info, Mint>,

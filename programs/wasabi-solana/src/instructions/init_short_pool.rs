@@ -1,10 +1,11 @@
-use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
+use {
+    crate::{error::ErrorCode, BasePool, Permission},
+    anchor_lang::prelude::*,
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token_interface::{Mint, TokenAccount, TokenInterface},
+    },
 };
-
-use crate::{error::ErrorCode, BasePool, Permission};
 
 #[derive(Accounts)]
 pub struct InitShortPool<'info> {
@@ -18,11 +19,8 @@ pub struct InitShortPool<'info> {
     )]
     pub permission: Account<'info, Permission>,
 
-    // TODO: Provide these as arguments
-    // NOTE: This may be unnecessary as an account
     pub asset_mint: InterfaceAccount<'info, Mint>,
 
-    // NOTE: This may be unnecessary as an account
     pub currency_mint: InterfaceAccount<'info, Mint>,
 
     #[account(

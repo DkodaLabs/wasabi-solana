@@ -1,9 +1,8 @@
 use {
+    crate::{error::ErrorCode, LpVault},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
-
-use crate::{error::ErrorCode, LpVault};
 
 #[derive(Accounts)]
 pub struct Repay<'info> {
@@ -28,6 +27,7 @@ pub struct Repay<'info> {
     /// Change: 20241017 - IDL should now infer
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    //NOTE: I think this should be the mint of the LP Vault
     #[account(
         mut,
         has_one = vault,

@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{Position, StopLossOrder};
+use {
+    crate::{Position, StopLossOrder},
+    anchor_lang::prelude::*,
+};
 
 // Only Position's trader can invoke InitStopLossOrder.
 // Limitation of 1 SL Order per Position. To modify, user must close the
@@ -11,8 +12,6 @@ pub struct InitStopLossOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
-    // NOTE: Consider changing to address = trader @ Unauthorised
-    // Reason: IDL Inference
     #[account(
         has_one = trader,
     )]

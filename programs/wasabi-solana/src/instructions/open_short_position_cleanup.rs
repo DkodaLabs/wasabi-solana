@@ -18,26 +18,48 @@ pub struct OpenShortPositionCleanup<'info> {
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
 
+    // NOTE: I think these should be the mints rather than the vault addresses
+    /// The ShortPool that owns the Position
     #[account(
       has_one = collateral_vault,
       has_one = currency_vault,
     )]
-    /// The ShortPool that owns the Position
     pub short_pool: Account<'info, BasePool>,
+
     /// The collateral account that is the destination of the swap
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
+    )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+
     // The token account that is the source of the swap (where principal and downpayment are sent)
+    #[account(
+        associated_token::mint = currency_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
+    )]
     pub currency_vault: InterfaceAccount<'info, TokenAccount>,
 
+    pub collateral_mint: InterfaceAccount<'info, Mint>,
     pub currency_mint: InterfaceAccount<'info, Mint>,
 
     /// The LP Vault that the user will borrow from
+    // NOTE: I think this should be the LP Vault mint rather than the vault address
     #[account(
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
-    #[account(mut)]
+
     /// The LP Vault's token account.
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = lp_vault,
+        associated_token::token_program = token_program,
+    )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(

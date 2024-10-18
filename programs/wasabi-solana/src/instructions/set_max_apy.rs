@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, state::DebtController, Permission, APY_DENOMINATOR};
+use {
+    crate::{error::ErrorCode, state::DebtController, Permission, APY_DENOMINATOR},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct SetMaxApy<'info> {
@@ -13,14 +14,13 @@ pub struct SetMaxApy<'info> {
       bump,
     )]
     pub super_admin_permission: Account<'info, Permission>,
-    
+
     #[account(
       mut,
       seeds = [b"debt_controller"],
       bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
-    
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -30,12 +30,12 @@ pub struct SetMaxApyArgs {
 
 impl<'info> SetMaxApy<'info> {
     fn validate(&self, args: &SetMaxApyArgs) -> Result<()> {
-        if args.max_apy == 0 {
-            return Err(ErrorCode::InvalidValue.into());
-        }
-        if args.max_apy > 1000 * APY_DENOMINATOR {
-            return Err(ErrorCode::InvalidValue.into());
-        }
+        require_neq!(args.max_apy, 0, ErrorCode::InvalidValue);
+        require_gt!(
+            1000 * APY_DENOMINATOR,
+            args.max_apy,
+            ErrorCode::InvalidValue
+        );
         Ok(())
     }
 

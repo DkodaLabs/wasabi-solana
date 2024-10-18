@@ -1,11 +1,11 @@
-use anchor_lang::prelude::*;
-
-use crate::{
-    error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds,
-    short_pool_signer_seeds,
+use {
+    super::StopLossCleanup,
+    crate::{
+        error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds,
+        short_pool_signer_seeds,
+    },
+    anchor_lang::prelude::*,
 };
-
-use super::StopLossCleanup;
 
 #[derive(Accounts)]
 pub struct StopLossSetup<'info> {

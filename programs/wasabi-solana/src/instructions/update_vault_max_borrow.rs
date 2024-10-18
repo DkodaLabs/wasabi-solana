@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, LpVault, Permission};
+use {
+    crate::{error::ErrorCode, LpVault, Permission},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct UpdateVaultMaxBorrow<'info> {
@@ -10,8 +11,8 @@ pub struct UpdateVaultMaxBorrow<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-    has_one = authority,
-  )]
+        has_one = authority,
+    )]
     pub permission: Account<'info, Permission>,
 
     #[account(mut)]

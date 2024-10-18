@@ -1,8 +1,9 @@
-use anchor_lang::prelude::*;
-
-use crate::{
-    error::ErrorCode, instructions::close_position_setup::*, short_pool_signer_seeds,
-    CloseShortPositionCleanup,
+use {
+    crate::{
+        error::ErrorCode, instructions::close_position_setup::*, short_pool_signer_seeds,
+        CloseShortPositionCleanup,
+    },
+    anchor_lang::prelude::*,
 };
 
 #[derive(Accounts)]
@@ -24,12 +25,11 @@ impl<'info> CloseShortPositionSetup<'info> {
             ErrorCode::IncorrectOwner
         );
 
-        require_eq!(
-            ctx.accounts
+        require!(
+            !ctx.accounts
                 .close_position_setup
                 .permission
                 .can_cosign_swaps(),
-            false,
             ErrorCode::InvalidSwapCosigner
         );
 
@@ -50,7 +50,8 @@ impl<'info> CloseShortPositionSetup<'info> {
                 &[short_pool_signer_seeds!(self.close_position_setup.pool)],
             )?;
 
-        self.close_position_setup.set_close_position_request(&args)?;
+        self.close_position_setup
+            .set_close_position_request(&args)?;
 
         Ok(())
     }

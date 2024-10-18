@@ -1,6 +1,10 @@
-use anchor_lang::prelude::*;
-
-use crate::{AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION};
+use {
+    crate::{
+        AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_VAULT_PERMISSION,
+        LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION,
+    },
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct InitOrUpdatePermission<'info> {
@@ -11,28 +15,27 @@ pub struct InitOrUpdatePermission<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
-      constraint = super_admin_permission.status == AuthorityStatus::Active,
-      constraint = super_admin_permission.is_super_authority,
-      seeds = [b"super_admin"], 
-      bump
-  )]
-  pub super_admin_permission: Account<'info, Permission>,
+        has_one = authority,
+        constraint = super_admin_permission.status == AuthorityStatus::Active,
+        constraint = super_admin_permission.is_super_authority,
+        seeds = [b"super_admin"], 
+        bump
+    )]
+    pub super_admin_permission: Account<'info, Permission>,
 
-  #[account()]
-  /// CHECK:
-  pub new_authority: AccountInfo<'info>,
+    /// CHECK:
+    pub new_authority: AccountInfo<'info>,
 
-  #[account(
-      init_if_needed,
-      payer = payer,
-      space = 8 + std::mem::size_of::<Permission>(),
-      seeds = [b"admin", new_authority.key().as_ref()],   
-      bump
-  )]
-  pub permission: Account<'info, Permission>,
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + std::mem::size_of::<Permission>(),
+        seeds = [b"admin", new_authority.key().as_ref()],
+        bump
+    )]
+    pub permission: Account<'info, Permission>,
 
-  pub system_program: Program<'info, System>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -45,22 +48,22 @@ pub struct InitOrUpdatePermissionArgs {
 }
 
 impl InitOrUpdatePermissionArgs {
-  pub fn permissions_map(&self) -> u8 {
-    let mut res = 0;
-    if self.can_init_vaults {
-      res += INIT_VAULT_PERMISSION;
+    pub fn permissions_map(&self) -> u8 {
+        let mut res = 0;
+        if self.can_init_vaults {
+            res += INIT_VAULT_PERMISSION;
+        }
+        if self.can_liquidate {
+            res += LIQUIDATE_PERMISSION;
+        }
+        if self.can_cosign_swaps {
+            res += COSIGN_PERMISSION;
+        }
+        if self.can_borrow_from_vaults {
+            res += VAULT_BORROW_PERMISSION;
+        }
+        res
     }
-    if self.can_liquidate {
-      res += LIQUIDATE_PERMISSION;
-    }
-    if self.can_cosign_swaps {
-      res += COSIGN_PERMISSION;
-    }
-    if self.can_borrow_from_vaults {
-      res += VAULT_BORROW_PERMISSION;
-    }
-    res
-  }
 }
 
 impl<'info> InitOrUpdatePermission<'info> {

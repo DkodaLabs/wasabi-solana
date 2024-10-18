@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds};
-
-use super::CloseLongPositionCleanup;
+use {
+    super::CloseLongPositionCleanup,
+    crate::{error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct CloseLongPositionSetup<'info> {
@@ -14,20 +14,19 @@ pub struct CloseLongPositionSetup<'info> {
 
 impl<'info> CloseLongPositionSetup<'info> {
     pub fn validate(ctx: &Context<CloseLongPositionSetup>, args: &ClosePositionArgs) -> Result<()> {
-        require_eq!(
+        require_keys_eq!(
             ctx.accounts.owner.key(),
             ctx.accounts.close_position_setup.owner.key(),
             ErrorCode::IncorrectOwner
         );
 
-        if !ctx
-            .accounts
-            .close_position_setup
-            .permission
-            .can_cosign_swaps()
-        {
-            return Err(ErrorCode::InvalidSwapCosigner.into());
-        }
+        require!(
+            !ctx.accounts
+                .close_position_setup
+                .permission
+                .can_cosign_swaps(),
+            ErrorCode::InvalidSwapCosigner,
+        );
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,

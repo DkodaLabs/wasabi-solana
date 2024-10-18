@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{close_position_cleanup::CloseAmounts, LpVault, Position};
+use {
+    crate::{close_position_cleanup::CloseAmounts, LpVault, Position},
+    anchor_lang::prelude::*,
+};
 
 #[event]
 pub struct Deposit {
@@ -25,6 +26,7 @@ pub struct NewVault {
     pub asset: Pubkey,
     pub vault: Pubkey,
 }
+
 impl NewVault {
     pub fn new(lp_vault: &Account<'_, LpVault>) -> Self {
         Self {
@@ -46,6 +48,7 @@ pub struct PositionOpened {
     pub collateral_amount: u64,
     pub fees_to_be_paid: u64,
 }
+
 impl PositionOpened {
     pub fn new(position: &Account<'_, Position>) -> Self {
         Self {
@@ -125,6 +128,7 @@ pub struct PositionClaimed {
     pub interest_paid: u64,
     pub fee_amount: u64,
 }
+
 impl PositionClaimed {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
         Self {

@@ -60,9 +60,9 @@ pub mod wasabi_solana {
         ctx.accounts.update_lp_vault_max_borrow(&args)
     }
 
-    #[access_control(AdminBorrow::validate(&ctx, &args))]
-    pub fn admin_borrow(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-        ctx.accounts.admin_borrow(&args)
+    #[access_control(AdminBorrow::validate(&ctx, amount))]
+    pub fn admin_borrow(ctx: Context<AdminBorrow>, amount: u64) -> Result<()> {
+        ctx.accounts.admin_borrow(amount)
     }
 
     #[access_control(Repay::validate(&ctx, &args))]

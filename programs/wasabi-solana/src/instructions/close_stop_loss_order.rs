@@ -1,13 +1,13 @@
-use anchor_lang::prelude::*;
-
-use crate::{Position, StopLossOrder};
+use {
+    crate::{Position, StopLossOrder},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct CloseStopLossOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
-    // NOTE: Might implement same change
     #[account(
         has_one = trader,
     )]

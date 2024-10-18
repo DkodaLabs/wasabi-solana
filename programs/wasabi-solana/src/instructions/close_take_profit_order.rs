@@ -1,14 +1,13 @@
-use anchor_lang::prelude::*;
-
-use crate::{Position, TakeProfitOrder};
+use {
+    crate::{Position, TakeProfitOrder},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct CloseTakeProfitOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
-    // NOTE: Consider changing to address = trader @ Unauthorised
-    // Reason: IDL inference
     #[account(
         has_one = trader,
     )]
@@ -32,4 +31,3 @@ impl<'info> CloseTakeProfitOrder<'info> {
 //pub fn handler(_ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
 //  Ok(())
 //}
-

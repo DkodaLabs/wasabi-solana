@@ -16,11 +16,22 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
+    // TODO: Check
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = token_program,
+    )]
     /// The account that holds the owner's target currency
     pub owner_target_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -39,12 +50,22 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     /// The ShortPool that owns the Position
     pub short_pool: Account<'info, BasePool>,
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = collateral_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
+    )]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = currency_mint,
+        associated_token::authority = short_pool,
+        associated_token::token_program = token_program,
+    )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral_mint: InterfaceAccount<'info, Mint>,

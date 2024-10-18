@@ -24,6 +24,7 @@ pub struct Position {
     pub lp_vault: Pubkey,
 }
 
+// NOTE: Checked?
 impl Position {
     pub fn compute_close_fee(&self, net_value: u64, is_long: bool) -> u64 {
         if is_long {

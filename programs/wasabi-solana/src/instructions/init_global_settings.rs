@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{AuthorityStatus, GlobalSettings, Permission};
+use {
+    crate::{AuthorityStatus, GlobalSettings, Permission},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct InitGlobalSettings<'info> {

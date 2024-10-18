@@ -1,8 +1,9 @@
-use anchor_lang::prelude::*;
-
-use crate::{
-    error::ErrorCode, instructions::close_position_cleanup::*, utils::get_function_hash,
-    StopLossOrder,
+use {
+    crate::{
+        error::ErrorCode, instructions::close_position_cleanup::*, utils::get_function_hash,
+        StopLossOrder,
+    },
+    anchor_lang::prelude::*,
 };
 
 #[derive(Accounts)]

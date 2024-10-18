@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{Position, TakeProfitOrder};
+use {
+    crate::{Position, TakeProfitOrder},
+    anchor_lang::prelude::*,
+};
 
 // Only Position's trader can invoke InitTakeProfitOrder.
 // Limitation of 1 TP Order per Position. To modify, user must close the
