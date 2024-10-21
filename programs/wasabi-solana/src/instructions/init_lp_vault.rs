@@ -66,7 +66,7 @@ impl<'info> InitLpVault<'info> {
     pub fn init_lp_vault(&mut self, bumps: &InitLpVaultBumps) -> Result<()> {
         self.lp_vault.set_inner(LpVault {
             bump: bumps.lp_vault,
-            currency: self.asset_mint.key(),
+            asset: self.asset_mint.key(),
             vault: self.vault.key(),
             shares_mint: self.shares_mint.key(),
             total_assets: 0,

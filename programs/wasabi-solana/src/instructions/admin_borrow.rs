@@ -31,7 +31,7 @@ pub struct AdminBorrow<'info> {
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// TokenAccount that will receive borrowed tokens
-    // NOTE: (Andrew) - Maybe this should be the wallet and we infer the ATA
+    // NOTE: (Andrew) - Maybe this should be the holistic wallet and we infer the ATA
     #[account(mut)]
     pub destination: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -39,9 +39,9 @@ pub struct AdminBorrow<'info> {
 
     #[account(
         mut,
-        has_one = currency,
+        constraint = lp_vault.asset == currency.key(),
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
@@ -64,7 +64,8 @@ impl<'info> AdminBorrow<'info> {
                 .lp_vault
                 .total_borrowed
                 .checked_add(args.amount)
-                .ok_or(ErrorCode::Overflow)?
+                .expect("overflow"),
+            ErrorCode::MaxBorrowExceeded
         );
 
         Ok(())
@@ -91,8 +92,10 @@ impl<'info> AdminBorrow<'info> {
         self.transfer_from_vault(args.amount)?;
 
         // increment total borrowed of the vault
-        // NOTE: Does this increment? It seems to just replace `total_borrowed` with `args.amount`
-        self.lp_vault.total_borrowed = args.amount; //CHECKED ADD
+        self.lp_vault.total_borrowed = self.lp_vault
+            .total_borrowed
+            .checked_add(args.amount)
+            .expect("overflow");
 
         Ok(())
     }

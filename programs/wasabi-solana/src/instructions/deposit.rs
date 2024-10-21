@@ -1,6 +1,5 @@
 use {
     crate::{
-        error::ErrorCode,
         events::Deposit,
         lp_vault_signer_seeds, LpVault,
     },
@@ -124,9 +123,9 @@ impl<'info> DepositOrWithdraw<'info> {
         } else {
             shares_supply
                 .checked_mul(args.amount)
-                .ok_or(ErrorCode::Overflow)?
+                .expect("overflow")
                 .checked_div(self.lp_vault.total_assets)
-                .ok_or(ErrorCode::Overflow)?
+                .expect("overflow")
         };
 
         self.mint_shares_to_user(shares_to_mint)?;
@@ -135,12 +134,11 @@ impl<'info> DepositOrWithdraw<'info> {
             .lp_vault
             .total_assets
             .checked_add(args.amount)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
-        let sender_owner = self.owner.key();
         emit!(Deposit {
-            sender: sender_owner,
-            owner: sender_owner,
+            sender: self.owner.key(),
+            owner: self.owner_asset_account.owner.key(),
             assets: args.amount,
             shares: shares_to_mint,
         });

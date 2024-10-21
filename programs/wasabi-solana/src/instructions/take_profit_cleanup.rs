@@ -30,17 +30,16 @@ impl<'info> TakeProfitCleanup<'info> {
 
             // uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
             // if (actualTakerAmount < _order.takerAmount) revert PriceTargetNotReached();
-            let actual_taker_amount = close_amounts
-                .payout
-                .checked_add(close_amounts.close_fee)
-                .ok_or(ErrorCode::Overflow)?
-                .checked_add(close_amounts.interest_paid)
-                .ok_or(ErrorCode::Overflow)?
-                .checked_add(close_amounts.principal_repaid)
-                .ok_or(ErrorCode::Overflow)?;
             require_gt!(
                 self.take_profit_order.taker_amount,
-                actual_taker_amount,
+                close_amounts
+                    .payout
+                    .checked_add(close_amounts.close_fee)
+                    .expect("overflow")
+                    .checked_add(close_amounts.interest_paid)
+                    .expect("overflow")
+                    .checked_add(close_amounts.principal_repaid)
+                    .expect("overflow"),
                 ErrorCode::PriceTargetNotReached
             );
         } else {
@@ -55,16 +54,16 @@ impl<'info> TakeProfitCleanup<'info> {
             let actual_taker_amount = close_amounts
                 .interest_paid
                 .checked_add(close_amounts.principal_repaid)
-                .ok_or(ErrorCode::Overflow)?;
+                .expect("overflow");
             let lhs = close_amounts
                 .collateral_spent
                 .checked_mul(self.take_profit_order.taker_amount)
-                .ok_or(ErrorCode::Overflow)?;
+                .expect("overflow");
             let rhs = self
                 .take_profit_order
                 .maker_amount
                 .checked_mul(actual_taker_amount)
-                .ok_or(ErrorCode::Overflow)?;
+                .expect("overflow");
 
             require_gt!(rhs, lhs, ErrorCode::PriceTargetNotReached);
         }

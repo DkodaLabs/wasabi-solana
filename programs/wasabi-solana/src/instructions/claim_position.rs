@@ -8,6 +8,7 @@ use {
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
+// This will also require seperation of logic
 #[derive(Accounts)]
 pub struct ClaimPosition<'info> {
     #[account(mut)]
@@ -175,7 +176,7 @@ impl<'info> ClaimPosition<'info> {
             .position
             .principal
             .checked_add(interest_paid)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
         self.transfer_from_trader_to_vault(amount_owed)?;
 
@@ -207,7 +208,8 @@ impl<'info> ClaimPosition<'info> {
                 .position
                 .collateral_amount
                 .checked_sub(close_fee)
-                .ok_or(ErrorCode::Overflow)?;
+                .expect("overflow");
+
             let close_amounts = CloseAmounts {
                 payout: claim_amount,
                 collateral_spent: self.position.collateral_amount,

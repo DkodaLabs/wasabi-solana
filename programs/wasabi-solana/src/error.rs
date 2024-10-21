@@ -42,6 +42,4 @@ pub enum ErrorCode {
     MaxBorrowExceeded, // 6018
     #[msg("Max repay exceeded")]
     MaxRepayExceeded, // 6019
-    #[msg("Arithmetic overflow")]
-    Overflow, // 6020
 }

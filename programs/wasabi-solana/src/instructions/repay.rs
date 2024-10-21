@@ -70,7 +70,7 @@ impl<'info> Repay<'info> {
             .lp_vault
             .total_borrowed
             .checked_sub(args.amount)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
         Ok(())
     }

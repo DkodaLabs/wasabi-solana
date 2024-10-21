@@ -31,7 +31,7 @@ impl NewVault {
     pub fn new(lp_vault: &Account<'_, LpVault>) -> Self {
         Self {
             pool: lp_vault.key(),
-            asset: lp_vault.currency,
+            asset: lp_vault.asset,
             vault: lp_vault.vault,
         }
     }

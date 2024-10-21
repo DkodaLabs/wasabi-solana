@@ -1,8 +1,4 @@
-use {
-    super::DepositOrWithdraw,
-    crate::{error::ErrorCode, events::WithdrawEvent},
-    anchor_lang::prelude::*,
-};
+use {super::DepositOrWithdraw, crate::events::WithdrawEvent, anchor_lang::prelude::*};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct WithdrawArgs {
@@ -21,11 +17,11 @@ impl Withdraw for DepositOrWithdraw<'_> {
         let shares_burn_amount = args
             .amount
             .checked_mul(self.shares_mint.supply)
-            .ok_or(ErrorCode::Overflow)?
+            .expect("overflow")
             .checked_add(total_assets)
-            .ok_or(ErrorCode::Overflow)?
+            .expect("overflow")
             .checked_div(total_assets)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
         self.burn_shares_from_user(shares_burn_amount)?;
 
@@ -33,14 +29,12 @@ impl Withdraw for DepositOrWithdraw<'_> {
             .lp_vault
             .total_assets
             .checked_sub(args.amount)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("underflow");
 
-        // TODO: Check this
-        let sender_owner_receiver = self.owner.key();
         emit!(WithdrawEvent {
-            sender: sender_owner_receiver,
-            owner: sender_owner_receiver,
-            receiver: sender_owner_receiver,
+            sender: self.owner.key(),
+            owner: self.owner_asset_account.owner.key(),
+            receiver: self.owner_asset_account.owner.key(),
             assets: args.amount,
             shares: shares_burn_amount,
         });

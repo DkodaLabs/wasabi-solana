@@ -1,8 +1,5 @@
-use {
-    super::DepositOrWithdraw,
-    crate::{error::ErrorCode, events::Deposit},
-    anchor_lang::prelude::*,
-};
+use {super::DepositOrWithdraw, crate::events::Deposit, anchor_lang::prelude::*};
+
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct MintArgs {
     pub shares_amount: u64,
@@ -20,15 +17,14 @@ impl Mint for DepositOrWithdraw<'_> {
         let tokens_in = if shares_supply == 0 {
             args.shares_amount
         } else {
-            (self
-                .lp_vault
+            self.lp_vault
                 .total_assets
                 .checked_mul(args.shares_amount)
-                .ok_or(ErrorCode::Overflow)?
+                .expect("overflow")
                 .checked_add(shares_supply)
-                .ok_or(ErrorCode::Overflow)?)
-            .checked_div(shares_supply)
-            .ok_or(ErrorCode::Overflow)?
+                .expect("overflow")
+                .checked_div(shares_supply)
+                .expect("overflow")
         };
 
         self.transfer_token_from_owner_to_vault(tokens_in)?;
@@ -37,13 +33,11 @@ impl Mint for DepositOrWithdraw<'_> {
             .lp_vault
             .total_assets
             .checked_add(tokens_in)
-            .ok_or(ErrorCode::Overflow)?;
-
-        let sender_owner = self.owner.key();
+            .expect("overflow");
 
         emit!(Deposit {
-            sender: sender_owner,
-            owner: sender_owner,
+            sender: self.owner.key(),
+            owner: self.owner_asset_account.owner.key(),
             assets: tokens_in,
             shares: args.shares_amount,
         });

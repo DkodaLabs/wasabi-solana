@@ -30,7 +30,7 @@ pub struct OpenLongPositionSetup<'info> {
     /// The LP Vault that the user will borrow from
     /// For long positions, this is the `currency`
     #[account(
-        has_one = currency,
+        constraint = lp_vault.asset == currency.key(),
     )]
     pub lp_vault: Account<'info, LpVault>,
 
@@ -211,7 +211,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         let total_swap_amount = args
             .principal
             .checked_add(args.down_payment)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
         // Approve authority to make a swap on behalf of the `currency_vault`
         self.approve_owner_delegation(total_swap_amount)?;
@@ -223,7 +223,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             max_amount_in: args
                 .down_payment
                 .checked_add(args.principal)
-                .ok_or(ErrorCode::Overflow)?,
+                .expect("overflow"),
             pool_key: self.long_pool.key(),
             position: self.position.key(),
             swap_cache: SwapCache {

@@ -19,15 +19,16 @@ pub struct ClosePositionSetup<'info> {
 
     #[account(
         mut,
-        has_one = collateral_vault
+        has_one = collateral,
+        has_one = currency
     )]
     pub position: Box<Account<'info, Position>>,
 
+    /// The pool that owns the Position
     #[account(
         has_one = collateral,
         has_one = currency,
     )]
-    /// The pool that owns the Position
     pub pool: Account<'info, BasePool>,
     #[account(
         mut,
@@ -71,7 +72,7 @@ pub struct ClosePositionSetup<'info> {
 
     pub system_program: Program<'info, System>,
     #[account(
-      address = sysvar::instructions::ID
+        address = sysvar::instructions::ID
     )]
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,

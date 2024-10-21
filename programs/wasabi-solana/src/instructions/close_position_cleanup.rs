@@ -12,6 +12,7 @@ use {
     },
 };
 
+// Want to seperate out this logic into CloseLongPositionCleanup and CloseShortPositionCleanup
 #[derive(Accounts)]
 pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
@@ -93,6 +94,9 @@ pub struct ClosePositionCleanup<'info> {
     // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
     // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation 
     // of the `fee_wallet` is done in the `validate` function.
+    //
+    // CHANGES: We can infer the vault from the lp_vault based on the side
+    // `fee_wallet` however may be slightly more difficult to infer as we would want 
     #[account(
         has_one = vault,
     )]
@@ -121,7 +125,7 @@ pub struct ClosePositionCleanup<'info> {
 }
 
 impl<'info> ClosePositionCleanup<'info> {
-    fn get_destination_delta(&self) -> Result<u64> {
+    fn get_destination_delta(&self) -> u64 {
         if self.pool.is_long_pool {
             self.currency_vault
                 .amount
@@ -129,8 +133,7 @@ impl<'info> ClosePositionCleanup<'info> {
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
-                )
-                .ok_or(ErrorCode::Overflow.into())
+                ).expect("overflow")
         } else {
             self.currency_vault
                 .amount
@@ -138,24 +141,23 @@ impl<'info> ClosePositionCleanup<'info> {
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
-                )
-                .ok_or(ErrorCode::Overflow.into())
+                ).expect("overflow")
         }
     }
 
-    fn get_source_delta(&self) -> Result<u64> {
+    fn get_source_delta(&self) -> u64 {
         if self.pool.is_long_pool {
             self.close_position_request
                 .swap_cache
                 .source_bal_before
                 .checked_sub(self.collateral_vault.amount)
-                .ok_or(ErrorCode::Overflow.into())
+                .expect("overflow")
         } else {
             self.close_position_request
                 .swap_cache
                 .source_bal_before
                 .checked_sub(self.collateral_vault.amount)
-                .ok_or(ErrorCode::Overflow.into())
+                .expect("overflow")
         }
     }
 
@@ -177,11 +179,11 @@ impl<'info> ClosePositionCleanup<'info> {
         // Validate owner receives at least the minimum amount of token being swapped to.
         require_gt!(
             self.close_position_request.min_target_amount,
-            self.get_destination_delta()?,
+            self.get_destination_delta(),
             ErrorCode::MinTokensNotMet
         );
 
-        require_gt!(self.get_source_delta()?, 0, ErrorCode::MaxSwapExceeded);
+        require_gt!(self.get_source_delta(), 0, ErrorCode::MaxSwapExceeded);
 
         // NOTE: This check is performed as the clean-up function can't really infer the addresses
         require_keys_eq!(
@@ -308,6 +310,7 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 
     pub fn close_position_cleanup(&mut self, is_liquidation: bool) -> Result<CloseAmounts> {
+        self.validate()?;
         let mut close_amounts = CloseAmounts::default();
 
         if self.pool.is_long_pool {
@@ -317,8 +320,8 @@ impl<'info> ClosePositionCleanup<'info> {
         }
 
         let close_position_req = &self.close_position_request;
-        let collateral_spent = self.get_source_delta()?;
-        let currency_diff = self.get_destination_delta()?;
+        let collateral_spent = self.get_source_delta();
+        let currency_diff = self.get_destination_delta();
         let interest = self.close_position_request.interest;
 
         if self.pool.is_long_pool && collateral_spent < self.position.collateral_amount {
@@ -385,7 +388,7 @@ impl<'info> ClosePositionCleanup<'info> {
             self.position
                 .principal
                 .checked_add(interest)
-                .ok_or(ErrorCode::Overflow)?,
+                .expect("overflow")
         )?;
 
         // Pay fees

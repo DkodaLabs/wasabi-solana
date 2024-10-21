@@ -1,5 +1,5 @@
 use {
-    crate::{error::ErrorCode, events::NativeYieldClaimed, LpVault},
+    crate::{events::NativeYieldClaimed, LpVault},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
@@ -20,7 +20,7 @@ pub struct Donate<'info> {
 
     #[account(
         mut,
-        has_one = currency,
+        constraint = lp_vault.asset == currency.key(),
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
@@ -60,12 +60,12 @@ impl<'info> Donate<'info> {
             .lp_vault
             .total_assets
             .checked_add(args.amount)
-            .ok_or(ErrorCode::Overflow)?;
+            .expect("overflow");
 
         emit!(NativeYieldClaimed {
             source: self.owner.key(),
             vault: self.vault.key(),
-            token: self.lp_vault.currency,
+            token: self.lp_vault.asset,
             amount: args.amount,
         });
 
