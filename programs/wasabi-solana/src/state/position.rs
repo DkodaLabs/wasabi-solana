@@ -24,15 +24,40 @@ pub struct Position {
     pub lp_vault: Pubkey,
 }
 
-// NOTE: Checked?
 impl Position {
     pub fn compute_close_fee(&self, net_value: u64, is_long: bool) -> u64 {
         if is_long {
-            (self.principal + net_value) * self.fees_to_be_paid
-                / (self.fees_to_be_paid + self.down_payment + self.principal)
+            //(self.principal + net_value) * self.fees_to_be_paid
+            //    / (self.fees_to_be_paid + self.down_payment + self.principal)
+            (self
+                .principal
+                .checked_add(net_value)
+                .expect("overflow")
+                .checked_mul(self.fees_to_be_paid)
+                .expect("overflow"))
+            .checked_div(
+                self.fees_to_be_paid
+                    .checked_add(self.down_payment)
+                    .expect("overflow")
+                    .checked_add(self.principal)
+                    .expect("overflow"),
+            )
+            .expect("overflow")
         } else {
-            (self.collateral_amount + net_value) * self.fees_to_be_paid
-                / (self.fees_to_be_paid + self.collateral_amount)
+            //(self.collateral_amount + net_value) * self.fees_to_be_paid
+            //    / (self.fees_to_be_paid + self.collateral_amount)
+            (self
+                .collateral_amount
+                .checked_add(net_value)
+                .expect("overflow")
+                .checked_mul(self.fees_to_be_paid)
+                .expect("overflow"))
+            .checked_div(
+                self.fees_to_be_paid
+                    .checked_add(self.collateral_amount)
+                    .expect("overflow"),
+            )
+            .expect("overflow")
         }
     }
 }

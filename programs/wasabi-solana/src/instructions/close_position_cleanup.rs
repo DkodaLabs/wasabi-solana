@@ -26,7 +26,7 @@ pub struct ClosePositionCleanup<'info> {
         mut,
         associated_token::mint = collateral,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -35,14 +35,14 @@ pub struct ClosePositionCleanup<'info> {
         mut,
         associated_token::mint = currency,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = currency_token_program,
     )]
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The Long or Short Pool that owns the Position
     #[account(
-        has_one = currency,
-        has_one = collateral,
+        has_one = currency_vault,
+        has_one = collateral_vault,
     )]
     pub pool: Account<'info, BasePool>,
 
@@ -50,7 +50,7 @@ pub struct ClosePositionCleanup<'info> {
     #[account(
         associated_token::mint = collateral,
         associated_token::authority = pool,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
 
@@ -59,7 +59,7 @@ pub struct ClosePositionCleanup<'info> {
         mut,
         associated_token::mint = currency,
         associated_token::authority = pool,
-        associated_token::token_program = token_program,
+        associated_token::token_program = currency_token_program,
     )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -92,11 +92,11 @@ pub struct ClosePositionCleanup<'info> {
     // `vault` and the `fee_wallet` have the same mint as the `collateral`
     //
     // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
-    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation 
+    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation
     // of the `fee_wallet` is done in the `validate` function.
     //
     // CHANGES: We can infer the vault from the lp_vault based on the side
-    // `fee_wallet` however may be slightly more difficult to infer as we would want 
+    // `fee_wallet` however may be slightly more difficult to infer as we would want
     #[account(
         has_one = vault,
     )]
@@ -121,7 +121,8 @@ pub struct ClosePositionCleanup<'info> {
     )]
     pub global_settings: Account<'info, GlobalSettings>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub currency_token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> ClosePositionCleanup<'info> {
@@ -133,7 +134,8 @@ impl<'info> ClosePositionCleanup<'info> {
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
-                ).expect("overflow")
+                )
+                .expect("overflow")
         } else {
             self.currency_vault
                 .amount
@@ -141,7 +143,8 @@ impl<'info> ClosePositionCleanup<'info> {
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
-                ).expect("overflow")
+                )
+                .expect("overflow")
         }
     }
 
@@ -201,7 +204,7 @@ impl<'info> ClosePositionCleanup<'info> {
             authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.collateral_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds,
@@ -219,7 +222,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.currency_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
@@ -233,7 +236,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.currency_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
@@ -252,7 +255,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.currency_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
@@ -267,7 +270,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.collateral_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
@@ -285,7 +288,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.currency_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[long_pool_signer_seeds!(self.pool)],
@@ -300,7 +303,7 @@ impl<'info> ClosePositionCleanup<'info> {
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
-                program: self.token_program.to_account_info(),
+                program: self.collateral_token_program.to_account_info(),
                 accounts: cpi_accounts,
                 remaining_accounts: Vec::new(),
                 signer_seeds: &[short_pool_signer_seeds!(self.pool)],
@@ -388,7 +391,7 @@ impl<'info> ClosePositionCleanup<'info> {
             self.position
                 .principal
                 .checked_add(interest)
-                .expect("overflow")
+                .expect("overflow"),
         )?;
 
         // Pay fees

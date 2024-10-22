@@ -20,7 +20,6 @@ pub struct InitLongPool<'info> {
     pub permission: Account<'info, Permission>,
 
     pub collateral: InterfaceAccount<'info, Mint>,
-
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -37,7 +36,7 @@ pub struct InitLongPool<'info> {
         payer = payer,
         associated_token::mint = collateral,
         associated_token::authority = long_pool,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -46,11 +45,12 @@ pub struct InitLongPool<'info> {
         payer = payer,
         associated_token::mint = currency,
         associated_token::authority = long_pool,
-        associated_token::token_program = token_program,
+        associated_token::token_program = currency_token_program,
     )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
+    pub currency_token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

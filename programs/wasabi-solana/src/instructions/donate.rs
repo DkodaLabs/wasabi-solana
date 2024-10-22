@@ -20,16 +20,12 @@ pub struct Donate<'info> {
 
     #[account(
         mut,
+        has_one = vault,
         constraint = lp_vault.asset == currency.key(),
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub currency: InterfaceAccount<'info, Mint>,

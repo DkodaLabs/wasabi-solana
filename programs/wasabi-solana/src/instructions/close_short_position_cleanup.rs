@@ -18,14 +18,14 @@ pub struct CloseShortPositionCleanup<'info> {
         mut,
         associated_token::mint = collateral_mint,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     /// Account where user will receive their payout
     pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral_mint: InterfaceAccount<'info, Mint>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> CloseShortPositionCleanup<'info> {
@@ -44,7 +44,10 @@ impl<'info> CloseShortPositionCleanup<'info> {
             authority: self.close_position_cleanup.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.close_position_cleanup.token_program.to_account_info(),
+            program: self
+                .close_position_cleanup
+                .collateral_token_program
+                .to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[short_pool_signer_seeds!(self.close_position_cleanup.pool)],

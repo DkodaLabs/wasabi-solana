@@ -4,11 +4,6 @@ use {
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
-// NOTE: Might decide to go with a different implementation
-// WORMHOLE: Bridgable token on both chains - so might have an ix where we pull out funds, wrap
-// half of it in USDC and then put it into an AMM on both chains
-// THEN: Wormhole permission messaging across chains (burn/mint)
-// Removes admin controls - and having to call this ourselves
 #[derive(Accounts)]
 pub struct AdminBorrow<'info> {
     #[account(mut)]
@@ -22,24 +17,22 @@ pub struct AdminBorrow<'info> {
     pub permission: Account<'info, Permission>,
 
     /// Source of the borrowed tokens
+    #[account(mut)]
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
         mut,
         associated_token::mint = currency,
-        associated_token::authority = lp_vault,
+        associated_token::authority = authority,
         associated_token::token_program = token_program,
     )]
-    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// TokenAccount that will receive borrowed tokens
-    // NOTE: (Andrew) - Maybe this should be the holistic wallet and we infer the ATA
-    #[account(mut)]
     pub destination: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
-        constraint = lp_vault.asset == currency.key(),
+        has_one = vault,
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
@@ -92,7 +85,8 @@ impl<'info> AdminBorrow<'info> {
         self.transfer_from_vault(args.amount)?;
 
         // increment total borrowed of the vault
-        self.lp_vault.total_borrowed = self.lp_vault
+        self.lp_vault.total_borrowed = self
+            .lp_vault
             .total_borrowed
             .checked_add(args.amount)
             .expect("overflow");

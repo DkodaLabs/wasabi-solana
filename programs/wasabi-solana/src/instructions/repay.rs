@@ -17,14 +17,7 @@ pub struct Repay<'info> {
     /// Does this belong to `Signer`? If so, can infer.
     pub source: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
-    /// TokenAccount of the LP Vault that will receive borrowed tokens
-    /// Change: 20241017 - IDL should now infer
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     //NOTE: I think this should be the mint of the LP Vault

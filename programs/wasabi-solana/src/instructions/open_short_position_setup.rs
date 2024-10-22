@@ -18,9 +18,9 @@ pub struct OpenShortPositionSetup<'info> {
     pub owner: Signer<'info>,
     #[account(
         mut,
-        associated_token::mint = currency_mint,
+        associated_token::mint = currency,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = currency_token_program,
     )]
     /// The account that holds the owner's base currency
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -28,9 +28,9 @@ pub struct OpenShortPositionSetup<'info> {
     // TODO: Check
     #[account(
         mut,
-        associated_token::mint = collateral_mint,
+        associated_token::mint = collateral,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     /// The account that holds the owner's target currency
     pub owner_target_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -50,26 +50,16 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     /// The ShortPool that owns the Position
     pub short_pool: Account<'info, BasePool>,
-    #[account(
-        mut,
-        associated_token::mint = collateral_mint,
-        associated_token::authority = short_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    #[account(
-        mut,
-        associated_token::mint = currency_mint,
-        associated_token::authority = short_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral_mint: InterfaceAccount<'info, Mint>,
-    pub currency_mint: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
@@ -107,7 +97,8 @@ pub struct OpenShortPositionSetup<'info> {
 
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
+    pub currency_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     #[account(
       address = sysvar::instructions::ID
@@ -150,39 +141,39 @@ impl<'info> OpenShortPositionSetup<'info> {
     pub fn transfer_from_user_to_collateral_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
-            mint: self.collateral_mint.to_account_info(),
+            mint: self.collateral.to_account_info(),
             to: self.collateral_vault.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
+        let cpi_ctx = CpiContext::new(self.collateral_token_program.to_account_info(), cpi_accounts);
+        token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
     pub fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
-            mint: self.collateral_mint.to_account_info(),
+            mint: self.collateral.to_account_info(),
             to: self.fee_wallet.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, self.collateral_mint.decimals)
+        let cpi_ctx = CpiContext::new(self.collateral_token_program.to_account_info(), cpi_accounts);
+        token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
     pub fn transfer_from_lp_vault_to_currency_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
-            mint: self.currency_mint.to_account_info(),
+            mint: self.currency.to_account_info(),
             to: self.currency_vault.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.currency_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency_mint.decimals)
+        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
     pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
@@ -192,7 +183,7 @@ impl<'info> OpenShortPositionSetup<'info> {
             authority: self.short_pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.currency_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
@@ -240,8 +231,8 @@ impl<'info> OpenShortPositionSetup<'info> {
         // order to track the entire amount being swapped.
         self.position.set_inner(Position {
             trader: self.owner.key(),
-            currency: self.currency_mint.key(),
-            collateral: self.collateral_mint.key(),
+            currency: self.currency.key(),
+            collateral: self.collateral.key(),
             down_payment: args.down_payment,
             principal: args.principal,
             collateral_vault: self.collateral_vault.key(),

@@ -15,6 +15,7 @@ use {
 #[instruction(args: OpenLongPositionArgs)]
 pub struct OpenLongPositionSetup<'info> {
     /// The wallet that owns the assets
+    // NOTE: Should we rename this trader - ensures inference from `position` from clean-up
     #[account(mut)]
     pub owner: Signer<'info>,
 
@@ -30,42 +31,27 @@ pub struct OpenLongPositionSetup<'info> {
     /// The LP Vault that the user will borrow from
     /// For long positions, this is the `currency`
     #[account(
-        constraint = lp_vault.asset == currency.key(),
+        has_one = vault
     )]
     pub lp_vault: Account<'info, LpVault>,
 
     /// The LP Vault's token account.
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The LongPool that owns the Position
     #[account(
-        has_one = collateral,
-        has_one = currency,
+        has_one = collateral_vault,
+        has_one = currency_vault,
     )]
     pub long_pool: Account<'info, BasePool>,
 
     /// The collateral account that is the destination of the swap
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = long_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = long_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral: InterfaceAccount<'info, Mint>,
@@ -105,6 +91,9 @@ pub struct OpenLongPositionSetup<'info> {
     pub permission: Box<Account<'info, Permission>>,
 
     /// Fee wallet needs to be unique per market 
+    // NOTE: Even per market this may cause write-locks
+    // Perhaps this can be on a per-user basis, and we sweep these at the end 
+    // of the day while returning the rent cost to the user?
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -115,6 +104,10 @@ pub struct OpenLongPositionSetup<'info> {
     pub debt_controller: Account<'info, DebtController>,
 
     // derive
+    #[account(
+        seeds = [b"global_settings"],
+        bump,
+    )]
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -260,8 +253,6 @@ pub struct OpenLongPositionArgs {
     pub down_payment: u64,
     /// The total principal amount to be borrowed for the position.
     pub principal: u64,
-    /// The address of the currency to be paid for the position.
-    pub currency: Pubkey,
     /// The timestamp when this position request expires.
     pub expiration: i64,
     /// The fee to be paid for the position

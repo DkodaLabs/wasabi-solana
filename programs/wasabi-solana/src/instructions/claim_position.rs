@@ -18,14 +18,14 @@ pub struct ClaimPosition<'info> {
         mut,
         associated_token::mint = currency,
         associated_token::authority = trader,
-        associated_token::token_program = token_program,
+        associated_token::token_program = currency_token_program,
     )]
     pub trader_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
     #[account(
         mut,
         associated_token::mint = collateral,
         associated_token::authority = trader,
-        associated_token::token_program = token_program,
+        associated_token::token_program = collateral_token_program,
     )]
     pub trader_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -34,21 +34,16 @@ pub struct ClaimPosition<'info> {
         close = trader,
         has_one = trader,
         has_one = lp_vault,
-        has_one = collateral,
+        has_one = collateral_vault,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(
-        has_one = collateral,
-        has_one = currency,
+        has_one = collateral_vault,
     )]
     pub pool: Account<'info, BasePool>,
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = pool,
-        associated_token::token_program = token_program,
-    )]
+
+    #[account(mut)]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral: InterfaceAccount<'info, Mint>,
@@ -61,7 +56,7 @@ pub struct ClaimPosition<'info> {
     // `vault` and the `fee_wallet` have the same mint as the `collateral`
     //
     // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
-    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation 
+    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation
     // of the `fee_wallet` is done in the `validate` function.
     #[account(
         has_one = vault,
@@ -86,7 +81,8 @@ pub struct ClaimPosition<'info> {
     )]
     pub global_settings: Account<'info, GlobalSettings>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
+    pub currency_token_program: Interface<'info, TokenInterface>,
 }
 impl<'info> ClaimPosition<'info> {
     pub fn validate(&self) -> Result<()> {
@@ -105,7 +101,7 @@ impl<'info> ClaimPosition<'info> {
             to: self.vault.to_account_info(),
             authority: self.trader.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(self.currency_token_program.to_account_info(), cpi_accounts);
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
@@ -121,7 +117,7 @@ impl<'info> ClaimPosition<'info> {
             authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.collateral_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: pool_signer,
@@ -130,36 +126,35 @@ impl<'info> ClaimPosition<'info> {
     }
 
     pub fn transfer_fees(&self, amount: u64, pool_signer: &[&[&[u8]]]) -> Result<()> {
-        let decimals: u8;
-        let signers: &[&[&[u8]]];
-        let cpi_accounts = if self.pool.is_long_pool {
-            signers = &[];
-            decimals = self.currency.decimals;
-            TransferChecked {
+        if self.pool.is_long_pool {
+            let cpi_accounts = TransferChecked {
                 from: self.trader_currency_account.to_account_info(),
                 mint: self.currency.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.trader.to_account_info(),
-            }
+            };
+            let cpi_ctx = CpiContext {
+                program: self.currency_token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[],
+            };
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
         } else {
-            signers = pool_signer;
-            decimals = self.collateral.decimals;
-            TransferChecked {
+            let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
                 to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
-            }
-        };
-
-        let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
-            accounts: cpi_accounts,
-            remaining_accounts: Vec::new(),
-            signer_seeds: signers,
-        };
-
-        token_interface::transfer_checked(cpi_ctx, amount, decimals)
+            };
+            let cpi_ctx = CpiContext {
+                program: self.collateral_token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: pool_signer,
+            };
+            token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
+        }
     }
 
     pub fn claim_position(&mut self) -> Result<()> {

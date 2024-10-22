@@ -1,11 +1,11 @@
 use {
-    crate::{
-        events::Deposit,
-        lp_vault_signer_seeds, LpVault,
-    },
+    crate::{events::Deposit, lp_vault_signer_seeds, LpVault},
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{
-        self, Burn, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked,
+    anchor_spl::{
+        token_2022::ID,
+        token_interface::{
+            self, Burn, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked,
+        },
     },
 };
 
@@ -19,7 +19,7 @@ pub struct DepositOrWithdraw<'info> {
         mut,
         associated_token::mint = asset_mint,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = asset_token_program,
     )]
     /// The Owner's token account that holds the assets
     pub owner_asset_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -28,7 +28,7 @@ pub struct DepositOrWithdraw<'info> {
         mut,
         associated_token::mint = shares_mint,
         associated_token::authority = owner,
-        associated_token::token_program = token_program,
+        associated_token::token_program = shares_token_program,
     )]
     /// The Owner's token account that stores share tokens
     pub owner_shares_account: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -40,12 +40,7 @@ pub struct DepositOrWithdraw<'info> {
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
-    #[account(
-        mut,
-        associated_token::mint = asset_mint,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub asset_mint: InterfaceAccount<'info, Mint>,
@@ -53,7 +48,11 @@ pub struct DepositOrWithdraw<'info> {
     #[account(mut)]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub asset_token_program: Interface<'info, TokenInterface>,
+    #[account(
+        address = ID
+    )]
+    pub shares_token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -69,7 +68,7 @@ impl<'info> DepositOrWithdraw<'info> {
             to: self.vault.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(self.asset_token_program.to_account_info(), cpi_accounts);
         token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
     }
 
@@ -80,7 +79,7 @@ impl<'info> DepositOrWithdraw<'info> {
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.shares_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
@@ -94,7 +93,7 @@ impl<'info> DepositOrWithdraw<'info> {
             from: self.owner_shares_account.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(self.shares_token_program.to_account_info(), cpi_accounts);
         token_interface::burn(cpi_ctx, amount)
     }
 
@@ -106,7 +105,7 @@ impl<'info> DepositOrWithdraw<'info> {
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.asset_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
@@ -145,9 +144,7 @@ impl<'info> DepositOrWithdraw<'info> {
 
         Ok(())
     }
-
 }
-
 
 //pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
 //    // transfer tokens from user's asset account

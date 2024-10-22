@@ -35,7 +35,7 @@ pub struct InitLpVault<'info> {
         payer = payer,
         associated_token::mint = asset_mint,
         associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
+        associated_token::token_program = asset_token_program,
     )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -46,11 +46,12 @@ pub struct InitLpVault<'info> {
         bump,
         mint::authority = lp_vault,
         mint::decimals = asset_mint.decimals,
-        mint::token_program = token_program,
+        mint::token_program = shares_token_program,
     )]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    pub token_program: Interface<'info, TokenInterface>,
+    pub asset_token_program: Interface<'info, TokenInterface>,
+    pub shares_token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

@@ -19,36 +19,24 @@ pub struct ClosePositionSetup<'info> {
 
     #[account(
         mut,
-        has_one = collateral,
-        has_one = currency
+        has_one = collateral_vault,
     )]
     pub position: Box<Account<'info, Position>>,
 
     /// The pool that owns the Position
     #[account(
-        has_one = collateral,
-        has_one = currency,
+        has_one = collateral_vault,
+        has_one = currency_vault,
     )]
     pub pool: Account<'info, BasePool>,
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     /// The collateral account that is the source of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The token account that is the destination of the swap
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: InterfaceAccount<'info, Mint>,
     pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(mut)]
