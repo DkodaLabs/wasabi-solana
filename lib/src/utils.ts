@@ -48,30 +48,30 @@ export async function getTokenProgram(
 
 export const PDA = {
     getLongPool(
-        mintA: PublicKey,
-        mintB: PublicKey,
+        quoteMint: PublicKey,
+        baseMint: PublicKey,
         programId: PublicKey,
     ): PublicKey {
         return findProgramAddress(
             [
                 utils.bytes.utf8.encode(SEED_PREFIX.LONG_POOL),
-                mintA.toBuffer(),
-                mintB.toBuffer(),
+                quoteMint.toBuffer(),
+                baseMint.toBuffer(),
             ],
             programId,
         );
     },
 
     getShortPool(
-        mintA: PublicKey,
-        mintB: PublicKey,
+        quoteMint: PublicKey,
+        baseMint: PublicKey,
         programId: PublicKey,
     ): PublicKey {
         return findProgramAddress(
             [
                 utils.bytes.utf8.encode(SEED_PREFIX.SHORT_POOL),
-                mintA.toBuffer(),
-                mintB.toBuffer(),
+                quoteMint.toBuffer(),
+                baseMint.toBuffer(),
             ],
             programId,
         );

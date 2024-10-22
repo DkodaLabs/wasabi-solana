@@ -36,6 +36,12 @@ pub mod take_profit_setup;
 pub mod update_vault_max_borrow;
 pub mod withdraw;
 
+pub mod pool_trait;
+pub mod experimental_close_long_common_setup;
+pub mod experimental_close_short_common_setup;
+pub mod experimental_close_long_common_cleanup;
+pub mod experimental_close_short_common_cleanup;
+
 pub use admin_borrow::*;
 pub use claim_position::*;
 pub use close_long_position_cleanup::*;
@@ -72,3 +78,9 @@ pub use take_profit_cleanup::*;
 pub use take_profit_setup::*;
 pub use update_vault_max_borrow::*;
 pub use withdraw::*;
+
+pub use pool_trait::PoolTrait;
+pub use experimental_close_long_common_setup::*;
+pub use experimental_close_long_common_cleanup::*;
+pub use experimental_close_short_common_setup::*;
+pub use experimental_close_short_common_cleanup::*;

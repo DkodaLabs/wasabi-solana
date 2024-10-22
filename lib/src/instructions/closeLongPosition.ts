@@ -44,8 +44,8 @@ export async function createCloseLongPositionCleanupInstruction(
     accounts: ClosePositionCleanupAccounts,
 ): Promise<TransactionInstruction> {
     const longPool = PDA.getLongPool(
-        accounts.currency, 
-        accounts.collateral, 
+        accounts.currency,
+        accounts.collateral,
         program.programId
     );
 

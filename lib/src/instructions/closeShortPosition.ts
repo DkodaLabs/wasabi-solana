@@ -46,8 +46,8 @@ export async function createCloseShortPositionCleanupInstruction(
     accounts: ClosePositionCleanupAccounts,
 ): Promise<TransactionInstruction> {
     const shortPool = PDA.getShortPool(
-        accounts.currency,
-        accounts.collateral,
+        accounts.collateral, // The collateral in a short pool is the quote
+        accounts.currency, // The currency in a short pool is the base
         program.programId
     );
 

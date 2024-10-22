@@ -49,16 +49,7 @@ pub struct ClaimPosition<'info> {
     pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
 
-    // The following three (3) addresses are dependent on whether the position is a long or short.
-    // For example: If the position is long, we are borrowing the `currency` from the `lp_vault`
-    // and thus the `vault` and the `fee_wallet` have the same mint as the `currency`.
-    // If the position is short, we are borrowing the `collateral` from the `lp_vault` and thus the
-    // `vault` and the `fee_wallet` have the same mint as the `collateral`
-    //
-    // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
-    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation
-    // of the `fee_wallet` is done in the `validate` function.
-    #[account(
+   #[account(
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,

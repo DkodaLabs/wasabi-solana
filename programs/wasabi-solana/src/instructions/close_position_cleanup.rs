@@ -47,20 +47,10 @@ pub struct ClosePositionCleanup<'info> {
     pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the source of the swap
-    #[account(
-        associated_token::mint = collateral,
-        associated_token::authority = pool,
-        associated_token::token_program = collateral_token_program,
-    )]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
 
     /// The token account that is the destination of the swap
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = pool,
-        associated_token::token_program = currency_token_program,
-    )]
+    #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral: InterfaceAccount<'info, Mint>,
@@ -77,26 +67,14 @@ pub struct ClosePositionCleanup<'info> {
     #[account(
         mut,
         close = owner,
-        has_one = collateral,
+        has_one = collateral_vault,
+        has_one = lp_vault,
     )]
     pub position: Box<Account<'info, Position>>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    /// The LP Vault that the user borrowed from
-    // The following three (3) addresses are dependent on whether the position is a long or short.
-    // For example: If the position is long, we are borrowing the `currency` from the `lp_vault`
-    // and thus the `vault` and the `fee_wallet` have the same mint as the `currency`.
-    // If the position is short, we are borrowing the `collateral` from the `lp_vault` and thus the
-    // `vault` and the `fee_wallet` have the same mint as the `collateral`
-    //
-    // This makes it difficult to infer the ATAs as Anchor does not permit conditionals in the
-    // consraint. This is why we use the `vault` as a constraint to the `lp_vault` and why validation
-    // of the `fee_wallet` is done in the `validate` function.
-    //
-    // CHANGES: We can infer the vault from the lp_vault based on the side
-    // `fee_wallet` however may be slightly more difficult to infer as we would want
     #[account(
         has_one = vault,
     )]
@@ -105,7 +83,6 @@ pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // NOTE: Need validation
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 

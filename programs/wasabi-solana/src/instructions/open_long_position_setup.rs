@@ -29,7 +29,7 @@ pub struct OpenLongPositionSetup<'info> {
     pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The LP Vault that the user will borrow from
-    /// For long positions, this is the `currency`
+    /// For long positions, this is the `currency` i.e. the `quote`
     #[account(
         has_one = vault
     )]
@@ -232,8 +232,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             principal: args.principal,
             collateral_vault: self.collateral_vault.key(),
             lp_vault: self.lp_vault.key(),
-            collateral_amount: self.collateral_vault.amount, // Check - why wasn't this set in the
-            // original handler
+            collateral_amount: 0,
             fees_to_be_paid: args.fee,
             last_funding_timestamp: Clock::get()?.unix_timestamp,
         });

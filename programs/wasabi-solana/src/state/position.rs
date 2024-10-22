@@ -11,6 +11,7 @@ pub struct Position {
     /// The timestamp of the last funding payment.
     pub last_funding_timestamp: i64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
+    /// i.e. It is always in the quote currency
     pub down_payment: u64,
     /// The total principal amount to be borrowed for the position (is in `currency`)
     pub principal: u64,
