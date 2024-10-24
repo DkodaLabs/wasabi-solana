@@ -3,6 +3,7 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::AssociatedToken,
+        token_2022,
         token_interface::{Mint, TokenAccount, TokenInterface},
     },
 };
@@ -51,6 +52,10 @@ pub struct InitLpVault<'info> {
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub asset_token_program: Interface<'info, TokenInterface>,
+
+    #[account(
+        address = token_2022::ID
+    )]
     pub shares_token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,

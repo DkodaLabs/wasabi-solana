@@ -27,8 +27,10 @@ export async function createLiquidatePositionSetupInstruction(
     args: ClosePositionSetupArgs,
     accounts: LiquidatePositionCleanupAccounts,
 ): Promise<TransactionInstruction> {
-    const permission = await getPermission(program, accounts.authority);
-    const tokenProgram = await getTokenProgram(program, accounts.collateral);
+    const [permission, tokenProgram] = await Promise.all([
+        getPermission(program, accounts.authority),
+        getTokenProgram(program, accounts.collateral),
+    ]);
 
     return program.methods.liquidatePositionSetup({
         minTargetAmount: new BN(args.minTargetAmount),
@@ -51,8 +53,6 @@ export async function createLiquidatePosition(
     program: Program<WasabiSolana>,
     accounts: LiquidatePositionCleanupAccounts,
 ): Promise<TransactionInstruction> {
-    const lpVault = PDA.getLpVault(accounts.currency, program.programId);
-
     const [collateralTokenProgram, currencyTokenProgram] = await Promise.all([
         getTokenProgram(program, accounts.collateral),
         getTokenProgram(program, accounts.currency),
@@ -64,9 +64,9 @@ export async function createLiquidatePosition(
                 owner: accounts.owner,
                 authority: program.provider.publicKey,
                 pool: accounts.pool,
+                collateral: accounts.collateral,
                 currency: accounts.currency,
                 position: accounts.position,
-                lpVault,
                 feeWallet: accounts.feeWallet,
                 collateralTokenProgram,
                 currencyTokenProgram,

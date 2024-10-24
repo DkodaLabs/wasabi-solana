@@ -10,7 +10,8 @@ export function createCloseStopLossOrderInstruction(
     program: Program<WasabiSolana>,
     args: CloseStopLossOrderArgs,
 ): Promise<TransactionInstruction> {
-    return program.methods.closeStopLossOrder().accounts({
-        position: args.position,
-    }).instruction();
+    return program.methods.closeStopLossOrder()
+        .accounts({
+            position: args.position,
+        }).instruction();
 }

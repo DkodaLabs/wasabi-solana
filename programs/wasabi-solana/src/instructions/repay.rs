@@ -12,7 +12,12 @@ pub struct Repay<'info> {
     /// Mint of the tokens to be transfered - required for `TransferChecked`
     pub mint: InterfaceAccount<'info, Mint>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = payer,
+        associated_token::token_program = token_program
+    )]
     /// Source of the tokens being repaid
     /// Does this belong to `Signer`? If so, can infer.
     pub source: Box<InterfaceAccount<'info, TokenAccount>>,

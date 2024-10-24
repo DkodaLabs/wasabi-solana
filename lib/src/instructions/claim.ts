@@ -19,6 +19,7 @@ export async function createClaimPositionInstruction(
         getTokenProgram(program, accounts.collateral),
         getTokenProgram(program, accounts.currency),
     ]);
+
     return program.methods.claimPosition()
         .accounts({
             currency: accounts.currency,

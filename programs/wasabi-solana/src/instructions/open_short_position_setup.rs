@@ -117,8 +117,6 @@ pub struct OpenShortPositionArgs {
     pub down_payment: u64,
     /// The total principal amount to be borrowed for the position.
     pub principal: u64,
-    /// The address of the currency to be borrowed and sold for the position.
-    pub currency: Pubkey,
     /// The timestamp when this position request expires.
     pub expiration: i64,
     /// The fee to be paid for the position

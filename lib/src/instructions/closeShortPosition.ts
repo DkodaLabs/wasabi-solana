@@ -14,14 +14,15 @@ export async function createCloseShortPositionSetupInstruction(
     args: ClosePositionSetupArgs,
     accounts: ClosePositionSetupAccounts,
 ): Promise<TransactionInstruction> {
-    const permission = await getPermission(program, accounts.authority);
+    const [permission, tokenProgram] = await Promise.all([
+        getPermission(program, accounts.authority),
+        getTokenProgram(program, accounts.collateral),
+    ]);
     const shortPool = PDA.getShortPool(
         accounts.currency,
         accounts.collateral,
         program.programId
     );
-
-    const tokenProgram = await getTokenProgram(program, accounts.collateral);
 
     return program.methods.closeShortPositionSetup({
         minTargetAmount: new BN(args.minTargetAmount),
@@ -51,7 +52,6 @@ export async function createCloseShortPositionCleanupInstruction(
         program.programId
     );
 
-    const lpVault = PDA.getLpVault(accounts.currency, program.programId);
     const [collateralTokenProgram, currencyTokenProgram] = await Promise.all([
         getTokenProgram(program, accounts.collateral),
         getTokenProgram(program, accounts.currency),
@@ -63,9 +63,9 @@ export async function createCloseShortPositionCleanupInstruction(
                 owner: program.provider.publicKey,
                 authority: accounts.authority,
                 pool: shortPool,
+                collateral: accounts.collateral,
                 currency: accounts.currency,
                 position: accounts.position,
-                lpVault,
                 feeWallet: accounts.feeWallet,
                 collateralTokenProgram,
                 currencyTokenProgram,

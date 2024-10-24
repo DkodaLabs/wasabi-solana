@@ -521,61 +521,9 @@
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -584,68 +532,12 @@
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -687,8 +579,8 @@
             },
             {
               "name": "lp_vault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -1060,61 +952,9 @@
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -1123,68 +963,12 @@
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -1226,8 +1010,8 @@
             },
             {
               "name": "lp_vault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -1795,7 +1579,8 @@
           "name": "asset_token_program"
         },
         {
-          "name": "shares_token_program"
+          "name": "shares_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "event_authority",
@@ -2458,7 +2243,8 @@
           "name": "asset_token_program"
         },
         {
-          "name": "shares_token_program"
+          "name": "shares_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "associated_token_program",
@@ -3061,61 +2847,9 @@
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -3124,68 +2858,12 @@
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -3227,8 +2905,8 @@
             },
             {
               "name": "lp_vault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -3594,7 +3272,8 @@
           "name": "asset_token_program"
         },
         {
-          "name": "shares_token_program"
+          "name": "shares_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "event_authority",
@@ -3802,7 +3481,7 @@
           "name": "lp_vault",
           "docs": [
             "The LP Vault that the user will borrow from",
-            "For long positions, this is the `currency`"
+            "For long positions, this is the `currency` i.e. the `quote`"
           ]
         },
         {
@@ -4743,7 +4422,8 @@
           "name": "asset_token_program"
         },
         {
-          "name": "shares_token_program"
+          "name": "shares_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "event_authority",
@@ -4819,7 +4499,60 @@
             "Source of the tokens being repaid",
             "Does this belong to `Signer`? If so, can infer."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "payer"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "vault",
@@ -5170,61 +4903,9 @@
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -5233,68 +4914,12 @@
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -5336,8 +4961,8 @@
             },
             {
               "name": "lp_vault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -5726,61 +5351,9 @@
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -5789,68 +5362,12 @@
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency_token_program"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -5892,8 +5409,8 @@
             },
             {
               "name": "lp_vault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -6341,7 +5858,8 @@
           "name": "asset_token_program"
         },
         {
-          "name": "shares_token_program"
+          "name": "shares_token_program",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "event_authority",
@@ -7320,13 +6838,6 @@
             "type": "u64"
           },
           {
-            "name": "currency",
-            "docs": [
-              "The address of the currency to be borrowed and sold for the position."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "expiration",
             "docs": [
               "The timestamp when this position request expires."
@@ -7410,7 +6921,8 @@
           {
             "name": "down_payment",
             "docs": [
-              "The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)"
+              "The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)",
+              "i.e. It is always in the quote currency"
             ],
             "type": "u64"
           },

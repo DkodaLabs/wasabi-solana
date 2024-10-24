@@ -1,31 +1,23 @@
 import { Program } from "@coral-xyz/anchor";
 import { TransactionInstruction, PublicKey } from "@solana/web3.js";
 import { WasabiSolana } from "../../../idl/wasabi_solana";
-import { PDA } from "../utils";
+import { getPermission } from "../utils";
 
-export type InitLpVaultArgs = {
+export type InitLpVaultAccounts = {
     admin: PublicKey,
     assetMint: PublicKey,
 }
 
 export async function createInitLpVaultInstruction(
     program: Program<WasabiSolana>,
-    args: InitLpVaultArgs,
+    accounts: InitLpVaultAccounts,
 ): Promise<TransactionInstruction> {
-    let permission: PublicKey;
-    const superAdmin = PDA.getSuperAdmin(program.programId);
-    const permissionInfo = await program.account.permission.fetch(superAdmin);
-
-    if (permissionInfo.authority === args.admin) {
-        permission = superAdmin;
-    } else {
-        permission = PDA.getAdmin(args.admin, program.programId);
-    }
+    const permission = await getPermission(program, accounts.admin);
 
     return program.methods.initLpVault()
         .accounts({
             payer: program.provider.publicKey,
             permission,
-            assetMint: args.assetMint,
+            assetMint: accounts.assetMint,
         }).instruction();
 }

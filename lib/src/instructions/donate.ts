@@ -5,7 +5,6 @@ import { WasabiSolana } from "../../../idl/wasabi_solana";
 
 export type DonateArgs = {
     amount: number, // u64
-    mint: PublicKey,
 }
 
 export type DonateAccounts = {
@@ -23,8 +22,8 @@ export async function createDonateInstruction(
         amount: new BN(args.amount),
     }).accounts({
         owner: program.provider.publicKey,
-        lpVault: PDA.getLpVault(args.mint, program.programId),
-        currency: args.mint,
+        lpVault: PDA.getLpVault(accounts.currency, program.programId),
+        currency: accounts.currency,
         tokenProgram,
     }).instruction();
 }

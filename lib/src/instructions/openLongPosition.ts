@@ -1,7 +1,6 @@
 import { Program, BN } from "@coral-xyz/anchor";
 import { TransactionInstruction, PublicKey } from "@solana/web3.js";
-import { TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
-import { PDA } from "../utils";
+import { PDA, getPermission, getTokenProgram } from "../utils";
 import { WasabiSolana } from "../../../idl/wasabi_solana";
 
 export type OpenLongPositionSetupArgs = {
@@ -19,17 +18,24 @@ export type OpenLongPositionSetupArgs = {
     expiration: number, // i64
     /// The fee to be paid for the position
     fee: number, // u64
+}
+
+export type OpenLongPositionSetupAccounts = {
     /// Backend authority
     authority: PublicKey,
     /// The address of the currency to be paid for the position.
+    /// QUOTE 
     currency: PublicKey,
+    /// BASE
     collateral: PublicKey,
-    longPool: PublicKey,
-    permission: PublicKey,
     feeWallet: PublicKey,
 }
 
 export type OpenLongPositionCleanupArgs = {
+    currency: PublicKey,
+}
+
+export type OpenLongPositionCleanupAccounts = {
     longPool: PublicKey,
     position: PublicKey,
 }
@@ -37,17 +43,14 @@ export type OpenLongPositionCleanupArgs = {
 export async function createOpenLongPositionSetupInstruction(
     program: Program<WasabiSolana>,
     args: OpenLongPositionSetupArgs,
+    accounts: OpenLongPositionSetupAccounts,
 ): Promise<TransactionInstruction> {
-    let permission: PublicKey;
-    const superAdmin = PDA.getSuperAdmin(program.programId);
-
-    const permissionInfo = await program.account.permission.fetch(superAdmin);
-
-    if (permissionInfo.authority === args.authority) {
-        permission = superAdmin;
-    } else {
-        permission = PDA.getAdmin(args.authority, program.programId);
-    }
+    const [permission, tokenProgram] = await Promise.all([
+        getPermission(program, accounts.authority),
+        getTokenProgram(program, accounts.currency),
+    ]);
+    const longPool = PDA.getLongPool(accounts.currency, accounts.collateral, program.programId);
+    const lpVault = PDA.getLpVault(accounts.currency, program.programId);
 
     return program.methods.openLongPositionSetup({
         nonce: args.nonce,
@@ -58,25 +61,27 @@ export async function createOpenLongPositionSetupInstruction(
         fee: new BN(args.fee),
     }).accounts({
         owner: program.provider.publicKey,
-        lpVault: PDA.getLpVault(args.currency, program.programId),
-        longPool: args.longPool,
-        collateral: args.collateral,
-        currency: args.currency,
+        lpVault,
+        longPool,
+        collateral: accounts.collateral,
+        currency: accounts.currency,
         permission,
-        tokenProgram: TOKEN_2022_PROGRAM_ID,
-        feeWallet: args.feeWallet,
+        tokenProgram,
+        feeWallet: accounts.feeWallet,
     }).instruction();
 }
 
-export function createOpenLongPositionCleanupInstruction(
+export async function createOpenLongPositionCleanupInstruction(
     program: Program<WasabiSolana>,
     args: OpenLongPositionCleanupArgs,
+    accounts: OpenLongPositionCleanupAccounts,
 ): Promise<TransactionInstruction> {
+    const tokenProgram = await getTokenProgram(program, args.currency);
     return program.methods.openLongPositionCleanup()
         .accounts({
             owner: program.provider.publicKey,
-            longPool: args.longPool,
-            position: args.position,
-            tokenProgram: TOKEN_2022_PROGRAM_ID,
+            longPool: accounts.longPool,
+            position: accounts.position,
+            tokenProgram,
         }).instruction();
 }

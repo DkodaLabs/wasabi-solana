@@ -527,61 +527,9 @@ export type WasabiSolana = {
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateralTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -590,68 +538,12 @@ export type WasabiSolana = {
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currencyTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -693,8 +585,8 @@ export type WasabiSolana = {
             },
             {
               "name": "lpVault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -1066,61 +958,9 @@ export type WasabiSolana = {
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateralTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -1129,68 +969,12 @@ export type WasabiSolana = {
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currencyTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -1232,8 +1016,8 @@ export type WasabiSolana = {
             },
             {
               "name": "lpVault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -1801,7 +1585,8 @@ export type WasabiSolana = {
           "name": "assetTokenProgram"
         },
         {
-          "name": "sharesTokenProgram"
+          "name": "sharesTokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "eventAuthority",
@@ -2464,7 +2249,8 @@ export type WasabiSolana = {
           "name": "assetTokenProgram"
         },
         {
-          "name": "sharesTokenProgram"
+          "name": "sharesTokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "associatedTokenProgram",
@@ -3067,61 +2853,9 @@ export type WasabiSolana = {
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateralTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -3130,68 +2864,12 @@ export type WasabiSolana = {
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currencyTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -3233,8 +2911,8 @@ export type WasabiSolana = {
             },
             {
               "name": "lpVault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -3600,7 +3278,8 @@ export type WasabiSolana = {
           "name": "assetTokenProgram"
         },
         {
-          "name": "sharesTokenProgram"
+          "name": "sharesTokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "eventAuthority",
@@ -3808,7 +3487,7 @@ export type WasabiSolana = {
           "name": "lpVault",
           "docs": [
             "The LP Vault that the user will borrow from",
-            "For long positions, this is the `currency`"
+            "For long positions, this is the `currency` i.e. the `quote`"
           ]
         },
         {
@@ -4749,7 +4428,8 @@ export type WasabiSolana = {
           "name": "assetTokenProgram"
         },
         {
-          "name": "sharesTokenProgram"
+          "name": "sharesTokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "eventAuthority",
@@ -4825,7 +4505,60 @@ export type WasabiSolana = {
             "Source of the tokens being repaid",
             "Does this belong to `Signer`? If so, can infer."
           ],
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "payer"
+              },
+              {
+                "kind": "account",
+                "path": "tokenProgram"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
         },
         {
           "name": "vault",
@@ -5176,61 +4909,9 @@ export type WasabiSolana = {
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateralTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -5239,68 +4920,12 @@ export type WasabiSolana = {
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currencyTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -5342,8 +4967,8 @@ export type WasabiSolana = {
             },
             {
               "name": "lpVault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -5732,61 +5357,9 @@ export type WasabiSolana = {
               "docs": [
                 "The collateral account that is the source of the swap"
               ],
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateralTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "collateral"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
-                "pool"
+                "pool",
+                "position"
               ]
             },
             {
@@ -5795,68 +5368,12 @@ export type WasabiSolana = {
                 "The token account that is the destination of the swap"
               ],
               "writable": true,
-              "pda": {
-                "seeds": [
-                  {
-                    "kind": "account",
-                    "path": "pool"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currencyTokenProgram"
-                  },
-                  {
-                    "kind": "account",
-                    "path": "currency"
-                  }
-                ],
-                "program": {
-                  "kind": "const",
-                  "value": [
-                    140,
-                    151,
-                    37,
-                    143,
-                    78,
-                    36,
-                    137,
-                    241,
-                    187,
-                    61,
-                    16,
-                    41,
-                    20,
-                    142,
-                    13,
-                    131,
-                    11,
-                    90,
-                    19,
-                    153,
-                    218,
-                    255,
-                    16,
-                    132,
-                    4,
-                    142,
-                    123,
-                    216,
-                    219,
-                    233,
-                    248,
-                    89
-                  ]
-                }
-              },
               "relations": [
                 "pool"
               ]
             },
             {
-              "name": "collateral",
-              "relations": [
-                "position"
-              ]
+              "name": "collateral"
             },
             {
               "name": "currency"
@@ -5898,8 +5415,8 @@ export type WasabiSolana = {
             },
             {
               "name": "lpVault",
-              "docs": [
-                "The LP Vault that the user borrowed from"
+              "relations": [
+                "position"
               ]
             },
             {
@@ -6347,7 +5864,8 @@ export type WasabiSolana = {
           "name": "assetTokenProgram"
         },
         {
-          "name": "sharesTokenProgram"
+          "name": "sharesTokenProgram",
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         },
         {
           "name": "eventAuthority",
@@ -7326,13 +6844,6 @@ export type WasabiSolana = {
             "type": "u64"
           },
           {
-            "name": "currency",
-            "docs": [
-              "The address of the currency to be borrowed and sold for the position."
-            ],
-            "type": "pubkey"
-          },
-          {
             "name": "expiration",
             "docs": [
               "The timestamp when this position request expires."
@@ -7416,7 +6927,8 @@ export type WasabiSolana = {
           {
             "name": "downPayment",
             "docs": [
-              "The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)"
+              "The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)",
+              "i.e. It is always in the quote currency"
             ],
             "type": "u64"
           },
