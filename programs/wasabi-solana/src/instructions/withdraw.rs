@@ -5,11 +5,11 @@ pub struct WithdrawArgs {
     pub amount: u64,
 }
 
-pub trait Withdraw {
+pub trait WithdrawTrait {
     fn withdraw(&mut self, args: &WithdrawArgs) -> Result<()>;
 }
 
-impl Withdraw for DepositOrWithdraw<'_> {
+impl WithdrawTrait for DepositOrWithdraw<'_> {
     fn withdraw(&mut self, args: &WithdrawArgs) -> Result<()> {
         self.transfer_token_from_vault_to_owner(args.amount)?;
         let total_assets = self.shares_mint.supply;
@@ -31,7 +31,7 @@ impl Withdraw for DepositOrWithdraw<'_> {
             .checked_sub(args.amount)
             .expect("underflow");
 
-        emit!(WithdrawEvent {
+        emit!(Withdraw {
             sender: self.owner.key(),
             owner: self.owner_asset_account.owner.key(),
             receiver: self.owner_asset_account.owner.key(),

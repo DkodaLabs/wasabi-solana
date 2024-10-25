@@ -26,7 +26,8 @@ impl Redeem for DepositOrWithdraw<'_> {
             .checked_sub(token_transfer_amount)
             .expect("underflow");
 
-        emit!(WithdrawEvent {
+        emit!(Withdraw {
+            vault: self.lp_vault.key(),
             sender: self.owner.key(),
             owner: self.owner_asset_account.owner.key(),
             receiver: self.owner_asset_account.owner.key(),

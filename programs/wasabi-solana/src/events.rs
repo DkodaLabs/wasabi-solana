@@ -5,6 +5,7 @@ use {
 
 #[event]
 pub struct Deposit {
+    pub vault: Pubkey,
     pub sender: Pubkey,
     pub owner: Pubkey,
     pub assets: u64,
@@ -12,7 +13,8 @@ pub struct Deposit {
 }
 
 #[event]
-pub struct WithdrawEvent {
+pub struct Withdraw {
+    pub vault: Pubkey,
     pub sender: Pubkey,
     pub receiver: Pubkey,
     pub owner: Pubkey,
