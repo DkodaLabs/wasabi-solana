@@ -3,8 +3,10 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::AssociatedToken,
-        token_2022,
-        token_interface::{Mint, TokenAccount, TokenInterface},
+        token_2022::Token2022,
+        token_interface::{
+            token_metadata_initialize, Mint, TokenAccount, TokenInterface, TokenMetadataInitialize,
+        },
     },
 };
 
@@ -48,18 +50,25 @@ pub struct InitLpVault<'info> {
         mint::authority = lp_vault,
         mint::decimals = asset_mint.decimals,
         mint::token_program = shares_token_program,
+        extensions::metadata_pointer::authority = lp_vault,
+        extensions::metadata_pointer::metadata_address = shares_mint,
     )]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub asset_token_program: Interface<'info, TokenInterface>,
 
-    #[account(
-        address = token_2022::ID
-    )]
-    pub shares_token_program: Interface<'info, TokenInterface>,
+    pub shares_token_program: Program<'info, Token2022>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct InitLpVaultArgs {
+    name: String,
+    symbol: String,
+    uri: String,
+}
+
 impl<'info> InitLpVault<'info> {
     pub fn validate(ctx: &Context<InitLpVault>) -> Result<()> {
         require!(
@@ -69,7 +78,33 @@ impl<'info> InitLpVault<'info> {
         Ok(())
     }
 
-    pub fn init_lp_vault(&mut self, bumps: &InitLpVaultBumps) -> Result<()> {
+    fn initialize_token_metadata(&self, args: &InitLpVaultArgs) -> Result<()> {
+        let cpi_accounts = TokenMetadataInitialize {
+            token_program_id: self.shares_token_program.to_account_info(),
+            mint: self.shares_mint.to_account_info(),
+            metadata: self.shares_mint.to_account_info(),
+            mint_authority: self.lp_vault.to_account_info(),
+            update_authority: self.lp_vault.to_account_info(),
+        };
+
+        let cpi_ctx = CpiContext::new(self.shares_token_program.to_account_info(), cpi_accounts);
+        token_metadata_initialize(
+            cpi_ctx,
+            args.name.clone(),
+            args.symbol.clone(),
+            args.uri.clone(),
+        )?;
+
+        Ok(())
+    }
+
+    pub fn init_lp_vault(
+        &mut self,
+        args: &InitLpVaultArgs,
+        bumps: &InitLpVaultBumps,
+    ) -> Result<()> {
+        self.initialize_token_metadata(&args)?;
+
         self.lp_vault.set_inner(LpVault {
             bump: bumps.lp_vault,
             asset: self.asset_mint.key(),
@@ -85,20 +120,3 @@ impl<'info> InitLpVault<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitLpVault>) -> Result<()> {
-//    let lp_vault: &mut Account<LpVault> = &mut ctx.accounts.lp_vault;
-//
-//    lp_vault.bump = ctx.bumps.lp_vault;
-//    lp_vault.asset = ctx.accounts.asset_mint.key();
-//    lp_vault.vault = ctx.accounts.vault.key();
-//    lp_vault.shares_mint = ctx.accounts.shares_mint.key();
-//    lp_vault.total_assets = 0;
-//    lp_vault.total_borrowed = 0;
-//    // TODO should this be able to be set at time of initialization?
-//    lp_vault.max_borrow = 0;
-//
-//    emit!(NewVault::new(lp_vault));
-//
-//    Ok(())
-//}

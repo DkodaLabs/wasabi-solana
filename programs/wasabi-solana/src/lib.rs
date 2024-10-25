@@ -48,8 +48,8 @@ pub mod wasabi_solana {
     }
 
     #[access_control(InitLpVault::validate(&ctx))]
-    pub fn init_lp_vault(ctx: Context<InitLpVault>) -> Result<()> {
-        ctx.accounts.init_lp_vault(&ctx.bumps)
+    pub fn init_lp_vault(ctx: Context<InitLpVault>, args: InitLpVaultArgs) -> Result<()> {
+        ctx.accounts.init_lp_vault(&args, &ctx.bumps)
     }
 
     #[access_control(UpdateVaultMaxBorrow::validate(&ctx))]
