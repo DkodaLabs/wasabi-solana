@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{AuthorityStatus, GlobalSettings, Permission};
+use {
+    crate::{AuthorityStatus, GlobalSettings, Permission},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct InitGlobalSettings<'info> {
@@ -34,17 +35,34 @@ pub struct InitGlobalSettingsArgs {
     statuses: u16,
 }
 
-pub fn handler(ctx: Context<InitGlobalSettings>, args: InitGlobalSettingsArgs) -> Result<()> {
-    let global = &mut ctx.accounts.global_settings;
-    let super_admin_permission = &mut ctx.accounts.super_admin_permission;
+impl<'info> InitGlobalSettings<'info> {
+    pub fn init_global_settings(&mut self, args: &InitGlobalSettingsArgs) -> Result<()> {
+        self.global_settings.set_inner(GlobalSettings {
+            protocol_fee_wallet: args.fee_wallet,
+            statuses: args.statuses,
+        });
 
-    global.protocol_fee_wallet = args.fee_wallet;
-    global.statuses = args.statuses;
+        self.super_admin_permission.set_inner(Permission {
+            authority: args.super_admin,
+            status: AuthorityStatus::Active,
+            is_super_authority: true,
+            permissions_map: u8::MAX,
+        });
 
-
-    super_admin_permission.authority = args.super_admin;
-    super_admin_permission.is_super_authority = true;
-    super_admin_permission.permissions_map = u8::MAX;
-    super_admin_permission.status = AuthorityStatus::Active;
-    Ok(())
+        Ok(())
+    }
 }
+
+//pub fn handler(ctx: Context<InitGlobalSettings>, args: InitGlobalSettingsArgs) -> Result<()> {
+//    let global = &mut ctx.accounts.global_settings;
+//    let super_admin_permission = &mut ctx.accounts.super_admin_permission;
+//
+//    global.protocol_fee_wallet = args.fee_wallet;
+//    global.statuses = args.statuses;
+//
+//    super_admin_permission.authority = args.super_admin;
+//    super_admin_permission.is_super_authority = true;
+//    super_admin_permission.permissions_map = u8::MAX;
+//    super_admin_permission.status = AuthorityStatus::Active;
+//    Ok(())
+//}

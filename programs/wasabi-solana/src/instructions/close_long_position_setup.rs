@@ -1,8 +1,8 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds};
-
-use super::CloseLongPositionCleanup;
+use {
+    super::CloseLongPositionCleanup,
+    crate::{error::ErrorCode, instructions::close_position_setup::*, long_pool_signer_seeds},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct CloseLongPositionSetup<'info> {
@@ -14,19 +14,19 @@ pub struct CloseLongPositionSetup<'info> {
 
 impl<'info> CloseLongPositionSetup<'info> {
     pub fn validate(ctx: &Context<CloseLongPositionSetup>, args: &ClosePositionArgs) -> Result<()> {
-        require!(
-            ctx.accounts.owner.key() == ctx.accounts.close_position_setup.owner.key(),
+        require_keys_eq!(
+            ctx.accounts.owner.key(),
+            ctx.accounts.close_position_setup.owner.key(),
             ErrorCode::IncorrectOwner
         );
 
-        if !ctx
-            .accounts
-            .close_position_setup
-            .permission
-            .can_cosign_swaps()
-        {
-            return Err(ErrorCode::InvalidSwapCosigner.into());
-        }
+        require!(
+            ctx.accounts
+                .close_position_setup
+                .permission
+                .can_cosign_swaps(),
+            ErrorCode::InvalidSwapCosigner,
+        );
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,
@@ -36,26 +36,43 @@ impl<'info> CloseLongPositionSetup<'info> {
 
         Ok(())
     }
-}
 
-pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) -> Result<()> {
     // The user is long WIF and used SOL as downpayment. When closing the long WIF position we
-    //  need to take all the WIF collateral and sell it for SOL.
-    let position = &ctx.accounts.close_position_setup.position;
-    // allow "owner" to swap on behalf of the collateral vault
-    ctx.accounts
-        .close_position_setup
-        .approve_swap_authority_delegation(
-            position.collateral_amount,
-            ctx.accounts.close_position_setup.pool.to_account_info(),
-            &[long_pool_signer_seeds!(
-                ctx.accounts.close_position_setup.pool
-            )],
+    // need to take all the WIF collateral and sell it for SOL.
+    pub fn close_long_position_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+        // Allow "owner" to swap on behalf of the collateral vault
+        let cps = &mut self.close_position_setup;
+        cps.approve_swap_authority_delegation(
+            cps.position.collateral_amount,
+            cps.pool.to_account_info(),
+            &[long_pool_signer_seeds!(cps.pool)],
         )?;
 
-    // Create a close position request
-    ctx.accounts
-        .close_position_setup
-        .set_close_position_request(&args)?;
-    Ok(())
+        // Create a close position request
+        cps.set_close_position_request(&args)?;
+
+        Ok(())
+    }
 }
+
+//pub fn handler(ctx: Context<CloseLongPositionSetup>, args: ClosePositionArgs) -> Result<()> {
+//    // The user is long WIF and used SOL as downpayment. When closing the long WIF position we
+//    //  need to take all the WIF collateral and sell it for SOL.
+//    let position = &ctx.accounts.close_position_setup.position;
+//    // allow "owner" to swap on behalf of the collateral vault
+//    ctx.accounts
+//        .close_position_setup
+//        .approve_swap_authority_delegation(
+//            position.collateral_amount,
+//            ctx.accounts.close_position_setup.pool.to_account_info(),
+//            &[long_pool_signer_seeds!(
+//                ctx.accounts.close_position_setup.pool
+//            )],
+//        )?;
+//
+//    // Create a close position request
+//    ctx.accounts
+//        .close_position_setup
+//        .set_close_position_request(&args)?;
+//    Ok(())
+//}

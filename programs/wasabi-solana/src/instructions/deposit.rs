@@ -1,7 +1,13 @@
-use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Burn, Mint, MintTo, Token, TokenAccount, Transfer};
-
-use crate::{events::Deposit, lp_vault_signer_seeds, LpVault};
+use {
+    crate::{events::Deposit, lp_vault_signer_seeds, LpVault},
+    anchor_lang::prelude::*,
+    anchor_spl::{
+        token_2022::ID,
+        token_interface::{
+            self, Burn, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked,
+        },
+    },
+};
 
 #[event_cpi]
 #[derive(Accounts)]
@@ -9,120 +15,170 @@ pub struct DepositOrWithdraw<'info> {
     /// The key of the user that owns the assets
     pub owner: Signer<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        associated_token::mint = asset_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = asset_token_program,
+    )]
     /// The Owner's token account that holds the assets
-    pub owner_asset_account: Account<'info, TokenAccount>,
-
-    #[account(mut)]
-    /// The Owner's token account that stores share tokens
-    pub owner_shares_account: Account<'info, TokenAccount>,
+    pub owner_asset_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-    mut,
-    has_one = vault,
-    has_one = shares_mint,
-  )]
-    pub lp_vault: Account<'info, LpVault>,
+        mut,
+        associated_token::mint = shares_mint,
+        associated_token::authority = owner,
+        associated_token::token_program = shares_token_program,
+    )]
+    /// The Owner's token account that stores share tokens
+    pub owner_shares_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        has_one = vault,
+        has_one = shares_mint,
+    )]
+    pub lp_vault: Box<Account<'info, LpVault>>,
 
     #[account(mut)]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub asset_mint: InterfaceAccount<'info, Mint>,
 
     #[account(mut)]
-    pub shares_mint: Account<'info, Mint>,
+    pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    pub token_program: Program<'info, Token>,
+    pub asset_token_program: Interface<'info, TokenInterface>,
+    #[account(
+        address = ID
+    )]
+    pub shares_token_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct DepositArgs {
+    amount: u64,
 }
 
 impl<'info> DepositOrWithdraw<'info> {
-    pub fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = Transfer {
+    pub(crate) fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = TransferChecked {
             from: self.owner_asset_account.to_account_info(),
+            mint: self.asset_mint.to_account_info(),
             to: self.vault.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token::transfer(cpi_ctx, amount)
+        let cpi_ctx = CpiContext::new(self.asset_token_program.to_account_info(), cpi_accounts);
+        token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
     }
 
-    pub fn mint_shares_to_user(&self, amount: u64) -> Result<()> {
+    pub(crate) fn mint_shares_to_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = MintTo {
             mint: self.shares_mint.to_account_info(),
             to: self.owner_shares_account.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.shares_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
-        token::mint_to(cpi_ctx, amount)
+        token_interface::mint_to(cpi_ctx, amount)
     }
 
-    pub fn burn_shares_from_user(&self, amount: u64) -> Result<()> {
+    pub(crate) fn burn_shares_from_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Burn {
             mint: self.shares_mint.to_account_info(),
             from: self.owner_shares_account.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);
-        token::burn(cpi_ctx, amount)
+        let cpi_ctx = CpiContext::new(self.shares_token_program.to_account_info(), cpi_accounts);
+        token_interface::burn(cpi_ctx, amount)
     }
 
-    pub fn transfer_token_from_vault_to_owner(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = Transfer {
+    pub(crate) fn transfer_token_from_vault_to_owner(&self, amount: u64) -> Result<()> {
+        let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
+            mint: self.asset_mint.to_account_info(),
             to: self.owner_asset_account.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
         let cpi_ctx = CpiContext {
-            program: self.token_program.to_account_info(),
+            program: self.asset_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
-        token::transfer(cpi_ctx, amount)
+        token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
+    }
+
+    pub fn deposit(&mut self, args: &DepositArgs) -> Result<()> {
+        self.transfer_token_from_owner_to_vault(args.amount)?;
+
+        let shares_supply = self.shares_mint.supply;
+        let shares_to_mint = if shares_supply == 0 {
+            args.amount
+        } else {
+            shares_supply
+                .checked_mul(args.amount)
+                .expect("overflow")
+                .checked_div(self.lp_vault.total_assets)
+                .expect("overflow")
+        };
+
+        self.mint_shares_to_user(shares_to_mint)?;
+
+        self.lp_vault.total_assets = self
+            .lp_vault
+            .total_assets
+            .checked_add(args.amount)
+            .expect("overflow");
+
+        emit!(Deposit {
+            vault: self.lp_vault.key(),
+            sender: self.owner.key(),
+            owner: self.owner_asset_account.owner.key(),
+            assets: args.amount,
+            shares: shares_to_mint,
+        });
+
+        Ok(())
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct DepositArgs {
-    /// The amount of assets to deposit
-    amount: u64,
-}
-
-pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
-    // transfer tokens from user's asset account
-    ctx.accounts
-        .transfer_token_from_owner_to_vault(args.amount)?;
-
-    // Mint share tokens to the user
-    let shares_supply = ctx.accounts.shares_mint.supply;
-    let shares_to_mint = if shares_supply == 0 {
-        args.amount
-    } else {
-        // shares to mint is (amount/total_assets) * shares_supply
-        shares_supply
-            .checked_mul(args.amount)
-            .expect("overflow")
-            .checked_div(ctx.accounts.lp_vault.total_assets)
-            .expect("overflow")
-    };
-    ctx.accounts.mint_shares_to_user(shares_to_mint)?;
-
-    // Update the LpVault for total assets deposited.
-    let lp_vault = &mut ctx.accounts.lp_vault;
-    lp_vault.total_assets = lp_vault
-        .total_assets
-        .checked_add(args.amount)
-        .expect("overflow");
-
-    emit!(Deposit {
-        sender: ctx.accounts.owner.key(),
-        owner: ctx.accounts.owner_asset_account.owner.key(),
-        assets: args.amount,
-        shares: shares_to_mint,
-    });
-
-    Ok(())
-}
+//pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
+//    // transfer tokens from user's asset account
+//    ctx.accounts
+//        .transfer_token_from_owner_to_vault(args.amount)?;
+//
+//    // Mint share tokens to the user
+//    let shares_supply = ctx.accounts.shares_mint.supply;
+//    let shares_to_mint = if shares_supply == 0 {
+//        args.amount
+//    } else {
+//        // shares to mint is (amount/total_assets) * shares_supply
+//        shares_supply
+//            .checked_mul(args.amount)
+//            .expect("overflow")
+//            .checked_div(ctx.accounts.lp_vault.total_assets)
+//            .expect("overflow")
+//    };
+//    ctx.accounts.mint_shares_to_user(shares_to_mint)?;
+//
+//    // Update the LpVault for total assets deposited.
+//    let lp_vault = &mut ctx.accounts.lp_vault;
+//    lp_vault.total_assets = lp_vault
+//        .total_assets
+//        .checked_add(args.amount)
+//        .expect("overflow");
+//
+//    emit!(Deposit {
+//        sender: ctx.accounts.owner.key(),
+//        owner: ctx.accounts.owner.key(),
+//        assets: args.amount,
+//        shares: shares_to_mint,
+//    });
+//
+//    Ok(())
+//}

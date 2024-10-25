@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, state::DebtController, Permission, APY_DENOMINATOR};
+use {
+    crate::{error::ErrorCode, state::DebtController, Permission, APY_DENOMINATOR},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct SetMaxApy<'info> {
@@ -8,19 +9,18 @@ pub struct SetMaxApy<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
-      seeds = [b"super_admin"],
-      bump,
+        has_one = authority,
+        seeds = [b"super_admin"],
+        bump,
     )]
     pub super_admin_permission: Account<'info, Permission>,
-    
+
     #[account(
-      mut,
-      seeds = [b"debt_controller"],
-      bump,
+        mut,
+        seeds = [b"debt_controller"],
+        bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
-    
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -29,21 +29,28 @@ pub struct SetMaxApyArgs {
 }
 
 impl<'info> SetMaxApy<'info> {
-    pub fn validate(&self, args: &SetMaxApyArgs) -> Result<()> {
-        if args.max_apy == 0 {
-            return Err(ErrorCode::InvalidValue.into());
-        }
-        if args.max_apy > 1000 * APY_DENOMINATOR {
-            return Err(ErrorCode::InvalidValue.into());
-        }
+    fn validate(&self, args: &SetMaxApyArgs) -> Result<()> {
+        require_neq!(args.max_apy, 0, ErrorCode::InvalidValue);
+        require_gt!(
+            1000 * APY_DENOMINATOR,
+            args.max_apy,
+            ErrorCode::InvalidValue
+        );
+        Ok(())
+    }
+
+    pub fn set_max_apy(&mut self, args: &SetMaxApyArgs) -> Result<()> {
+        self.validate(&args)?;
+        self.debt_controller.max_apy = args.max_apy;
+
         Ok(())
     }
 }
 
-pub fn handler(ctx: Context<SetMaxApy>, args: SetMaxApyArgs) -> Result<()> {
-    ctx.accounts.validate(&args)?;
-
-    let debt_controller = &mut ctx.accounts.debt_controller;
-    debt_controller.max_apy = args.max_apy;
-    Ok(())
-}
+//pub fn handler(ctx: Context<SetMaxApy>, args: SetMaxApyArgs) -> Result<()> {
+//    ctx.accounts.validate(&args)?;
+//
+//    let debt_controller = &mut ctx.accounts.debt_controller;
+//    debt_controller.max_apy = args.max_apy;
+//    Ok(())
+//}

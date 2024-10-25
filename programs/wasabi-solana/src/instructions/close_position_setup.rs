@@ -1,10 +1,11 @@
-use anchor_lang::{prelude::*, solana_program::sysvar};
-use anchor_spl::token::{self, Approve, Token, TokenAccount};
-
-use crate::{
-    error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds,
-    utils::position_setup_transaction_introspecation_validation, BasePool, ClosePositionRequest,
-    Permission, Position,
+use {
+    crate::{
+        error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds,
+        utils::position_setup_transaction_introspecation_validation, BasePool,
+        ClosePositionRequest, Permission, Position, SwapCache,
+    },
+    anchor_lang::{prelude::*, solana_program::sysvar},
+    anchor_spl::token_interface::{self, Approve, Mint, TokenAccount, TokenInterface},
 };
 
 // Makes a swap using balances in the vault, but settles the payout to user account
@@ -17,46 +18,49 @@ pub struct ClosePositionSetup<'info> {
     pub owner: AccountInfo<'info>,
 
     #[account(
-      mut,
-      has_one = collateral_vault
+        mut,
+        has_one = collateral_vault,
     )]
-    pub position: Account<'info, Position>,
+    pub position: Box<Account<'info, Position>>,
 
-    #[account(
-      has_one = collateral_vault,
-    )]
     /// The pool that owns the Position
+    #[account(
+        has_one = collateral_vault,
+        has_one = currency_vault,
+    )]
     pub pool: Account<'info, BasePool>,
     #[account(mut)]
     /// The collateral account that is the source of the swap
-    pub collateral_vault: Account<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The token account that is the destination of the swap
     #[account(mut)]
-    pub currency_vault: Box<Account<'info, TokenAccount>>,
+    pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
+        has_one = authority,
     )]
     pub permission: Account<'info, Permission>,
 
     #[account(
-      init,
-      payer = authority,
-      seeds = [b"close_pos", owner.key().as_ref()],
-      bump,
-      space = 8 + std::mem::size_of::<ClosePositionRequest>(),
+        init,
+        payer = authority,
+        seeds = [b"close_pos", owner.key().as_ref()],
+        bump,
+        space = 8 + std::mem::size_of::<ClosePositionRequest>(),
     )]
     pub close_position_request: Account<'info, ClosePositionRequest>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 
     pub system_program: Program<'info, System>,
     #[account(
-      address = sysvar::instructions::ID
+        address = sysvar::instructions::ID
     )]
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,
@@ -72,38 +76,39 @@ impl<'info> ClosePositionSetup<'info> {
             Pubkey::create_program_address(short_pool_signer_seeds!(self.pool), &crate::ID)
                 .expect("key")
         };
-        require!(expected_pool_key == self.pool.key(), ErrorCode::InvalidPool);
+        require_keys_eq!(expected_pool_key, self.pool.key(), ErrorCode::InvalidPool);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(&self.sysvar_info, cleanup_ix_hash)?;
 
-        require!(
-            self.owner.key() == self.position.trader,
+        require_keys_eq!(
+            self.owner.key(),
+            self.position.trader,
             ErrorCode::IncorrectOwner
         );
 
         let now = Clock::get()?.unix_timestamp;
 
-        if now > args.expiration {
-            return Err(ErrorCode::PositionReqExpired.into());
-        }
+        require_gt!(args.expiration, now, ErrorCode::PositionReqExpired);
 
         Ok(())
     }
 
     pub fn set_close_position_request(&mut self, args: &ClosePositionArgs) -> Result<()> {
-        let position = &self.position;
         // Create a close position request
-        let close_position_request = &mut self.close_position_request;
-        close_position_request.swap_cache.source_bal_before = self.collateral_vault.amount;
-        close_position_request.swap_cache.destination_bal_before =
-            self.currency_vault.amount;
-        close_position_request.interest = args.interest;
-        close_position_request.max_amount_in = position.collateral_amount;
-        close_position_request.min_target_amount = args.min_target_amount;
-        close_position_request.pool_key = position.collateral_vault;
-        close_position_request.position = position.key();
-        close_position_request.execution_fee = args.execution_fee;
+        self.close_position_request.set_inner(ClosePositionRequest {
+            swap_cache: SwapCache {
+                source_bal_before: self.collateral_vault.amount,
+                destination_bal_before: self.currency_vault.amount,
+            },
+            interest: args.interest,
+            max_amount_in: self.position.collateral_amount, // Check
+            min_target_amount: args.min_target_amount,
+            pool_key: self.position.collateral_vault,
+            position: self.position.key(),
+            execution_fee: args.execution_fee,
+        });
+
         Ok(())
     }
 
@@ -125,7 +130,7 @@ impl<'info> ClosePositionSetup<'info> {
             remaining_accounts: Vec::new(),
             signer_seeds: pool_signer_seeds,
         };
-        token::approve(cpi_ctx, amount)
+        token_interface::approve(cpi_ctx, amount)
     }
 }
 

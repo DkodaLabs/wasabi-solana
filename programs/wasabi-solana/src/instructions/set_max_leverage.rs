@@ -1,6 +1,7 @@
-use anchor_lang::prelude::*;
-
-use crate::{error::ErrorCode, DebtController, Permission, LEVERAGE_DENOMINATOR};
+use {
+    crate::{error::ErrorCode, DebtController, Permission, LEVERAGE_DENOMINATOR},
+    anchor_lang::prelude::*,
+};
 
 #[derive(Accounts)]
 pub struct SetMaxLeverage<'info> {
@@ -8,16 +9,16 @@ pub struct SetMaxLeverage<'info> {
     pub authority: Signer<'info>,
 
     #[account(
-      has_one = authority,
-      seeds = [b"super_admin"],
-      bump,
+        has_one = authority,
+        seeds = [b"super_admin"],
+        bump,
     )]
     pub super_admin_permission: Account<'info, Permission>,
 
     #[account(
-      mut,
-      seeds = [b"debt_controller"],
-      bump,
+        mut,
+        seeds = [b"debt_controller"],
+        bump,
     )]
     pub debt_controller: Account<'info, DebtController>,
 }
@@ -28,22 +29,29 @@ pub struct SetMaxLeverageArgs {
 }
 
 impl<'info> SetMaxLeverage<'info> {
-    pub fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
-        if args.max_leverage == 0 {
-            return Err(ErrorCode::InvalidValue.into());
-        }
-        if args.max_leverage > 100 * LEVERAGE_DENOMINATOR {
-            return Err(ErrorCode::InvalidValue.into());
-        }
+    fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
+        require_neq!(args.max_leverage, 0, ErrorCode::InvalidValue);
+        require_gt!(
+            100 * LEVERAGE_DENOMINATOR,
+            args.max_leverage,
+            ErrorCode::InvalidValue
+        );
+        Ok(())
+    }
+
+    pub fn set_max_leverage(&mut self, args: &SetMaxLeverageArgs) -> Result<()> {
+        self.validate(args)?;
+
+        self.debt_controller.max_leverage = args.max_leverage;
+
         Ok(())
     }
 }
 
-pub fn handler(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
-    ctx.accounts.validate(&args)?;
-
-    let debt_controller = &mut ctx.accounts.debt_controller;
-    debt_controller.max_leverage = args.max_leverage;
-    Ok(())
-}
-        
+//pub fn handler(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
+//    ctx.accounts.validate(&args)?;
+//
+//    let debt_controller = &mut ctx.accounts.debt_controller;
+//    debt_controller.max_leverage = args.max_leverage;
+//    Ok(())
+//}
