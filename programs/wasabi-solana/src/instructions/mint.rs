@@ -5,11 +5,11 @@ pub struct MintArgs {
     pub shares_amount: u64,
 }
 
-pub trait Mint {
+pub trait MintTrait {
     fn mint(&mut self, args: &MintArgs) -> Result<()>;
 }
 
-impl Mint for DepositOrWithdraw<'_> {
+impl MintTrait for DepositOrWithdraw<'_> {
     fn mint(&mut self, args: &MintArgs) -> Result<()> {
         self.mint_shares_to_user(args.shares_amount)?;
         let shares_supply = self.shares_mint.supply;

@@ -1,4 +1,4 @@
-use {super::DepositOrWithdraw, crate::events::WithdrawEvent, anchor_lang::prelude::*};
+use {super::DepositOrWithdraw, crate::events::Withdraw, anchor_lang::prelude::*};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct WithdrawArgs {
@@ -32,6 +32,7 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
             .expect("underflow");
 
         emit!(Withdraw {
+            vault: self.lp_vault.key(),
             sender: self.owner.key(),
             owner: self.owner_asset_account.owner.key(),
             receiver: self.owner_asset_account.owner.key(),

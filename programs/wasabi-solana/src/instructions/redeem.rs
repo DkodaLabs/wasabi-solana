@@ -1,15 +1,15 @@
-use {super::DepositOrWithdraw, crate::events::WithdrawEvent, anchor_lang::prelude::*};
+use {super::DepositOrWithdraw, crate::events::Withdraw, anchor_lang::prelude::*};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RedeemArgs {
     pub shares_amount: u64,
 }
 
-pub trait Redeem {
+pub trait RedeemTrait {
     fn redeem(&mut self, args: &RedeemArgs) -> Result<()>;
 }
 
-impl Redeem for DepositOrWithdraw<'_> {
+impl RedeemTrait for DepositOrWithdraw<'_> {
     fn redeem(&mut self, args: &RedeemArgs) -> Result<()> {
         let token_transfer_amount = args
             .shares_amount
