@@ -5,3 +5,5 @@ target
 node_modules
 test-ledger
 .yarn
+.env
+devnet-program-deployer.json

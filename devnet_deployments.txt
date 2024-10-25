@@ -1,0 +1,4 @@
+PROGRAM=FL1XKFr8ZMDdEJxHDR16SJaiGyLZTk9BHFUDenGr5HEp
+PROGRAM_EXPLORER=https://solana.fm/address/FL1XKFr8ZMDdEJxHDR16SJaiGyLZTk9BHFUDenGr5HEp/transactions?cluster=devnet-alpha
+
+USDC_MINT=BHKPvcMzZiw2khHgr9AdhxqBYqsfytmTYK2hn7JWkQZj
