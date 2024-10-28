@@ -11,7 +11,7 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(args: OpenShortPositionArgs)]
+#[instruction(header: OpenShortPositionHeader)]
 pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
@@ -78,7 +78,7 @@ pub struct OpenShortPositionSetup<'info> {
             owner.key().as_ref(), 
             short_pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
-            &args.nonce.to_le_bytes()
+            &header.nonce.to_le_bytes()
         ],
         bump,
         space = 8 + std::mem::size_of::<Position>(),
@@ -95,6 +95,10 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    #[account(
+        seeds = [b"global_settings"],
+        bump,
+    )]
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub collateral_token_program: Interface<'info, TokenInterface>,
@@ -108,9 +112,12 @@ pub struct OpenShortPositionSetup<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct OpenShortPositionHeader {
+    nonce: u16,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct OpenShortPositionArgs {
-    /// The nonce of the Position
-    pub nonce: u16,
     /// The minimum amount out required when swapping
     pub min_target_amount: u64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
@@ -189,7 +196,13 @@ impl<'info> OpenShortPositionSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn open_short_position_setup(&mut self, args: &OpenShortPositionArgs) -> Result<()> {
+    pub fn open_short_position_setup(&mut self, header: &OpenShortPositionHeader, args: &OpenShortPositionArgs) -> Result<()> {
+        // This is due to some eccentricity of Anchor's deserialization, when the
+        // nonce is not used like this it causes a byte misalignment for the other args
+        // leading to erroneous values for principal, fee and expiration. TODO: Figure out
+        // why using the nonce this way solves the issue.
+        msg!("{}", header.nonce);
+
         // Down payment is transferred from the user to the `collateral_vault` since it's not used
         // for swapping when opening a short position.
         self.transfer_from_user_to_collateral_vault(args.down_payment)?;

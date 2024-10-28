@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { tokenMintA } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
@@ -60,9 +61,9 @@ describe("Deposit", () => {
             .deposit({ amount })
             .accounts({
                 owner: program.provider.publicKey,
-                ownerAssetAccount: tokenAAta,
-                ownerSharesAccount,
                 lpVault: lpVaultKey,
+                assetMint: tokenMintA,
+                assetTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
 
@@ -132,9 +133,9 @@ describe("Deposit", () => {
             .deposit({ amount })
             .accounts({
                 owner: program.provider.publicKey,
-                ownerAssetAccount: tokenAAta,
-                ownerSharesAccount,
                 lpVault: lpVaultKey,
+                assetMint: tokenMintA,
+                assetTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
 
@@ -193,9 +194,9 @@ describe("Deposit", () => {
                 .deposit({ amount })
                 .accounts({
                     owner: program.provider.publicKey,
-                    ownerAssetAccount: tokenAAta,
-                    ownerSharesAccount,
                     lpVault: lpVaultKey,
+                    assetMint: tokenMintA,
+                    assetTokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .rpc();
         }
@@ -205,9 +206,9 @@ describe("Deposit", () => {
                 .withdraw({ amount })
                 .accounts({
                     owner: program.provider.publicKey,
-                    ownerAssetAccount: tokenAAta,
-                    ownerSharesAccount,
                     lpVault: lpVaultKey,
+                    assetMint: tokenMintA,
+                    assetTokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .rpc();
         }

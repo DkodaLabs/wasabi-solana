@@ -12,7 +12,7 @@ pub trait WithdrawTrait {
 impl WithdrawTrait for DepositOrWithdraw<'_> {
     fn withdraw(&mut self, args: &WithdrawArgs) -> Result<()> {
         self.transfer_token_from_vault_to_owner(args.amount)?;
-        let total_assets = self.shares_mint.supply;
+        let total_assets = self.lp_vault.total_assets;
 
         let shares_burn_amount = args
             .amount

@@ -12,10 +12,9 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(args: OpenLongPositionArgs)]
+#[instruction(header: OpenLongPositionHeader)]
 pub struct OpenLongPositionSetup<'info> {
     /// The wallet that owns the assets
-    // NOTE: Should we rename this trader - ensures inference from `position` from clean-up
     #[account(mut)]
     pub owner: Signer<'info>,
 
@@ -74,7 +73,7 @@ pub struct OpenLongPositionSetup<'info> {
             owner.key().as_ref(), 
             long_pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
-            &args.nonce.to_le_bytes() // Ensures user can have multiple positions for this
+            &header.nonce.to_le_bytes() // Ensures user can have multiple positions for this
             // particular pool
         ],
         bump,
@@ -90,10 +89,6 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    /// Fee wallet needs to be unique per market 
-    // NOTE: Even per market this may cause write-locks
-    // Perhaps this can be on a per-user basis, and we sweep these at the end 
-    // of the day while returning the rent cost to the user?
     #[account(mut)]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -103,7 +98,6 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub debt_controller: Account<'info, DebtController>,
 
-    // derive
     #[account(
         seeds = [b"global_settings"],
         bump,
@@ -132,10 +126,12 @@ impl<'info> OpenLongPositionSetup<'info> {
             &ctx.accounts.sysvar_info,
             OpenLongPositionCleanup::get_hash(),
         )?;
+
         Ok(())
     }
 
     fn transfer_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
+        msg!("{}", self.vault.amount);
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -152,6 +148,8 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
+        msg!("down payment");
+
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -164,6 +162,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
+        msg!("fee");
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -189,7 +188,13 @@ impl<'info> OpenLongPositionSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn open_long_position_setup(&mut self, args: &OpenLongPositionArgs) -> Result<()> {
+    pub fn open_long_position_setup(&mut self, header: &OpenLongPositionHeader, args: &OpenLongPositionArgs) -> Result<()> {
+        // This is due to some eccentricity of Anchor's deserialization, when the
+        // nonce is not used like this it causes a byte misalignment for the other args
+        // leading to erroneous values for principal, fee and expiration. TODO: Figure out
+        // why using the nonce this way solves the issue.
+        msg!("{}", header.nonce);
+
         self.transfer_borrow_amount_from_vault(args.principal)?;
         self.transfer_down_payment_from_user(args.down_payment)?;
         self.transfer_from_user_to_fee_wallet(args.fee)?;
@@ -199,7 +204,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             .debt_controller
             .compute_max_principal(args.down_payment);
 
-        require_gt!(max_principal, args.principal, ErrorCode::PrincipalTooHigh);
+        require_gte!(max_principal, args.principal, ErrorCode::PrincipalTooHigh);
 
         let total_swap_amount = args
             .principal
@@ -242,9 +247,13 @@ impl<'info> OpenLongPositionSetup<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug)]
+pub struct OpenLongPositionHeader {
+    nonce: u16,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Debug)]
+#[repr(C)]
 pub struct OpenLongPositionArgs {
-    /// The nonce of the Position
-    pub nonce: u16,
     /// The minimum amount out required when swapping
     pub min_target_amount: u64,
     /// The initial down payment amount required to open the position (is in `currency` for long, `

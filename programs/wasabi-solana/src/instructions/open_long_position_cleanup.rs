@@ -65,23 +65,36 @@ impl<'info> OpenLongPositionCleanup<'info> {
             ErrorCode::InvalidPool
         );
 
+        let destination_balance_delta = self.get_destination_delta();
         // Validate owner receives at least the minimum amount of token being swapped to.
-        require_gt!(
-            self.open_position_request.min_target_amount,
-            self.get_destination_delta(),
-            ErrorCode::MinTokensNotMet
-        );
+        //require_gt!(
+        //    destination_balance_delta,
+        //    self.open_position_request.min_target_amount,
+        //    ErrorCode::MinTokensNotMet
+        //);
+
+        if destination_balance_delta < self.open_position_request.min_target_amount {
+            // InsufficientCollateralReceived
+            return Err(ErrorCode::MinTokensNotMet.into());
+        }
 
         // Validate owner does not spend more tokens than requested.
-        require_gt!(
-            self.open_position_request
-                .swap_cache
-                .source_bal_before
-                .checked_sub(self.currency_vault.amount)
-                .expect("overflow"),
-            self.open_position_request.max_amount_in,
-            ErrorCode::SwapAmountExceeded
-        );
+        let source_balance_delta = self
+            .open_position_request
+            .swap_cache
+            .source_bal_before
+            .checked_sub(self.currency_vault.amount)
+            .expect("overflow");
+
+        if source_balance_delta > self.open_position_request.max_amount_in {
+            return Err(ErrorCode::SwapAmountExceeded.into());
+        }
+
+        //require_gt!(
+        //    self.open_position_request.max_amount_in,
+        //    source_balance_delta,
+        //    ErrorCode::SwapAmountExceeded
+        //);
 
         Ok(())
     }

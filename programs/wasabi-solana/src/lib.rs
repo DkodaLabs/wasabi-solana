@@ -122,13 +122,13 @@ pub mod wasabi_solana {
         ctx.accounts.donate(&args)
     }
 
-    // Maybe remove the `&ctx`
     #[access_control(OpenLongPositionSetup::validate(&ctx, &args))]
     pub fn open_long_position_setup(
         ctx: Context<OpenLongPositionSetup>,
+        header: OpenLongPositionHeader,
         args: OpenLongPositionArgs,
     ) -> Result<()> {
-        ctx.accounts.open_long_position_setup(&args)
+        ctx.accounts.open_long_position_setup(&header, &args)
     }
 
     pub fn open_long_position_cleanup(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
@@ -150,9 +150,10 @@ pub mod wasabi_solana {
     #[access_control(OpenShortPositionSetup::validate(&ctx, &args))]
     pub fn open_short_position_setup(
         ctx: Context<OpenShortPositionSetup>,
+        header: OpenShortPositionHeader,
         args: OpenShortPositionArgs,
     ) -> Result<()> {
-        ctx.accounts.open_short_position_setup(&args)
+        ctx.accounts.open_short_position_setup(&header, &args)
     }
 
     pub fn open_short_position_cleanup(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {

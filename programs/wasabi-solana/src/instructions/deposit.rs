@@ -2,7 +2,7 @@ use {
     crate::{events::Deposit, lp_vault_signer_seeds, LpVault},
     anchor_lang::prelude::*,
     anchor_spl::{
-        token_2022::ID,
+        token_2022::Token2022,
         token_interface::{
             self, Burn, Mint, MintTo, TokenAccount, TokenInterface, TransferChecked,
         },
@@ -49,10 +49,7 @@ pub struct DepositOrWithdraw<'info> {
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
     pub asset_token_program: Interface<'info, TokenInterface>,
-    #[account(
-        address = ID
-    )]
-    pub shares_token_program: Interface<'info, TokenInterface>,
+    pub shares_token_program: Program<'info, Token2022>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -114,6 +111,7 @@ impl<'info> DepositOrWithdraw<'info> {
     }
 
     pub fn deposit(&mut self, args: &DepositArgs) -> Result<()> {
+        msg!("{}", args.amount);
         self.transfer_token_from_owner_to_vault(args.amount)?;
 
         let shares_supply = self.shares_mint.supply;
@@ -146,39 +144,3 @@ impl<'info> DepositOrWithdraw<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
-//    // transfer tokens from user's asset account
-//    ctx.accounts
-//        .transfer_token_from_owner_to_vault(args.amount)?;
-//
-//    // Mint share tokens to the user
-//    let shares_supply = ctx.accounts.shares_mint.supply;
-//    let shares_to_mint = if shares_supply == 0 {
-//        args.amount
-//    } else {
-//        // shares to mint is (amount/total_assets) * shares_supply
-//        shares_supply
-//            .checked_mul(args.amount)
-//            .expect("overflow")
-//            .checked_div(ctx.accounts.lp_vault.total_assets)
-//            .expect("overflow")
-//    };
-//    ctx.accounts.mint_shares_to_user(shares_to_mint)?;
-//
-//    // Update the LpVault for total assets deposited.
-//    let lp_vault = &mut ctx.accounts.lp_vault;
-//    lp_vault.total_assets = lp_vault
-//        .total_assets
-//        .checked_add(args.amount)
-//        .expect("overflow");
-//
-//    emit!(Deposit {
-//        sender: ctx.accounts.owner.key(),
-//        owner: ctx.accounts.owner.key(),
-//        assets: args.amount,
-//        shares: shares_to_mint,
-//    });
-//
-//    Ok(())
-//}

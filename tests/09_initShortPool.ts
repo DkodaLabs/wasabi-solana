@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
@@ -19,8 +20,10 @@ describe("InitShortPool", () => {
             .accounts({
                 payer: superAdminProgram.provider.publicKey,
                 permission: superAdminPermissionKey,
-                assetMint: tokenMintA,
-                currencyMint: tokenMintB,
+                collateral: tokenMintA,
+                currency: tokenMintB,
+                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                currencyTokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .rpc();
         const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -67,11 +70,16 @@ describe("InitShortPool", () => {
         it("should fail", async () => {
             try {
                 await program.methods
-                    .initLpVault()
+                    .initLpVault({
+                        name: "PLACEHOLDER",
+                        symbol: "PLC",
+                        uri: "https://placeholder.com",
+                    })
                     .accounts({
                         payer: program.provider.publicKey,
                         permission: superAdminPermissionKey,
                         assetMint: tokenMintB,
+                        assetTokenProgram: TOKEN_2022_PROGRAM_ID,
                     })
                     .rpc();
                 assert.ok(false);
