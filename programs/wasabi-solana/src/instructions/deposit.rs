@@ -134,7 +134,7 @@ impl<'info> DepositOrWithdraw<'info> {
             .expect("overflow");
 
         emit!(Deposit {
-            vault: self.lp_vault.key(),
+            vault: self.lp_vault.shares_mint,
             sender: self.owner.key(),
             owner: self.owner_asset_account.owner.key(),
             assets: args.amount,

@@ -95,14 +95,3 @@ impl<'info> AdminBorrow<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-//    // Transfer from vault to destination
-//    ctx.accounts.transfer_from_vault(args.amount)?;
-//
-//    // increment total borrowed of the vault
-//    let lp_vault = &mut ctx.accounts.lp_vault;
-//    lp_vault.total_borrowed = args.amount;
-//
-//    Ok(())
-//}

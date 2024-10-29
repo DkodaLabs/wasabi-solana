@@ -5,6 +5,7 @@ use {
 
 #[event]
 pub struct Deposit {
+    // The `shares_mint`
     pub vault: Pubkey,
     pub sender: Pubkey,
     pub owner: Pubkey,
