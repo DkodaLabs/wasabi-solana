@@ -1,10 +1,9 @@
 import { web3 } from "@coral-xyz/anchor";
 import {
-  createInitializeMintInstruction,
-  MintLayout,
-  TOKEN_PROGRAM_ID,
-  unpackAccount,
-  unpackMint,
+    createInitializeMintInstruction,
+    MintLayout,
+    unpackAccount,
+    unpackMint,
 } from "@solana/spl-token";
 
 /**
@@ -18,56 +17,60 @@ import {
  * @returns ixes, and keypair of new mint
  */
 export const createSimpleMint = async (
-  payer: web3.PublicKey,
-  connection: web3.Connection,
-  decimals: number,
-  mintKeypair?: web3.Keypair,
-  lamps?: number,
-  mintAuthority?: web3.PublicKey,
+    payer: web3.PublicKey,
+    connection: web3.Connection,
+    decimals: number,
+    programId: web3.PublicKey,
+    mintKeypair?: web3.Keypair,
+    lamps?: number,
+    mintAuthority?: web3.PublicKey,
 ) => {
-  let mint = mintKeypair ? mintKeypair : web3.Keypair.generate();
-  let ixes: web3.TransactionInstruction[] = [];
-  const lamports = lamps
-    ? lamps
-    : await connection.getMinimumBalanceForRentExemption(MintLayout.span);
-  ixes.push(
-    web3.SystemProgram.createAccount({
-      fromPubkey: payer,
-      newAccountPubkey: mint.publicKey,
-      space: MintLayout.span,
-      lamports: lamports,
-      programId: TOKEN_PROGRAM_ID,
-    }),
-  );
-  ixes.push(
-    createInitializeMintInstruction(
-      mint.publicKey,
-      decimals,
-      mintAuthority ?? payer,
-      undefined,
-      TOKEN_PROGRAM_ID,
-    ),
-  );
+    let mint = mintKeypair ? mintKeypair : web3.Keypair.generate();
+    let ixes: web3.TransactionInstruction[] = [];
+    const lamports = lamps
+        ? lamps
+        : await connection.getMinimumBalanceForRentExemption(MintLayout.span);
+    ixes.push(
+        web3.SystemProgram.createAccount({
+            fromPubkey: payer,
+            newAccountPubkey: mint.publicKey,
+            space: MintLayout.span,
+            lamports: lamports,
+            programId,
+        }),
+    );
+    ixes.push(
+        createInitializeMintInstruction(
+            mint.publicKey,
+            decimals,
+            mintAuthority ?? payer,
+            undefined,
+            programId,
+        ),
+    );
 
-  return { ixes, mint };
+    return { ixes, mint };
 };
 
 export const getMultipleTokenAccounts = async (
-  connection: web3.Connection,
-  keys: web3.PublicKey[],
+    connection: web3.Connection,
+    keys: web3.PublicKey[],
+    tokenProgram: web3.PublicKey,
+
 ) => {
-  const accountInfos = await connection.getMultipleAccountsInfo(keys);
-  return accountInfos.map((accountInfo, index) =>
-    unpackAccount(keys[index], accountInfo),
-  );
+    const accountInfos = await connection.getMultipleAccountsInfo(keys);
+    return accountInfos.map((accountInfo, index) =>
+        unpackAccount(keys[index], accountInfo, tokenProgram),
+    );
 };
 
 export const getMultipleMintAccounts = async (
-  connection: web3.Connection,
-  keys: web3.PublicKey[],
+    connection: web3.Connection,
+    keys: web3.PublicKey[],
+    tokenProgram: web3.PublicKey,
 ) => {
-  const accountInfos = await connection.getMultipleAccountsInfo(keys);
-  return accountInfos.map((accountInfo, index) =>
-    unpackMint(keys[index], accountInfo),
-  );
+    const accountInfos = await connection.getMultipleAccountsInfo(keys);
+    return accountInfos.map((accountInfo, index) =>
+        unpackMint(keys[index], accountInfo, tokenProgram),
+    );
 };

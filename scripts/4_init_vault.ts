@@ -1,6 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import WasabiSolana from "../target/idl/wasabi_solana.json";
 import { WasabiSolana as WasabiSolanaTypes } from "../target/types/wasabi_solana";
+import { 
+    MintLayout, 
+    createInitializeMintInstruction, 
+    TOKEN_PROGRAM_ID 
+} from "@solana/spl-token";
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { PublicKey } from "@solana/web3.js";
@@ -9,6 +14,44 @@ import { PublicKey } from "@solana/web3.js";
 const { BN } = anchor.default;
 
 dotenv.config();
+
+const mintKeypair = anchor.web3.Keypair.generate();
+const createSimpleMint = async (
+    payer: anchor.web3.PublicKey,
+    connection: anchor.web3.Connection,
+    decimals: number,
+    programId: anchor.web3.PublicKey,
+    mintKeypair?: anchor.web3.Keypair,
+    lamps?: number,
+    mintAuthority?: anchor.web3.PublicKey,
+) => {
+    let mint = mintKeypair ? mintKeypair : anchor.web3.Keypair.generate();
+    let ixes: anchor.web3.TransactionInstruction[] = [];
+    const lamports = lamps
+        ? lamps
+        : await connection.getMinimumBalanceForRentExemption(MintLayout.span);
+    ixes.push(
+        anchor.web3.SystemProgram.createAccount({
+            fromPubkey: payer,
+            newAccountPubkey: mint.publicKey,
+            space: MintLayout.span,
+            lamports: lamports,
+            programId,
+        }),
+    );
+    ixes.push(
+        createInitializeMintInstruction(
+            mint.publicKey,
+            decimals,
+            mintAuthority ?? payer,
+            undefined,
+            programId,
+        ),
+    );
+
+    return { ixes, mint };
+};
+
 
 const main = async () => {
     console.log("Initializing vault...");
@@ -22,6 +65,19 @@ const main = async () => {
     const provider = new anchor.AnchorProvider(connection, wallet);
     const program = new anchor.Program(WasabiSolana as WasabiSolanaTypes, provider);
 
+    const tx = new anchor.web3.Transaction();
+
+    let { ixes: uIxes, mint: uMint } = await createSimpleMint(
+        provider.publicKey,
+        provider.connection,
+        6,
+        TOKEN_PROGRAM_ID,
+        mintKeypair
+    );
+
+    tx.add(...uIxes);
+    await program.provider.sendAndConfirm(tx, [uMint]);
+
     // TODO: Use wallet that has vault deployment permission
     const [superAdminPermissionKey] =
         anchor.web3.PublicKey.findProgramAddressSync(
@@ -29,14 +85,7 @@ const main = async () => {
             program.programId,
         );
 
-    // const usdcMint = "BHKPvcMzZiw2khHgr9AdhxqBYqsfytmTYK2hn7JWkQZj";
-    //const solMint = "So11111111111111111111111111111111111111112";
-    const fakeToken = "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS";
-
-    const assetTokenProgram = await program.provider.connection.getAccountInfo(new PublicKey(fakeToken));
-
-
-    const tx = await program.methods
+    const tx2 = await program.methods
         .initLpVault({
             name: "sFAKEUSDC",
             symbol: "SFU",
@@ -45,17 +94,17 @@ const main = async () => {
         .accounts({
             payer: program.provider.publicKey,
             permission: superAdminPermissionKey,
-            assetMint: fakeToken,
-            assetTokenProgram: assetTokenProgram.owner,
+            assetMint: uMint.publicKey,
+            assetTokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
 
-    console.log("Vault initialized at ", tx);
+    console.log("Vault initialized at ", tx2);
 }
 
 main()
     .then(() => {
-        console.log("Global settings initialized successfully!");
+        console.log("Vault initialized successfully!");
         process.exit(0);
     })
     .catch(err => {

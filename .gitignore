@@ -8,3 +8,4 @@ test-ledger
 .env
 devnet-program-deployer.json
 keypair.json
+test_mint.json

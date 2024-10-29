@@ -34,10 +34,6 @@ describe("OpenLongPosition", () => {
         program.programId,
     );
 
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId,
-    );
     const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
         program.programId,
@@ -85,8 +81,10 @@ describe("OpenLongPosition", () => {
             .accounts({
                 payer: superAdminProgram.provider.publicKey,
                 permission: superAdminPermissionKey,
-                assetMint: tokenMintB,
-                currencyMint: tokenMintA,
+                collateral: tokenMintB,
+                currency: tokenMintA,
+                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                currencyTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
     });
@@ -106,34 +104,37 @@ describe("OpenLongPosition", () => {
             );
             try {
                 const now = new Date().getTime() / 1_000;
+                const args = {
+                    minTargetAmount: new anchor.BN(1_900),
+                    downPayment: new anchor.BN(1_000),
+                    principal: new anchor.BN(1_000),
+                    expiration: new anchor.BN(now + 3_600),
+                    fee: new anchor.BN(10),
+                    nonce,
+                };
+
                 const setupIx = await program.methods
-                    .openLongPositionSetup({
-                        nonce,
-                        minTargetAmount: new anchor.BN(1_900),
-                        downPayment: new anchor.BN(1_000),
-                        principal: new anchor.BN(1_000),
-                        currency: tokenMintA,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
-                    .accounts({
+                    .openLongPositionSetup({ nonce }, args)
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
+
                 await program.methods
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
                         longPool: longPoolBKey,
                         position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, setupIx])
                     .signers([SWAP_AUTHORITY])
@@ -145,6 +146,7 @@ describe("OpenLongPosition", () => {
                 if (match) {
                     assert.ok(true);
                 } else {
+                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -156,25 +158,23 @@ describe("OpenLongPosition", () => {
             try {
                 const now = new Date().getTime() / 1_000;
                 await program.methods
-                    .openLongPositionSetup({
-                        nonce: 100,
+                    .openLongPositionSetup({ nonce: 100 }, {
                         minTargetAmount: new anchor.BN(1_900),
                         downPayment: new anchor.BN(1_000),
                         principal: new anchor.BN(1_000),
-                        currency: tokenMintA,
                         expiration: new anchor.BN(now + 3_600),
                         fee: new anchor.BN(10),
                     })
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .signers([SWAP_AUTHORITY])
                     .rpc();
@@ -211,7 +211,7 @@ describe("OpenLongPosition", () => {
                     lpVault.vault,
                     ownerTokenA,
                     longPoolBVaultKey,
-                ]);
+                ], TOKEN_PROGRAM_ID);
 
             const downPayment = new anchor.BN(1_000);
             // amount to be borrowed
@@ -220,25 +220,23 @@ describe("OpenLongPosition", () => {
             const minimumAmountOut = new anchor.BN(1_900);
 
             const setupIx = await program.methods
-                .openLongPositionSetup({
-                    nonce: 0,
+                .openLongPositionSetup({ nonce: 0 }, {
                     minTargetAmount: minimumAmountOut,
                     downPayment,
                     principal,
-                    currency: tokenMintA,
                     expiration: new anchor.BN(now + 3_600),
                     fee,
                 })
-                .accounts({
+                .accountsPartial({
                     owner: program.provider.publicKey,
-                    ownerCurrencyAccount: ownerTokenA,
-                    currencyVault: longPoolBCurrencyVaultKey,
                     lpVault: lpVaultKey,
                     longPool: longPoolBKey,
-                    permission: coSignerPermission,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
                     authority: SWAP_AUTHORITY.publicKey,
+                    permission: coSignerPermission,
                     feeWallet: feeWalletA,
-                    globalSettings: globalSettingsKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -265,16 +263,21 @@ describe("OpenLongPosition", () => {
                 BigInt(swapAmount.toString()),
                 BigInt(minimumAmountOut.toString()),
             );
-            await program.methods
-                .openLongPositionCleanup()
-                .accounts({
-                    owner: program.provider.publicKey,
-                    longPool: longPoolBKey,
-                    position: positionKey,
-                })
-                .preInstructions([setupIx, swapIx])
-                .signers([SWAP_AUTHORITY])
-                .rpc({ skipPreflight: true });
+            try {
+                await program.methods
+                    .openLongPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        longPool: longPoolBKey,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([setupIx, swapIx])
+                    .signers([SWAP_AUTHORITY])
+                    .rpc({ skipPreflight: true });
+            } catch (error) {
+                console.log(error);
+            }
 
             const [
                 [lpVaultAfter, ownerTokenAAfter, longPoolBVaultAfter],
@@ -286,7 +289,7 @@ describe("OpenLongPosition", () => {
                     ownerTokenA,
                     longPoolBVaultKey,
                     longPoolBCurrencyVaultKey,
-                ]),
+                ], TOKEN_PROGRAM_ID),
                 program.provider.connection.getAccountInfo(openPositionRequestKey),
                 program.account.position.fetch(positionKey),
             ]);
@@ -298,7 +301,7 @@ describe("OpenLongPosition", () => {
             );
             assert.ok(positionAfter.collateralAmount.gt(new anchor.BN(0)));
             assert.equal(
-                positionAfter.collateralCurrency.toString(),
+                positionAfter.collateral.toString(),
                 tokenMintB.toString(),
             );
             assert.equal(
@@ -352,25 +355,23 @@ describe("OpenLongPosition", () => {
             const minimumAmountOut = new anchor.BN(1_900);
             try {
                 const setupIx = await program.methods
-                    .openLongPositionSetup({
-                        nonce,
+                    .openLongPositionSetup({ nonce }, {
                         minTargetAmount: minimumAmountOut,
                         downPayment,
                         principal,
-                        currency: tokenMintA,
                         expiration: new anchor.BN(now + 3_600),
                         fee: new anchor.BN(10),
                     })
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
                 await program.methods
@@ -379,6 +380,7 @@ describe("OpenLongPosition", () => {
                         owner: program.provider.publicKey,
                         longPool: longPoolBKey,
                         position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx])
                     .signers([SWAP_AUTHORITY])
@@ -390,6 +392,7 @@ describe("OpenLongPosition", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6004);
                 } else {
+                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -422,25 +425,23 @@ describe("OpenLongPosition", () => {
                     transferAmount,
                 );
                 const setupIx = await program.methods
-                    .openLongPositionSetup({
-                        nonce,
+                    .openLongPositionSetup({ nonce }, {
                         minTargetAmount: minimumAmountOut,
                         downPayment,
                         principal,
-                        currency: tokenMintA,
                         expiration: new anchor.BN(now + 3_600),
                         fee: new anchor.BN(10),
                     })
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
                 const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -474,6 +475,7 @@ describe("OpenLongPosition", () => {
                         owner: program.provider.publicKey,
                         longPool: longPoolBKey,
                         position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([transferIX, setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
@@ -510,8 +512,10 @@ describe("OpenLongPosition", () => {
                 .accounts({
                     payer: superAdminProgram.provider.publicKey,
                     permission: superAdminPermissionKey,
-                    assetMint: tokenMintB,
-                    currencyMint: tokenMintA,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
+                    collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    currencyTokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .rpc();
             const [shortPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -530,25 +534,23 @@ describe("OpenLongPosition", () => {
             const minimumAmountOut = new anchor.BN(1_900);
             try {
                 const setupIx = await program.methods
-                    .openLongPositionSetup({
-                        nonce,
+                    .openLongPositionSetup({ nonce }, {
                         minTargetAmount: minimumAmountOut,
                         downPayment,
                         principal,
-                        currency: tokenMintA,
                         expiration: new anchor.BN(now + 3_600),
                         fee: new anchor.BN(10),
                     })
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
                 const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -582,6 +584,7 @@ describe("OpenLongPosition", () => {
                         owner: program.provider.publicKey,
                         longPool: shortPoolBKey,
                         position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, swapIx])
                     // .signers([SWAP_AUTHORITY])
@@ -636,25 +639,23 @@ describe("OpenLongPosition", () => {
             const minimumAmountOut = new anchor.BN(1_900);
             try {
                 const setupIx = await program.methods
-                    .openLongPositionSetup({
-                        nonce,
+                    .openLongPositionSetup({ nonce }, {
                         minTargetAmount: minimumAmountOut,
                         downPayment,
                         principal,
-                        currency: tokenMintA,
                         expiration: new anchor.BN(now + 3_600),
                         fee: new anchor.BN(10),
                     })
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         lpVault: lpVaultKey,
                         longPool: longPoolBKey,
-                        permission: coSignerPermission,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
                 const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -688,6 +689,7 @@ describe("OpenLongPosition", () => {
                         owner: program.provider.publicKey,
                         longPool: longPoolBKey,
                         position: badPositionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
@@ -736,25 +738,23 @@ describe("OpenLongPosition", () => {
                 );
 
             const setupIx = await program.methods
-                .openLongPositionSetup({
-                    nonce,
+                .openLongPositionSetup({ nonce }, {
                     minTargetAmount: minimumAmountOut,
                     downPayment,
                     principal,
-                    currency: tokenMintA,
                     expiration: new anchor.BN(now + 3_600),
                     fee: new anchor.BN(10),
                 })
-                .accounts({
+                .accountsPartial({
                     owner: program.provider.publicKey,
-                    ownerCurrencyAccount: ownerTokenA,
-                    currencyVault: longPoolBCurrencyVaultKey,
                     lpVault: lpVaultKey,
                     longPool: longPoolBKey,
-                    permission: badCoSignerPermission,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
                     authority: NON_SWAP_AUTHORITY.publicKey,
+                    permission: badCoSignerPermission,
                     feeWallet: feeWalletA,
-                    globalSettings: globalSettingsKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -788,6 +788,7 @@ describe("OpenLongPosition", () => {
                         owner: program.provider.publicKey,
                         longPool: longPoolBKey,
                         position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([NON_SWAP_AUTHORITY])
@@ -799,6 +800,7 @@ describe("OpenLongPosition", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6008);
                 } else {
+                    console.log(err);
                     assert.ok(false);
                 }
             }

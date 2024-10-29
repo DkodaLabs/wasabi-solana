@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
@@ -23,7 +23,7 @@ describe("InitShortPool", () => {
                 collateral: tokenMintA,
                 currency: tokenMintB,
                 collateralTokenProgram: TOKEN_PROGRAM_ID,
-                currencyTokenProgram: TOKEN_2022_PROGRAM_ID,
+                currencyTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
         const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -79,7 +79,7 @@ describe("InitShortPool", () => {
                         payer: program.provider.publicKey,
                         permission: superAdminPermissionKey,
                         assetMint: tokenMintB,
-                        assetTokenProgram: TOKEN_2022_PROGRAM_ID,
+                        assetTokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .rpc();
                 assert.ok(false);

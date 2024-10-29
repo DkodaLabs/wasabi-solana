@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { tokenMintA } from "./rootHooks";
@@ -30,10 +30,10 @@ describe("Donate", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     tokenAAta,
                     lpVault.vault,
-                ]),
+                ], TOKEN_PROGRAM_ID),
                 getMultipleMintAccounts(program.provider.connection, [
                     lpVault.sharesMint,
-                ]),
+                ], TOKEN_2022_PROGRAM_ID),
             ]);
 
         await program.methods
@@ -51,11 +51,11 @@ describe("Donate", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     tokenAAta,
                     lpVault.vault,
-                ]),
+                ], TOKEN_PROGRAM_ID),
                 program.account.lpVault.fetch(lpVaultKey),
                 getMultipleMintAccounts(program.provider.connection, [
                     lpVault.sharesMint,
-                ]),
+                ], TOKEN_2022_PROGRAM_ID),
             ]);
 
         // Validate no shares were minted

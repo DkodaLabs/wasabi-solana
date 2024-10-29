@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, } from "@solana/spl-token";
 import { tokenMintA } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
@@ -20,7 +20,8 @@ describe("Redeem", () => {
         ownerSharesAccount = getAssociatedTokenAddressSync(
             lpVault.sharesMint,
             program.provider.publicKey,
-            false
+            false,
+            TOKEN_2022_PROGRAM_ID
         );
     });
 
@@ -29,21 +30,25 @@ describe("Redeem", () => {
         const tokenAAta = getAssociatedTokenAddressSync(
             tokenMintA,
             program.provider.publicKey,
-            false
+            false,
+            TOKEN_PROGRAM_ID,
         );
         const [
-            [ownerTokenABefore, vaultABefore, ownerSharesBefore],
+            [ownerTokenABefore, vaultABefore],
+            [ownerSharesBefore],
             [sharesMintBefore],
             lpVaultBefore,
         ] = await Promise.all([
             getMultipleTokenAccounts(program.provider.connection, [
                 tokenAAta,
                 lpVault.vault,
+            ], TOKEN_PROGRAM_ID),
+            getMultipleTokenAccounts(program.provider.connection, [
                 ownerSharesAccount,
-            ]),
+            ], TOKEN_2022_PROGRAM_ID),
             getMultipleMintAccounts(program.provider.connection, [
                 lpVault.sharesMint,
-            ]),
+            ], TOKEN_2022_PROGRAM_ID),
             program.account.lpVault.fetch(lpVaultKey),
         ]);
 
@@ -63,19 +68,22 @@ describe("Redeem", () => {
             .rpc();
 
         const [
-            [ownerTokenAAfter, vaultAAfter, ownerSharesAfter],
+            [ownerTokenAAfter, vaultAAfter],
+            [ownerSharesAfter],
             lpVaultAfter,
             [sharesMintAfter],
         ] = await Promise.all([
             getMultipleTokenAccounts(program.provider.connection, [
                 tokenAAta,
                 lpVault.vault,
-                ownerSharesAccount,
-            ]),
+            ], TOKEN_PROGRAM_ID),
+            getMultipleTokenAccounts(program.provider.connection, [
+                ownerSharesAccount
+            ], TOKEN_2022_PROGRAM_ID),
             program.account.lpVault.fetch(lpVaultKey),
             getMultipleMintAccounts(program.provider.connection, [
                 lpVault.sharesMint,
-            ]),
+            ], TOKEN_2022_PROGRAM_ID),
         ]);
 
         // Validate tokens were transfered from the user's account to the vault

@@ -34,7 +34,7 @@ impl NewVault {
         Self {
             pool: lp_vault.key(),
             asset: lp_vault.asset,
-            vault: lp_vault.vault,
+            vault: lp_vault.shares_mint,
         }
     }
 }
