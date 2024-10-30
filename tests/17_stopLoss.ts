@@ -408,6 +408,7 @@ describe("stopLoss", () => {
           takerAmount,
         })
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: longPositionKey,
         })

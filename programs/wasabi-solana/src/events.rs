@@ -7,9 +7,9 @@ use {
 pub struct Deposit {
     // The shares_mint`
     pub vault: Pubkey,
-    // The token account being transferred from
+    // The wallet that sent the transaction
     pub sender: Pubkey,
-    // The wallet that owns the token account
+    // The wallet that owns the account
     pub owner: Pubkey,
     pub assets: u64,
     pub shares: u64,
@@ -19,11 +19,11 @@ pub struct Deposit {
 pub struct Withdraw {
     // The shares mint
     pub vault: Pubkey,
-    // Lp Vault
+    // The wallet that sent the transaction
     pub sender: Pubkey,
     // The token account receiving funds
     pub receiver: Pubkey,
-    // The wallet that owns the token account
+    // The wallet that owns the funds
     pub owner: Pubkey,
     pub assets: u64,
     pub shares: u64,
@@ -157,7 +157,7 @@ impl PositionClaimed {
 //  yeild for ETH and USD (staked and DAI), so they claim that.
 #[event]
 pub struct NativeYieldClaimed {
-    // The Lp Vault
+    // The wallet claiming yield
     pub source: Pubkey,
     // The shares mint
     pub vault: Pubkey,

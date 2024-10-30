@@ -59,7 +59,7 @@ impl<'info> Donate<'info> {
             .expect("overflow");
 
         emit!(NativeYieldClaimed {
-            source: self.lp_vault.key(),
+            source: self.owner.key(),
             vault: self.lp_vault.shares_mint,
             token: self.lp_vault.asset,
             amount: args.amount,
@@ -68,25 +68,3 @@ impl<'info> Donate<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
-//    // Transfer tokens from payer to vault
-//    ctx.accounts
-//        .transfer_token_from_owner_to_vault(args.amount)?;
-//
-//    // Update the LpVault for total assets deposited.
-//    let lp_vault = &mut ctx.accounts.lp_vault;
-//    lp_vault.total_assets = lp_vault
-//        .total_assets
-//        .checked_add(args.amount)
-//        .expect("overflow");
-//
-//    emit!(NativeYieldClaimed {
-//        source: ctx.accounts.owner.key(),
-//        vault: ctx.accounts.vault.key(),
-//        token: ctx.accounts.lp_vault.asset,
-//        amount: args.amount,
-//    });
-//
-//    Ok(())
-//}

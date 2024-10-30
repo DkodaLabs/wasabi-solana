@@ -33,7 +33,7 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
 
         emit!(Withdraw {
             vault: self.lp_vault.shares_mint,
-            sender: self.vault.key(),
+            sender: self.owner.key(),
             owner: self.owner.key(),
             receiver: self.owner_asset_account.owner.key(),
             assets: args.amount,

@@ -29,8 +29,8 @@ impl RedeemTrait for DepositOrWithdraw<'_> {
 
         emit!(Withdraw {
             vault: self.shares_mint.key(),
-            sender: self.lp_vault.key(),
-            owner: self.owner_asset_account.owner.key(),
+            sender: self.owner.key(),
+            owner: self.owner.key(),
             receiver: self.owner_asset_account.key(),
             assets: token_transfer_amount,
             shares: args.shares_amount,
