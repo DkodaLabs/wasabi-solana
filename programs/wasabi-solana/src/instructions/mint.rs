@@ -36,8 +36,8 @@ impl MintTrait for DepositOrWithdraw<'_> {
             .expect("overflow");
 
         emit!(Deposit {
-            vault: self.lp_vault.key(),
-            sender: self.owner.key(),
+            vault: self.shares_mint.key(),
+            sender: self.owner_asset_account.key(),
             owner: self.owner_asset_account.owner.key(),
             assets: tokens_in,
             shares: args.shares_amount,

@@ -53,8 +53,8 @@ pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
@@ -157,9 +157,12 @@ impl<'info> ClosePositionCleanup<'info> {
         );
 
         // Validate owner receives at least the minimum amount of token being swapped to.
+        //if self.get_destination_delta() < self.close_position_request.min_target_amount {
+        //    return Err(ErrorCode::MinTokensNotMet.into());
+        //}
         require_gt!(
-            self.close_position_request.min_target_amount,
             self.get_destination_delta(),
+            self.close_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
 
@@ -191,6 +194,7 @@ impl<'info> ClosePositionCleanup<'info> {
 
     /// Transfers funds from the pool account to the LP vault account
     fn transfer_from_pool_to_vault(&self, amount: u64) -> Result<()> {
+        msg!("Pool to vault: {}", amount);
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
@@ -223,6 +227,7 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 
     fn transfer_fees(&self, amount: u64) -> Result<()> {
+        msg!("Fees: {}", amount);
         if self.pool.is_long_pool {
             // Fees for long are paid in Currency token (typically SOL)
             let cpi_accounts = TransferChecked {
@@ -257,6 +262,7 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 
     fn transfer_payout_from_pool_to_user(&self, amount: u64) -> Result<()> {
+        msg!("Pool to user: {}", amount);
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),

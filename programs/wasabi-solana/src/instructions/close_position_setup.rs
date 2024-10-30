@@ -67,7 +67,7 @@ pub struct ClosePositionSetup<'info> {
 }
 
 impl<'info> ClosePositionSetup<'info> {
-    pub fn validate(&self, args: &ClosePositionArgs, cleanup_ix_hash: [u8; 8]) -> Result<()> {
+    pub fn validate(&self, expiration: i64, cleanup_ix_hash: [u8; 8]) -> Result<()> {
         // Validate pool is correct based on seeds
         let expected_pool_key = if self.pool.is_long_pool {
             Pubkey::create_program_address(long_pool_signer_seeds!(self.pool), &crate::ID)
@@ -89,24 +89,30 @@ impl<'info> ClosePositionSetup<'info> {
 
         let now = Clock::get()?.unix_timestamp;
 
-        require_gt!(args.expiration, now, ErrorCode::PositionReqExpired);
+        require_gt!(expiration, now, ErrorCode::PositionReqExpired);
 
         Ok(())
     }
 
-    pub fn set_close_position_request(&mut self, args: &ClosePositionArgs) -> Result<()> {
+    pub fn set_close_position_request(
+        &mut self,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         // Create a close position request
         self.close_position_request.set_inner(ClosePositionRequest {
             swap_cache: SwapCache {
                 source_bal_before: self.collateral_vault.amount,
                 destination_bal_before: self.currency_vault.amount,
             },
-            interest: args.interest,
+            interest,
             max_amount_in: self.position.collateral_amount, // Check
-            min_target_amount: args.min_target_amount,
-            pool_key: self.position.collateral_vault,
+            min_target_amount,
+            pool_key: self.pool.key(),
             position: self.position.key(),
-            execution_fee: args.execution_fee,
+            execution_fee,
         });
 
         Ok(())
@@ -134,14 +140,14 @@ impl<'info> ClosePositionSetup<'info> {
     }
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct ClosePositionArgs {
-    /// The minimum amount out required when swapping
-    pub min_target_amount: u64,
-    /// The timestamp when this close position request expires.
-    pub expiration: i64,
-    /// The amount of interest the user must pay
-    pub interest: u64,
-    /// The amount of the execution fee to be paid
-    pub execution_fee: u64,
-}
+//#[derive(AnchorDeserialize, AnchorSerialize)]
+//pub struct ClosePositionArgs {
+//    /// The minimum amount out required when swapping
+//    pub min_target_amount: u64,
+//    /// The timestamp when this close position request expires.
+//    pub expiration: i64,
+//    /// The amount of interest the user must pay
+//    pub interest: u64,
+//    /// The amount of the execution fee to be paid
+//    pub execution_fee: u64,
+//}

@@ -18,48 +18,39 @@ pub struct OpenShortPositionCleanup<'info> {
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
 
+    #[account(
+        mut,
+        has_one = lp_vault,
+    )]
+    pub position: Box<Account<'info, Position>>,
+
     /// The ShortPool that owns the Position
     #[account(
-        has_one = collateral,
-        has_one = currency,
+        has_one = collateral_vault,
+        has_one = currency_vault,
     )]
     pub short_pool: Account<'info, BasePool>,
 
     /// The collateral account that is the destination of the swap
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = short_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    #[account(
-        associated_token::mint = currency,
-        associated_token::authority = short_pool,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub currency_vault: InterfaceAccount<'info, TokenAccount>,
 
-    pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     /// The LP Vault that the user will borrow from
     /// In a 
     #[account(
-        constraint = lp_vault.asset == collateral.key(),
-        //has_one = vault, // Naming conventions make this one confusing
+        has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
 
     /// The LP Vault's token account.
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -70,11 +61,6 @@ pub struct OpenShortPositionCleanup<'info> {
     )]
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
-    #[account(
-        mut,
-        has_one = lp_vault,
-    )]
-    pub position: Box<Account<'info, Position>>,
 
     #[account(
         seeds = [b"debt_controller"],
@@ -120,9 +106,12 @@ impl<'info> OpenShortPositionCleanup<'info> {
         );
 
         // Validate owner receives at least the minimum amount of token being swapped to.
+        //if self.get_destination_delta() < self.open_position_request.min_target_amount {
+        //    return Err(ErrorCode::MinTokensNotMet.into());
+        //}
         require_gt!(
-            self.open_position_request.min_target_amount,
             self.get_destination_delta(),
+            self.open_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
 
@@ -168,12 +157,15 @@ impl<'info> OpenShortPositionCleanup<'info> {
         let collateral_received = self.get_destination_delta();
         let principal_used = self.get_source_delta();
 
-        require_gte!(
-            collateral_received,
+        //if down_payment.checked_mul(ctx.accounts.debt_controller.max_leverage).expect("overflow") <= collateral_received {
+        //    return Err(ErrorCode::PrincipalTooHigh.into());
+        //}
+        require_gt!(
             self.position
                 .down_payment
                 .checked_mul(self.debt_controller.max_leverage)
                 .expect("overflow"),
+            collateral_received,
             ErrorCode::PrincipalTooHigh
         );
 

@@ -13,7 +13,7 @@ pub struct StopLossSetup<'info> {
 }
 
 impl<'info> StopLossSetup<'info> {
-    pub fn validate(ctx: &Context<StopLossSetup>, args: &ClosePositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<StopLossSetup>, expiration: i64) -> Result<()> {
         // Validate the authority can co-sign swaps
         require!(
             ctx.accounts
@@ -25,14 +25,20 @@ impl<'info> StopLossSetup<'info> {
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,
-            &args,
+            expiration,
             StopLossCleanup::get_hash(),
         )?;
 
         Ok(())
     }
 
-    pub fn stop_loss_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+    pub fn stop_loss_setup(
+        &mut self,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         if self.close_position_setup.pool.is_long_pool {
             self.close_position_setup
                 .approve_swap_authority_delegation(
@@ -50,7 +56,12 @@ impl<'info> StopLossSetup<'info> {
         }
 
         self.close_position_setup
-            .set_close_position_request(&args)?;
+            .set_close_position_request(
+                min_target_amount,
+                interest,
+                execution_fee,
+                expiration,
+            )?;
 
         Ok(())
     }

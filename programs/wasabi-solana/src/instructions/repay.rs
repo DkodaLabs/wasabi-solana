@@ -18,19 +18,16 @@ pub struct Repay<'info> {
         associated_token::authority = payer,
         associated_token::token_program = token_program
     )]
-    /// Source of the tokens being repaid
-    /// Does this belong to `Signer`? If so, can infer.
     pub source: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
-    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    //NOTE: I think this should be the mint of the LP Vault
     #[account(
         mut,
         has_one = vault,
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
+
+    #[account(mut)]
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }

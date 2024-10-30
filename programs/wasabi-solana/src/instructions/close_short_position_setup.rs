@@ -17,7 +17,7 @@ pub struct CloseShortPositionSetup<'info> {
 impl<'info> CloseShortPositionSetup<'info> {
     pub fn validate(
         ctx: &Context<CloseShortPositionSetup>,
-        args: &ClosePositionArgs,
+        expiration: i64,
     ) -> Result<()> {
         require_keys_eq!(
             ctx.accounts.owner.key(),
@@ -35,14 +35,20 @@ impl<'info> CloseShortPositionSetup<'info> {
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,
-            &args,
+            expiration,
             CloseShortPositionCleanup::get_hash(),
         )?;
 
         Ok(())
     }
 
-    pub fn close_short_position_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+    pub fn close_short_position_setup(
+        &mut self,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         self.close_position_setup
             .approve_swap_authority_delegation(
                 self.close_position_setup.position.collateral_amount,
@@ -51,7 +57,12 @@ impl<'info> CloseShortPositionSetup<'info> {
             )?;
 
         self.close_position_setup
-            .set_close_position_request(&args)?;
+            .set_close_position_request(
+                min_target_amount,
+                interest,
+                execution_fee,
+                expiration,
+            )?;
 
         Ok(())
     }

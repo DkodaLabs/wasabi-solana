@@ -16,6 +16,7 @@ declare_id!("FL1XKFr8ZMDdEJxHDR16SJaiGyLZTk9BHFUDenGr5HEp");
 
 #[program]
 pub mod wasabi_solana {
+    use log::info;
     use super::*;
 
     pub fn init_global_settings(
@@ -122,80 +123,148 @@ pub mod wasabi_solana {
         ctx.accounts.donate(&args)
     }
 
-    #[access_control(OpenLongPositionSetup::validate(&ctx, &args))]
+    #[access_control(OpenLongPositionSetup::validate(&ctx, expiration))]
     pub fn open_long_position_setup(
         ctx: Context<OpenLongPositionSetup>,
-        header: OpenLongPositionHeader,
-        args: OpenLongPositionArgs,
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.open_long_position_setup(&header, &args)
+        ctx.accounts.open_long_position_setup(
+            nonce,
+            min_target_amount,
+            down_payment,
+            principal,
+            fee,
+            expiration,
+        )
     }
 
     pub fn open_long_position_cleanup(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
         ctx.accounts.open_long_position_cleanup()
     }
 
-    #[access_control(CloseLongPositionSetup::validate(&ctx, &args))]
+    #[access_control(CloseLongPositionSetup::validate(&ctx, expiration))]
     pub fn close_long_position_setup(
         ctx: Context<CloseLongPositionSetup>,
-        args: instructions::close_position_setup::ClosePositionArgs,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.close_long_position_setup(&args)
+        ctx.accounts.close_long_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
     }
 
     pub fn close_long_position_cleanup(ctx: Context<CloseLongPositionCleanup>) -> Result<()> {
         ctx.accounts.close_long_position_cleanup()
     }
 
-    #[access_control(OpenShortPositionSetup::validate(&ctx, &args))]
+    #[access_control(OpenShortPositionSetup::validate(&ctx))]
     pub fn open_short_position_setup(
         ctx: Context<OpenShortPositionSetup>,
-        header: OpenShortPositionHeader,
-        args: OpenShortPositionArgs,
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.open_short_position_setup(&header, &args)
+        ctx.accounts.open_short_position_setup(
+            nonce,
+            min_target_amount,
+            down_payment,
+            principal,
+            fee,
+            expiration,
+        )
     }
 
     pub fn open_short_position_cleanup(ctx: Context<OpenShortPositionCleanup>) -> Result<()> {
         ctx.accounts.open_short_position_cleanup()
     }
 
-    #[access_control(CloseShortPositionSetup::validate(&ctx, &args))]
+    #[access_control(CloseShortPositionSetup::validate(&ctx, expiration))]
     pub fn close_short_position_setup(
         ctx: Context<CloseShortPositionSetup>,
-        args: ClosePositionArgs,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.close_short_position_setup(&args)
+        ctx.accounts.close_short_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
     }
 
     pub fn close_short_position_cleanup(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
         ctx.accounts.close_short_position_cleanup()
     }
 
-    #[access_control(LiquidatePositionSetup::validate(&ctx, &args))]
+    #[access_control(LiquidatePositionSetup::validate(&ctx, expiration))]
     pub fn liquidate_position_setup(
         ctx: Context<LiquidatePositionSetup>,
-        args: ClosePositionArgs,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.liquidate_position_setup(&args)
+        ctx.accounts.liquidate_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
     }
 
     pub fn liquidate_position_cleanup(ctx: Context<LiquidatePositionCleanup>) -> Result<()> {
         ctx.accounts.liquidate_position_cleanup()
     }
 
-    #[access_control(TakeProfitSetup::validate(&ctx, &args))]
-    pub fn take_profit_setup(ctx: Context<TakeProfitSetup>, args: ClosePositionArgs) -> Result<()> {
-        ctx.accounts.take_profit_setup(&args)
+    #[access_control(TakeProfitSetup::validate(&ctx, expiration))]
+    pub fn take_profit_setup(
+        ctx: Context<TakeProfitSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.take_profit_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
     }
 
     pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
         ctx.accounts.take_profit_cleanup()
     }
 
-    #[access_control(StopLossSetup::validate(&ctx, &args))]
-    pub fn stop_loss_setup(ctx: Context<StopLossSetup>, args: ClosePositionArgs) -> Result<()> {
-        ctx.accounts.stop_loss_setup(&args)
+    #[access_control(StopLossSetup::validate(&ctx, expiration))]
+    pub fn stop_loss_setup(
+        ctx: Context<StopLossSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.stop_loss_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
     }
 
     pub fn stop_loss_cleanup(ctx: Context<StopLossCleanup>) -> Result<()> {

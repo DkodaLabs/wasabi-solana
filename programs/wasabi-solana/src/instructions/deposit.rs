@@ -135,8 +135,8 @@ impl<'info> DepositOrWithdraw<'info> {
 
         emit!(Deposit {
             vault: self.lp_vault.shares_mint,
-            sender: self.owner.key(),
-            owner: self.owner_asset_account.owner.key(),
+            sender: self.owner_asset_account.key(),
+            owner: self.owner.key(),
             assets: args.amount,
             shares: shares_to_mint,
         });

@@ -28,10 +28,10 @@ impl RedeemTrait for DepositOrWithdraw<'_> {
             .expect("underflow");
 
         emit!(Withdraw {
-            vault: self.lp_vault.key(),
-            sender: self.owner.key(),
+            vault: self.shares_mint.key(),
+            sender: self.lp_vault.key(),
             owner: self.owner_asset_account.owner.key(),
-            receiver: self.owner_asset_account.owner.key(),
+            receiver: self.owner_asset_account.key(),
             assets: token_transfer_amount,
             shares: args.shares_amount,
         });

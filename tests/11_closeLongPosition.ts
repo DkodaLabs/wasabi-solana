@@ -92,22 +92,31 @@ describe("CloseLongPosition", () => {
                 const positionBefore = await program.account.position.fetch(
                     positionKey
                 );
+
+                const args = {
+                    minTargetAmount: new anchor.BN(0),
+                    interest: new anchor.BN(10),
+                    executionFee: new anchor.BN(11),
+                    expiration: closeRequestExpiration,
+                };
                 const setupIx = await program.methods
-                    .closeLongPositionSetup({
-                        expiration: closeRequestExpiration,
-                        minTargetAmount: new anchor.BN(0),
-                        interest: new anchor.BN(10),
-                        executionFee: new anchor.BN(11),
-                    })
+                    .closeLongPositionSetup(
+                        args.minTargetAmount,
+                        args.interest,
+                        args.executionFee,
+                        args.expiration,
+                    )
                     .accounts({
+                        owner: user2.publicKey,
                         closePositionSetup: {
                             pool: longPoolBKey,
                             owner: user2.publicKey,
-                            currencyVault: longPoolBCurrencyVaultKey,
+                            collateral: tokenMintB,
                             position: positionKey,
                             permission: coSignerPermission,
                             // @ts-ignore
                             authority: SWAP_AUTHORITY.publicKey,
+                            tokenProgram: TOKEN_PROGRAM_ID,
                         },
                     })
                     .instruction();
@@ -142,14 +151,14 @@ describe("CloseLongPosition", () => {
                             owner: user2.publicKey,
                             closePositionCleanup: {
                                 owner: user2.publicKey,
-                                ownerCurrencyAccount: ownerTokenA,
-                                currencyVault: longPoolBCurrencyVaultKey,
-                                ownerCollateralAccount: ownerTokenB,
                                 pool: longPoolBKey,
                                 position: positionKey,
-                                lpVault: lpVaultKey,
+                                currency: tokenMintA,
+                                collateral: tokenMintB,
+                                authority: SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
-                                globalSettings: globalSettingsKey,
+                                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                                currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .preInstructions([setupIx, swapIx])
@@ -197,22 +206,30 @@ describe("CloseLongPosition", () => {
                         program.programId
                     );
 
+                const args = {
+                    minTargetAmount: new anchor.BN(0),
+                    interest: new anchor.BN(10),
+                    executionFee: new anchor.BN(11),
+                    expiration: closeRequestExpiration,
+                };
                 const setupIx = await program.methods
-                    .closeLongPositionSetup({
-                        expiration: closeRequestExpiration,
-                        minTargetAmount: new anchor.BN(0),
-                        interest: new anchor.BN(10),
-                        executionFee: new anchor.BN(11),
-                    })
+                    .closeLongPositionSetup(
+                        args.minTargetAmount,
+                        args.interest,
+                        args.executionFee,
+                        args.expiration
+                    )
                     .accounts({
+                        owner: program.provider.publicKey,
                         closePositionSetup: {
                             pool: longPoolBKey,
                             owner: program.provider.publicKey,
-                            currencyVault: longPoolBCurrencyVaultKey,
+                            collateral: tokenMintB,
                             position: positionKey,
                             permission: badCoSignerPermission,
                             // @ts-ignore
                             authority: NON_SWAP_AUTHORITY.publicKey,
+                            tokenProgram: TOKEN_PROGRAM_ID,
                         },
                     })
                     .instruction();
@@ -244,16 +261,17 @@ describe("CloseLongPosition", () => {
                     await program.methods
                         .closeLongPositionCleanup()
                         .accounts({
+                            owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
-                                ownerCurrencyAccount: ownerTokenA,
-                                ownerCollateralAccount: ownerTokenB,
-                                currencyVault: longPoolBCurrencyVaultKey,
                                 pool: longPoolBKey,
                                 position: positionKey,
-                                lpVault: lpVaultKey,
+                                currency: tokenMintA,
+                                collateral: tokenMintB,
+                                authority: NON_SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
-                                globalSettings: globalSettingsKey,
+                                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                                currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .preInstructions([setupIx, swapIx])
@@ -275,38 +293,47 @@ describe("CloseLongPosition", () => {
         describe("with more than one setup IX", () => {
             it("should fail", async () => {
                 try {
+                    const args = {
+                        minTargetAmount: new anchor.BN(0),
+                        interest: new anchor.BN(10),
+                        executionFee: new anchor.BN(11),
+                        expiration: closeRequestExpiration,
+                    };
                     const setupIx = await program.methods
-                        .closeLongPositionSetup({
-                            expiration: closeRequestExpiration,
-                            minTargetAmount: new anchor.BN(0),
-                            interest: new anchor.BN(10),
-                            executionFee: new anchor.BN(11),
-                        })
+                        .closeLongPositionSetup(
+                            args.minTargetAmount,
+                            args.interest,
+                            args.executionFee,
+                            args.expiration,
+                        )
                         .accounts({
+                            owner: program.provider.publicKey,
                             closePositionSetup: {
                                 pool: longPoolBKey,
                                 owner: program.provider.publicKey,
-                                currencyVault: longPoolBCurrencyVaultKey,
+                                collateral: tokenMintB,
                                 position: positionKey,
                                 permission: coSignerPermission,
                                 // @ts-ignore
                                 authority: SWAP_AUTHORITY.publicKey,
+                                tokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .instruction();
                     await program.methods
                         .closeLongPositionCleanup()
                         .accounts({
+                            owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
-                                ownerCurrencyAccount: ownerTokenA,
-                                ownerCollateralAccount: ownerTokenB,
-                                currencyVault: longPoolBCurrencyVaultKey,
                                 pool: longPoolBKey,
                                 position: positionKey,
-                                lpVault: lpVaultKey,
+                                currency: tokenMintA,
+                                collateral: tokenMintB,
+                                authority: SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
-                                globalSettings: globalSettingsKey,
+                                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                                currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .preInstructions([setupIx, setupIx])
@@ -328,22 +355,30 @@ describe("CloseLongPosition", () => {
         describe("without cleanup IX", () => {
             it("should fail", async () => {
                 try {
+                    const args = {
+                        minTargetAmount: new anchor.BN(0),
+                        interest: new anchor.BN(10),
+                        executionFee: new anchor.BN(11),
+                        expiration: closeRequestExpiration,
+                    };
                     await program.methods
-                        .closeLongPositionSetup({
-                            expiration: closeRequestExpiration,
-                            minTargetAmount: new anchor.BN(0),
-                            interest: new anchor.BN(10),
-                            executionFee: new anchor.BN(11),
-                        })
+                        .closeLongPositionSetup(
+                            args.minTargetAmount,
+                            args.interest,
+                            args.executionFee,
+                            args.expiration,
+                        )
                         .accounts({
+                            owner: program.provider.publicKey,
                             closePositionSetup: {
                                 pool: longPoolBKey,
                                 owner: program.provider.publicKey,
-                                currencyVault: longPoolBCurrencyVaultKey,
+                                collateral: tokenMintB,
                                 position: positionKey,
                                 permission: coSignerPermission,
                                 // @ts-ignore
                                 authority: SWAP_AUTHORITY.publicKey,
+                                tokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .signers([SWAP_AUTHORITY])
@@ -378,23 +413,31 @@ describe("CloseLongPosition", () => {
                         vaultKey,
                         ownerTokenA,
                         feeWalletA,
-                    ]);
+                    ], TOKEN_PROGRAM_ID);
+                const args = {
+                    minTargetAmount: new anchor.BN(0),
+                    interest: interestOwed,
+                    executionFee: new anchor.BN(11),
+                    expiration: closeRequestExpiration,
+                };
                 const setupIx = await program.methods
-                    .closeLongPositionSetup({
-                        expiration: closeRequestExpiration,
-                        minTargetAmount: new anchor.BN(0),
-                        interest: interestOwed,
-                        executionFee: new anchor.BN(11),
-                    })
+                    .closeLongPositionSetup(
+                        args.minTargetAmount,
+                        args.interest,
+                        args.executionFee,
+                        args.expiration,
+                    )
                     .accounts({
+                        owner: program.provider.publicKey,
                         closePositionSetup: {
                             pool: longPoolBKey,
                             owner: program.provider.publicKey,
-                            currencyVault: longPoolBCurrencyVaultKey,
+                            collateral: tokenMintB,
                             position: positionKey,
                             permission: coSignerPermission,
                             // @ts-ignore
                             authority: SWAP_AUTHORITY.publicKey,
+                            tokenProgram: TOKEN_PROGRAM_ID,
                         },
                     })
                     .instruction();
@@ -425,16 +468,17 @@ describe("CloseLongPosition", () => {
                 await program.methods
                     .closeLongPositionCleanup()
                     .accounts({
+                        owner: program.provider.publicKey,
                         closePositionCleanup: {
                             owner: program.provider.publicKey,
-                            ownerCurrencyAccount: ownerTokenA,
-                            ownerCollateralAccount: ownerTokenB,
-                            currencyVault: longPoolBCurrencyVaultKey,
                             pool: longPoolBKey,
                             position: positionKey,
-                            lpVault: lpVaultKey,
+                            currency: tokenMintA,
+                            collateral: tokenMintB,
+                            authority: SWAP_AUTHORITY.publicKey,
                             feeWallet: feeWalletA,
-                            globalSettings: globalSettingsKey,
+                            collateralTokenProgram: TOKEN_PROGRAM_ID,
+                            currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
                     })
                     .preInstructions([setupIx, swapIx])
@@ -448,7 +492,7 @@ describe("CloseLongPosition", () => {
                             vaultKey,
                             ownerTokenA,
                             feeWalletA,
-                        ]),
+                        ], TOKEN_PROGRAM_ID),
                     ]);
                 assert.isNull(positionAfter);
 

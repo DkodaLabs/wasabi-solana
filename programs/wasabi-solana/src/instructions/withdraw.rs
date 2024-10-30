@@ -32,9 +32,9 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
             .expect("underflow");
 
         emit!(Withdraw {
-            vault: self.lp_vault.key(),
-            sender: self.owner.key(),
-            owner: self.owner_asset_account.owner.key(),
+            vault: self.lp_vault.shares_mint,
+            sender: self.vault.key(),
+            owner: self.owner.key(),
             receiver: self.owner_asset_account.owner.key(),
             assets: args.amount,
             shares: shares_burn_amount,

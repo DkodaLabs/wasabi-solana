@@ -18,6 +18,7 @@ import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js"
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import { assert } from "chai";
 import { getMultipleTokenAccounts } from "./utils";
@@ -146,26 +147,34 @@ describe("takeProfitOrder", () => {
             const swapAmount = downPayment.add(principal);
             const minimumAmountOut = new anchor.BN(1_900);
 
+            const args = {
+                nonce,
+                minTargetAmount: minimumAmountOut,
+                downPayment,
+                principal,
+                fee,
+                expiration: new anchor.BN(now + 3_600),
+            };
             const setupIx = await program.methods
-                .openLongPositionSetup({
-                    nonce,
-                    minTargetAmount: minimumAmountOut,
-                    downPayment,
-                    principal,
-                    currency: tokenMintA,
-                    expiration: new anchor.BN(now + 3_600),
-                    fee,
-                })
+                .openLongPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
                 .accounts({
                     owner: user2.publicKey,
-                    ownerCurrencyAccount: ownerTokenA,
-                    currencyVault: longPoolBCurrencyVaultKey,
                     lpVault: lpVaultTokenAKey,
                     longPool: longPoolBKey,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
                     permission: coSignerPermission,
+                    //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     feeWallet: feeWalletA,
-                    globalSettings: globalSettingsKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -198,6 +207,7 @@ describe("takeProfitOrder", () => {
                     owner: user2.publicKey,
                     longPool: longPoolBKey,
                     position: longPositionKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
@@ -227,6 +237,7 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
@@ -253,6 +264,7 @@ describe("takeProfitOrder", () => {
             await program.methods
                 .closeTakeProfitOrder()
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
@@ -281,27 +293,36 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
                 .signers([user2])
                 .rpc({ skipPreflight: true });
+
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
             const setupIx = await program.methods
-                .takeProfitSetup({
-                    expiration: closeRequestExpiration,
-                    minTargetAmount: new anchor.BN(0),
-                    interest: new anchor.BN(10),
-                    executionFee: new anchor.BN(11),
-                })
+                .takeProfitSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
                 .accounts({
                     closePositionSetup: {
-                        pool: longPoolBKey,
                         owner: user2.publicKey,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         position: longPositionKey,
-                        permission: nonSwapAuthSignerPermission,
+                        pool: longPoolBKey,
+                        collateral: tokenMintB,
                         // @ts-ignore
                         authority: NON_SWAP_AUTHORITY.publicKey,
+                        permission: nonSwapAuthSignerPermission,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction();
@@ -335,16 +356,18 @@ describe("takeProfitOrder", () => {
                     .accounts({
                         closePositionCleanup: {
                             owner: user2.publicKey,
-                            ownerCurrencyAccount: ownerTokenA,
-                            ownerCollateralAccount: ownerTokenB,
-                            currencyVault: longPoolBCurrencyVaultKey,
                             pool: longPoolBKey,
+                            collateral: tokenMintB,
+                            currency: tokenMintA,
                             position: longPositionKey,
+                            authority: NON_SWAP_AUTHORITY.publicKey,
+                            //@ts-ignore
                             lpVault: lpVaultTokenAKey,
                             feeWallet: feeWalletA,
                             globalSettings: globalSettingsKey,
+                            currencyTokenProgram: TOKEN_PROGRAM_ID,
+                            collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
-                        takeProfitOrder: longTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -364,15 +387,19 @@ describe("takeProfitOrder", () => {
                 });
                 throw new Error("Failed to error");
             } catch (e) {
+                console.log(e);
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
                 );
                 if (err instanceof anchor.AnchorError) {
+                    console.log(err);
                     assert.equal(err.error.errorCode.number, 6000);
                 } else if (err instanceof anchor.ProgramError) {
+                    console.log(err);
                     assert.equal(err.code, 6000);
                 } else {
+                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -381,6 +408,7 @@ describe("takeProfitOrder", () => {
             await program.methods
                 .closeTakeProfitOrder()
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
@@ -404,27 +432,35 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
                 .signers([user2])
                 .rpc({ skipPreflight: true });
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
             const setupIx = await program.methods
-                .takeProfitSetup({
-                    expiration: closeRequestExpiration,
-                    minTargetAmount: new anchor.BN(0),
-                    interest: new anchor.BN(10),
-                    executionFee: new anchor.BN(11),
-                })
+                .takeProfitSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
                 .accounts({
                     closePositionSetup: {
-                        pool: longPoolBKey,
                         owner: user2.publicKey,
-                        currencyVault: longPoolBCurrencyVaultKey,
+                        pool: longPoolBKey,
+                        collateral: tokenMintA,
                         position: longPositionKey,
                         permission: coSignerPermission,
                         // @ts-ignore
                         authority: SWAP_AUTHORITY.publicKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction();
@@ -458,16 +494,15 @@ describe("takeProfitOrder", () => {
                     .accounts({
                         closePositionCleanup: {
                             owner: user2.publicKey,
-                            ownerCurrencyAccount: ownerTokenA,
-                            ownerCollateralAccount: ownerTokenB,
-                            currencyVault: longPoolBCurrencyVaultKey,
                             pool: longPoolBKey,
                             position: longPositionKey,
-                            lpVault: lpVaultTokenAKey,
+                            currency: tokenMintA,
+                            collateral: tokenMintB,
+                            authority: SWAP_AUTHORITY.publicKey,
                             feeWallet: feeWalletA,
-                            globalSettings: globalSettingsKey,
+                            collateralTokenProgram: TOKEN_PROGRAM_ID,
+                            currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
-                        takeProfitOrder: longTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -504,6 +539,7 @@ describe("takeProfitOrder", () => {
             await program.methods
                 .closeTakeProfitOrder()
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
@@ -530,7 +566,7 @@ describe("takeProfitOrder", () => {
                     vaultKey,
                     ownerTokenA,
                     feeWalletA,
-                ]);
+                ], TOKEN_PROGRAM_ID);
 
             await program.methods
                 .initTakeProfitOrder({
@@ -538,27 +574,35 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
                 .signers([user2])
                 .rpc({ skipPreflight: true });
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
             const setupIx = await program.methods
-                .takeProfitSetup({
-                    expiration: closeRequestExpiration,
-                    minTargetAmount: new anchor.BN(0),
-                    interest: new anchor.BN(10),
-                    executionFee: new anchor.BN(11),
-                })
+                .takeProfitSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
                 .accounts({
                     closePositionSetup: {
                         pool: longPoolBKey,
                         owner: user2.publicKey,
-                        currencyVault: longPoolBCurrencyVaultKey,
+                        collateral: tokenMintB,
                         position: longPositionKey,
                         permission: coSignerPermission,
                         // @ts-ignore
                         authority: SWAP_AUTHORITY.publicKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction();
@@ -591,16 +635,15 @@ describe("takeProfitOrder", () => {
                 .accounts({
                     closePositionCleanup: {
                         owner: user2.publicKey,
-                        ownerCurrencyAccount: ownerTokenA,
-                        ownerCollateralAccount: ownerTokenB,
-                        currencyVault: longPoolBCurrencyVaultKey,
                         pool: longPoolBKey,
                         position: longPositionKey,
-                        lpVault: lpVaultTokenAKey,
+                        currency: tokenMintA,
+                        collateral: tokenMintB,
+                        authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
-                    takeProfitOrder: longTakeProfitOrderKey,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
@@ -630,7 +673,7 @@ describe("takeProfitOrder", () => {
                     vaultKey,
                     ownerTokenA,
                     feeWalletA,
-                ]),
+                ], TOKEN_PROGRAM_ID),
             ]);
             // Position should be cleaned up
             assert.isNull(positionAfter);
@@ -661,26 +704,35 @@ describe("takeProfitOrder", () => {
             const principal = new anchor.BN(1_000);
             const swapAmount = principal;
             const minTargetAmount = new anchor.BN(1);
+            const args = {
+                nonce,
+                minTargetAmount,
+                downPayment,
+                principal,
+                fee,
+                expiration: new anchor.BN(now + 3_600),
+            };
             const setupIx = await program.methods
-                .openShortPositionSetup({
-                    nonce,
-                    minTargetAmount,
-                    downPayment,
-                    principal,
-                    currency: tokenMintA,
-                    expiration: new anchor.BN(now + 3_600),
-                    fee,
-                })
+                .openShortPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
                 .accounts({
                     owner: user2.publicKey,
-                    ownerCurrencyAccount: ownerTokenB,
-                    ownerTargetCurrencyAccount: ownerTokenA,
                     lpVault: lpVaultTokenBKey,
                     shortPool: shortPoolAKey,
+                    currency: tokenMintB,
+                    collateral: tokenMintA,
                     permission: coSignerPermission,
+                    //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     feeWallet: feeWalletA,
-                    globalSettings: globalSettingsKey,
+                    currencyTokenProgram: TOKEN_PROGRAM_ID,
+                    collateralTokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -713,7 +765,11 @@ describe("takeProfitOrder", () => {
                     owner: user2.publicKey,
                     shortPool: shortPoolAKey,
                     position: shortPositionKey,
+                    //@ts-ignore
                     lpVault: lpVaultTokenBKey,
+                    collateral: tokenMintA,
+                    currency: tokenMintB,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
@@ -751,27 +807,35 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: shortPositionKey,
                 })
                 .signers([user2])
                 .rpc({ skipPreflight: true });
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
             const setupIx = await program.methods
-                .takeProfitSetup({
-                    expiration: closeRequestExpiration,
-                    minTargetAmount: new anchor.BN(0),
-                    interest: new anchor.BN(10),
-                    executionFee: new anchor.BN(11),
-                })
+                .takeProfitSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
                 .accounts({
                     closePositionSetup: {
                         pool: shortPoolAKey,
                         owner: user2.publicKey,
-                        currencyVault: shortPoolACurrencyVaultKey,
+                        collateral: tokenMintA,
                         position: shortPositionKey,
                         permission: coSignerPermission,
                         // @ts-ignore
                         authority: SWAP_AUTHORITY.publicKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction();
@@ -805,16 +869,15 @@ describe("takeProfitOrder", () => {
                     .accounts({
                         closePositionCleanup: {
                             owner: user2.publicKey,
-                            ownerCurrencyAccount: ownerTokenB,
-                            ownerCollateralAccount: ownerTokenA,
-                            currencyVault: shortPoolACurrencyVaultKey,
                             pool: shortPoolAKey,
                             position: shortPositionKey,
-                            lpVault: lpVaultTokenBKey,
+                            currency: tokenMintB,
+                            collateral: tokenMintA,
                             feeWallet: feeWalletA,
-                            globalSettings: globalSettingsKey,
+                            authority: SWAP_AUTHORITY.publicKey,
+                            currencyTokenProgram: TOKEN_PROGRAM_ID,
+                            collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
-                        takeProfitOrder: shortTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -851,6 +914,7 @@ describe("takeProfitOrder", () => {
             await program.methods
                 .closeTakeProfitOrder()
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: shortPositionKey,
                 })
@@ -878,7 +942,7 @@ describe("takeProfitOrder", () => {
                     vaultKey,
                     ownerTokenA,
                     feeWalletA,
-                ]);
+                ], TOKEN_PROGRAM_ID);
 
             await program.methods
                 .initTakeProfitOrder({
@@ -886,27 +950,35 @@ describe("takeProfitOrder", () => {
                     takerAmount,
                 })
                 .accounts({
+                    //@ts-ignore
                     trader: user2.publicKey,
                     position: shortPositionKey,
                 })
                 .signers([user2])
                 .rpc({ skipPreflight: true });
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
             const setupIx = await program.methods
-                .takeProfitSetup({
-                    expiration: closeRequestExpiration,
-                    minTargetAmount: new anchor.BN(0),
-                    interest: new anchor.BN(10),
-                    executionFee: new anchor.BN(11),
-                })
+                .takeProfitSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
                 .accounts({
                     closePositionSetup: {
                         pool: shortPoolAKey,
                         owner: user2.publicKey,
-                        currencyVault: shortPoolACurrencyVaultKey,
+                        collateral: tokenMintA,
                         position: shortPositionKey,
                         permission: coSignerPermission,
                         // @ts-ignore
                         authority: SWAP_AUTHORITY.publicKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction();
@@ -939,16 +1011,15 @@ describe("takeProfitOrder", () => {
                 .accounts({
                     closePositionCleanup: {
                         owner: user2.publicKey,
-                        ownerCurrencyAccount: ownerTokenB,
-                        ownerCollateralAccount: ownerTokenA,
-                        currencyVault: shortPoolACurrencyVaultKey,
                         pool: shortPoolAKey,
                         position: shortPositionKey,
-                        lpVault: lpVaultTokenBKey,
+                        currency: tokenMintB,
+                        collateral: tokenMintA,
+                        authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
-                    takeProfitOrder: shortTakeProfitOrderKey,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
@@ -978,7 +1049,7 @@ describe("takeProfitOrder", () => {
                     vaultKey,
                     ownerTokenA,
                     feeWalletA,
-                ]),
+                ], TOKEN_PROGRAM_ID),
             ]);
 
             // Position should be cleaned up

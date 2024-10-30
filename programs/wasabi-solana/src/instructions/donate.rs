@@ -59,8 +59,8 @@ impl<'info> Donate<'info> {
             .expect("overflow");
 
         emit!(NativeYieldClaimed {
-            source: self.owner.key(),
-            vault: self.vault.key(),
+            source: self.lp_vault.key(),
+            vault: self.lp_vault.shares_mint,
             token: self.lp_vault.asset,
             amount: args.amount,
         });

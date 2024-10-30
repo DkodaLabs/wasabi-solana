@@ -131,26 +131,34 @@ describe("liquidate", () => {
       const swapAmount = downPayment.add(principal);
       const minimumAmountOut = new anchor.BN(1_900);
 
+      const args = {
+        nonce,
+        minTargetAmount: minimumAmountOut,
+        downPayment,
+        principal,
+        fee,
+        expiration: new anchor.BN(now + 3_600),
+      };
       const setupIx = await program.methods
-        .openLongPositionSetup({
-          nonce,
-          minTargetAmount: minimumAmountOut,
-          downPayment,
-          principal,
-          currency: tokenMintA,
-          expiration: new anchor.BN(now + 3_600),
-          fee,
-        })
+        .openLongPositionSetup(
+            args.nonce,
+            args.minTargetAmount,
+            args.downPayment,
+            args.principal,
+            args.fee,
+            args.expiration,
+        )
         .accounts({
           owner: user2.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
-          currencyVault: longPoolBCurrencyVaultKey,
           lpVault: lpVaultTokenAKey,
           longPool: longPoolBKey,
-          permission: coSignerPermission,
+          collateral: tokenMintB,
+          currency: tokenMintA,
+          //@ts-ignore
           authority: SWAP_AUTHORITY.publicKey,
+          permission: coSignerPermission,
           feeWallet: feeWalletA,
-          globalSettings: globalSettingsKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -183,6 +191,7 @@ describe("liquidate", () => {
           owner: user2.publicKey,
           longPool: longPoolBKey,
           position: longPositionKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .preInstructions([setupIx, swapIx])
         .transaction();
@@ -211,22 +220,29 @@ describe("liquidate", () => {
         longPositionKey
       );
 
+      const args = {
+        minTargetAmount: new anchor.BN(0),
+        interest: new anchor.BN(10),
+        executionFee: new anchor.BN(11),
+        expiration: closeRequestExpiration,
+      };
       const setupIx = await program.methods
-        .liquidatePositionSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
+        .liquidatePositionSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration,
+        )
         .accounts({
           closePositionSetup: {
-            pool: longPoolBKey,
             owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
             position: longPositionKey,
-            permission: coSignerPermission,
+            pool: longPoolBKey,
+            collateral: tokenMintB,
             // @ts-ignore
             authority: SWAP_AUTHORITY.publicKey,
+            permission: coSignerPermission,
+            tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -261,14 +277,16 @@ describe("liquidate", () => {
           .accounts({
             closePositionCleanup: {
               owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              ownerCollateralAccount: ownerTokenB,
-              currencyVault: longPoolBCurrencyVaultKey,
               pool: longPoolBKey,
+              collateral: tokenMintB,
+              currency: tokenMintA,
               position: longPositionKey,
+              authority: SWAP_AUTHORITY.publicKey,
+              //@ts-ignore
               lpVault: lpVaultTokenAKey,
               feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
+              collateralTokenProgram: TOKEN_PROGRAM_ID,
+              currencyTokenProgram: TOKEN_PROGRAM_ID,
             },
           })
           .preInstructions([setupIx, swapIx])
@@ -319,24 +337,31 @@ describe("liquidate", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]);
+        ], TOKEN_PROGRAM_ID);
 
+      const args = {
+        minTargetAmount: new anchor.BN(0),
+        interest: new anchor.BN(10),
+        executionFee: new anchor.BN(11),
+        expiration: closeRequestExpiration,
+      };
       const setupIx = await program.methods
-        .liquidatePositionSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
+        .liquidatePositionSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration
+        )
         .accounts({
           closePositionSetup: {
-            pool: longPoolBKey,
             owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
             position: longPositionKey,
-            permission: liquidateSignerPermission,
-            // @ts-ignore
+            pool: longPoolBKey,
+            collateral: tokenMintB,
+            //@ts-ignore
             authority: NON_SWAP_AUTHORITY.publicKey,
+            permission: liquidateSignerPermission,
+            tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -369,14 +394,16 @@ describe("liquidate", () => {
         .accounts({
           closePositionCleanup: {
             owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
-            ownerCollateralAccount: ownerTokenB,
-            currencyVault: longPoolBCurrencyVaultKey,
-            pool: longPoolBKey,
             position: longPositionKey,
+            pool: longPoolBKey,
+            currency: tokenMintA,
+            collateral: tokenMintB,
+            authority: NON_SWAP_AUTHORITY.publicKey,
+            //@ts-ignore
             lpVault: lpVaultTokenAKey,
             feeWallet: feeWalletA,
-            globalSettings: globalSettingsKey,
+            currencyTokenProgram: TOKEN_PROGRAM_ID,
+            collateralTokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .preInstructions([setupIx, swapIx])
@@ -405,7 +432,7 @@ describe("liquidate", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
       // Position should be cleaned up
       assert.isNull(positionAfter);
@@ -433,26 +460,35 @@ describe("liquidate", () => {
       const principal = new anchor.BN(1_000);
       const swapAmount = principal;
       const minTargetAmount = new anchor.BN(1);
+      const args = {
+        nonce,
+        minTargetAmount,
+        downPayment,
+        principal,
+        fee,
+        expiration: new anchor.BN(now + 3_600),
+      };
       const setupIx = await program.methods
-        .openShortPositionSetup({
-          nonce,
-          minTargetAmount,
-          downPayment,
-          principal,
-          currency: tokenMintA,
-          expiration: new anchor.BN(now + 3_600),
-          fee,
-        })
+        .openShortPositionSetup(
+            args.nonce,
+            args.minTargetAmount,
+            args.downPayment,
+            args.principal,
+            args.fee,
+            args.expiration,
+        )
         .accounts({
           owner: user2.publicKey,
-          ownerCurrencyAccount: ownerTokenB,
-          ownerTargetCurrencyAccount: ownerTokenA,
           lpVault: lpVaultTokenBKey,
           shortPool: shortPoolAKey,
-          permission: coSignerPermission,
+          currency: tokenMintB,
+          collateral: tokenMintA,
+          //@ts-ignore
           authority: SWAP_AUTHORITY.publicKey,
+          permission: coSignerPermission,
           feeWallet: feeWalletA,
-          globalSettings: globalSettingsKey,
+          currencyTokenProgram: TOKEN_PROGRAM_ID,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -483,9 +519,13 @@ describe("liquidate", () => {
         .openShortPositionCleanup()
         .accounts({
           owner: user2.publicKey,
-          shortPool: shortPoolAKey,
           position: shortPositionKey,
+          shortPool: shortPoolAKey,
+          currency: tokenMintB,
+          collateral: tokenMintA,
+          //@ts-ignore
           lpVault: lpVaultTokenBKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .preInstructions([setupIx, swapIx])
         .transaction();
@@ -523,24 +563,31 @@ describe("liquidate", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]);
+        ], TOKEN_PROGRAM_ID);
 
+      const args = {
+        minTargetAmount: new anchor.BN(0),
+        interest: new anchor.BN(10),
+        executionFee: new anchor.BN(11),
+        expiration: closeRequestExpiration,
+      };
       const setupIx = await program.methods
-        .liquidatePositionSetup({
-          expiration: closeRequestExpiration,
-          minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
-          executionFee: new anchor.BN(11),
-        })
+        .liquidatePositionSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration,
+        )
         .accounts({
           closePositionSetup: {
-            pool: shortPoolAKey,
             owner: user2.publicKey,
-            currencyVault: shortPoolACurrencyVaultKey,
             position: shortPositionKey,
-            permission: liquidateSignerPermission,
+            pool: shortPoolAKey,
+            collateral: tokenMintA,
             // @ts-ignore
             authority: NON_SWAP_AUTHORITY.publicKey,
+            permission: liquidateSignerPermission,
+            tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -573,14 +620,16 @@ describe("liquidate", () => {
         .accounts({
           closePositionCleanup: {
             owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
-            ownerCollateralAccount: ownerTokenA,
-            currencyVault: shortPoolACurrencyVaultKey,
-            pool: shortPoolAKey,
             position: shortPositionKey,
+            pool: shortPoolAKey,
+            currency: tokenMintB,
+            collateral: tokenMintA,
+            authority: SWAP_AUTHORITY.publicKey,
+            //@ts-ignore
             lpVault: lpVaultTokenBKey,
             feeWallet: feeWalletA,
-            globalSettings: globalSettingsKey,
+            currencyTokenProgram: TOKEN_PROGRAM_ID,
+            collateralTokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .preInstructions([setupIx, swapIx])
@@ -609,7 +658,7 @@ describe("liquidate", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
 
       // Position should be cleaned up

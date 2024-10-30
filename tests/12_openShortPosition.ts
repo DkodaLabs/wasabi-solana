@@ -140,33 +140,47 @@ describe("OpenShortPosition", () => {
             );
             try {
                 const now = new Date().getTime() / 1_000;
+                const args = {
+                    nonce,
+                    minTargetAmount: new anchor.BN(1),
+                    downPayment: new anchor.BN(1_000),
+                    principal: new anchor.BN(1_000),
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount: new anchor.BN(1),
-                        downPayment: new anchor.BN(1_000),
-                        principal: new anchor.BN(1_000),
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
                         shortPool: shortPoolAKey,
-                        currency: tokenMintB,
                         collateral: tokenMintA,
-                        permission: coSignerPermission,
+                        currency: tokenMintB,
                         authority: SWAP_AUTHORITY.publicKey,
-                        position: positionKey,
+                        permission: coSignerPermission,
                         feeWallet: feeWalletA,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
+
                 await program.methods
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        //@ts-ignore
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -180,7 +194,6 @@ describe("OpenShortPosition", () => {
                 if (match) {
                     assert.ok(true);
                 } else {
-                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -191,14 +204,25 @@ describe("OpenShortPosition", () => {
         it("should fail", async () => {
             try {
                 const now = new Date().getTime() / 1_000;
+                const nonce = 100;
+                const args = {
+                    nonce,
+                    minTargetAmount: new anchor.BN(1),
+                    downPayment: new anchor.BN(1_000),
+                    principal: new anchor.BN(1_000),
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
+
                 await program.methods
-                    .openShortPositionSetup({ nonce: 100 }, {
-                        minTargetAmount: new anchor.BN(1),
-                        downPayment: new anchor.BN(1_000),
-                        principal: new anchor.BN(1_000),
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -252,24 +276,32 @@ describe("OpenShortPosition", () => {
                     ],
                     program.programId,
                 );
+            const args = {
+                nonce,
+                minTargetAmount,
+                downPayment,
+                principal,
+                fee: new anchor.BN(10),
+                expiration: new anchor.BN(now + 3_600),
+            };
 
             const setupIx = await program.methods
-                .openShortPositionSetup({ nonce }, {
-                    minTargetAmount,
-                    downPayment,
-                    principal,
-                    expiration: new anchor.BN(now + 3_600),
-                    fee: new anchor.BN(10),
-                })
+                .openShortPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
                 .accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
                     shortPool: shortPoolAKey,
-                    currency: tokenMintB,
                     collateral: tokenMintA,
-                    permission: badCoSignerPermission,
+                    currency: tokenMintB,
                     authority: NON_SWAP_AUTHORITY.publicKey,
-                    position: positionKey,
+                    permission: badCoSignerPermission,
                     feeWallet: feeWalletA,
                     currencyTokenProgram: TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID,
@@ -281,6 +313,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -334,63 +370,83 @@ describe("OpenShortPosition", () => {
             const principal = new anchor.BN(1_000);
             const swapAmount = principal;
             const minTargetAmount = new anchor.BN(1);
-            const setupIx = await program.methods
-                .openShortPositionSetup({ nonce }, {
-                    minTargetAmount,
-                    downPayment,
-                    principal,
-                    expiration: new anchor.BN(now + 3_600),
-                    fee,
-                })
-                .accountsPartial({
-                    owner: program.provider.publicKey,
-                    lpVault: lpVaultKey,
-                    shortPool: shortPoolAKey,
-                    currency: tokenMintB,
-                    collateral: tokenMintA,
-                    permission: coSignerPermission,
-                    authority: SWAP_AUTHORITY.publicKey,
-                    feeWallet: feeWalletA,
-                    globalSettings: globalSettingsKey,
-                    currencyTokenProgram: TOKEN_PROGRAM_ID,
-                    collateralTokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .instruction();
-            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-                [abSwapKey.publicKey.toBuffer()],
-                TOKEN_SWAP_PROGRAM_ID,
-            );
-            const swapIx = TokenSwap.swapInstruction(
-                abSwapKey.publicKey,
-                swapAuthority,
-                SWAP_AUTHORITY.publicKey,
-                shortPoolACurrencyVaultKey,
-                swapTokenAccountB,
-                swapTokenAccountA,
-                shortPoolAVaultKey,
-                poolMint,
-                poolFeeAccount,
-                null,
-                tokenMintB,
-                tokenMintA,
-                TOKEN_SWAP_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                BigInt(swapAmount.toString()),
-                BigInt(minTargetAmount.toString()),
-            );
-            await program.methods
-                .openShortPositionCleanup()
-                .accounts({
-                    owner: program.provider.publicKey,
-                    shortPool: shortPoolAKey,
-                    position: positionKey,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .preInstructions([setupIx, swapIx])
-                .signers([SWAP_AUTHORITY])
-                .rpc({ skipPreflight: true });
+            const args = {
+                nonce,
+                minTargetAmount,
+                downPayment,
+                principal,
+                fee,
+                expiration: new anchor.BN(now + 3_600),
+            };
+
+            try {
+                const setupIx = await program.methods
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
+                    .accountsPartial({
+                        owner: program.provider.publicKey,
+                        lpVault: lpVaultKey,
+                        shortPool: shortPoolAKey,
+                        currency: tokenMintB,
+                        collateral: tokenMintA,
+                        //@ts-ignore
+                        permission: coSignerPermission,
+                        authority: SWAP_AUTHORITY.publicKey,
+                        feeWallet: feeWalletA,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .instruction();
+                const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                    [abSwapKey.publicKey.toBuffer()],
+                    TOKEN_SWAP_PROGRAM_ID,
+                );
+                const swapIx = TokenSwap.swapInstruction(
+                    abSwapKey.publicKey,
+                    swapAuthority,
+                    SWAP_AUTHORITY.publicKey,
+                    shortPoolACurrencyVaultKey,
+                    swapTokenAccountB,
+                    swapTokenAccountA,
+                    shortPoolAVaultKey,
+                    poolMint,
+                    poolFeeAccount,
+                    null,
+                    tokenMintB,
+                    tokenMintA,
+                    TOKEN_SWAP_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    BigInt(swapAmount.toString()),
+                    BigInt(minTargetAmount.toString()),
+                );
+                await program.methods
+                    .openShortPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([setupIx, swapIx])
+                    .signers([SWAP_AUTHORITY])
+                    .rpc({skipPreflight: true});
+
+            } catch (err) {
+                console.log(err);
+            }
+
             const [
                 [
                     lpVaultAfter,
@@ -491,24 +547,32 @@ describe("OpenShortPosition", () => {
             const principal = new anchor.BN(1_000);
             const minTargetAmount = new anchor.BN(1);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
                         shortPool: shortPoolAKey,
-                        currency: tokenMintB,
                         collateral: tokenMintA,
+                        currency: tokenMintB,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -518,6 +582,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        currency: tokenMintB,
+                        collateral: tokenMintA,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -564,24 +632,32 @@ describe("OpenShortPosition", () => {
             const principal = new anchor.BN(1_000);
             const minTargetAmount = new anchor.BN(1);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
                         shortPool: shortPoolAKey,
-                        currency: tokenMintB,
                         collateral: tokenMintA,
+                        currency: tokenMintB,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -616,6 +692,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolBKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -670,14 +750,23 @@ describe("OpenShortPosition", () => {
             const principal = new anchor.BN(1_000);
             const minTargetAmount = new anchor.BN(1);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -687,7 +776,6 @@ describe("OpenShortPosition", () => {
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -722,6 +810,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: badPositionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -772,15 +864,24 @@ describe("OpenShortPosition", () => {
             // amount to be borrowed
             const principal = new anchor.BN(1_000);
             const minTargetAmount = new anchor.BN(1_000_000);
+            const args = {
+                nonce,
+                minTargetAmount,
+                downPayment,
+                principal,
+                fee: new anchor.BN(10),
+                expiration: new anchor.BN(now + 3_600),
+            };
             try {
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -790,7 +891,6 @@ describe("OpenShortPosition", () => {
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -825,6 +925,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -869,14 +973,23 @@ describe("OpenShortPosition", () => {
                     program.provider.publicKey,
                     transferAmount,
                 );
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openShortPositionSetup({ nonce }, {
-                        minTargetAmount,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -886,7 +999,6 @@ describe("OpenShortPosition", () => {
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletA,
-                        globalSettings: globalSettingsKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -921,6 +1033,10 @@ describe("OpenShortPosition", () => {
                     .accounts({
                         owner: program.provider.publicKey,
                         shortPool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })

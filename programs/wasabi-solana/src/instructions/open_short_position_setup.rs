@@ -11,7 +11,7 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(header: OpenShortPositionHeader)]
+#[instruction(nonce: u16)]
 pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
@@ -58,8 +58,8 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
@@ -78,7 +78,7 @@ pub struct OpenShortPositionSetup<'info> {
             owner.key().as_ref(), 
             short_pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
-            &header.nonce.to_le_bytes()
+            &nonce.to_le_bytes()
         ],
         bump,
         space = 8 + std::mem::size_of::<Position>(),
@@ -101,8 +101,8 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
-    pub collateral_token_program: Interface<'info, TokenInterface>,
     pub currency_token_program: Interface<'info, TokenInterface>,
+    pub collateral_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     #[account(
       address = sysvar::instructions::ID
@@ -111,28 +111,29 @@ pub struct OpenShortPositionSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct OpenShortPositionHeader {
-    nonce: u16,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct OpenShortPositionArgs {
-    /// The minimum amount out required when swapping
-    pub min_target_amount: u64,
-    /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
-    pub down_payment: u64,
-    /// The total principal amount to be borrowed for the position.
-    pub principal: u64,
-    /// The timestamp when this position request expires.
-    pub expiration: i64,
-    /// The fee to be paid for the position
-    pub fee: u64,
-}
-
+/// Deserialization errors - byte misalignment
+//#[derive(AnchorDeserialize, AnchorSerialize)]
+//pub struct OpenShortPositionHeader {
+//    nonce: u16,
+//}
+//
+//#[derive(AnchorDeserialize, AnchorSerialize)]
+//pub struct OpenShortPositionArgs {
+//    /// The minimum amount out required when swapping
+//    pub min_target_amount: u64,
+//    /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
+//    pub down_payment: u64,
+//    /// The total principal amount to be borrowed for the position.
+//    pub principal: u64,
+//    /// The timestamp when this position request expires.
+//    pub expiration: i64,
+//    /// The fee to be paid for the position
+//    pub fee: u64,
+//}
+//
 impl<'info> OpenShortPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>, _args: &OpenShortPositionArgs) -> Result<()> {
-        require!(!ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
+    pub fn validate(ctx: &Context<Self>) -> Result<()> {
+        require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(
@@ -196,40 +197,42 @@ impl<'info> OpenShortPositionSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn open_short_position_setup(&mut self, header: &OpenShortPositionHeader, args: &OpenShortPositionArgs) -> Result<()> {
-        // This is due to some eccentricity of Anchor's deserialization, when the
-        // nonce is not used like this it causes a byte misalignment for the other args
-        // leading to erroneous values for principal, fee and expiration. TODO: Figure out
-        // why using the nonce this way solves the issue.
-        msg!("{}", header.nonce);
-
+    pub fn open_short_position_setup(
+        &mut self, 
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         // Down payment is transferred from the user to the `collateral_vault` since it's not used
         // for swapping when opening a short position.
-        self.transfer_from_user_to_collateral_vault(args.down_payment)?;
+        self.transfer_from_user_to_collateral_vault(down_payment)?;
 
         // Transfer fees
-        self.transfer_from_user_to_fee_wallet(args.fee)?;
+        self.transfer_from_user_to_fee_wallet(fee)?;
 
         // Reload the `collateral_vault` so we can get the balance after the down payment has been
         // made.
         self.collateral_vault.reload()?;
 
-        require_gt!(args.principal, self.vault.amount, ErrorCode::InsufficientAvailablePrincipal);
+        require_gt!(self.vault.amount, principal, ErrorCode::InsufficientAvailablePrincipal);
 
         // Transfer the borrowed amount to the `currency_vault` to be used in a swap.
-        self.transfer_from_lp_vault_to_currency_vault(args.principal)?;
+        self.transfer_from_lp_vault_to_currency_vault(principal)?;
 
         // Reload the `currency_vault` so we can get the balance after the principal has be
         // transferred.
         self.currency_vault.reload()?;
 
         // Approve the user to make a swap on behalf of the `currency_vault`
-        self.approve_owner_delegation(args.principal)?;
+        self.approve_owner_delegation(principal)?;
 
         self.open_position_request.set_inner(OpenPositionRequest {
             position: self.position.key(),
             pool_key: self.short_pool.key(),
-            min_target_amount: args.min_target_amount,
+            min_target_amount,
             max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
             // collateral_amount - set to the `args.principal`
             swap_cache: SwapCache {
@@ -244,13 +247,13 @@ impl<'info> OpenShortPositionSetup<'info> {
             trader: self.owner.key(),
             currency: self.currency.key(),
             collateral: self.collateral.key(),
-            down_payment: args.down_payment,
-            principal: args.principal,
+            down_payment: down_payment,
+            principal: principal,
             collateral_vault: self.collateral_vault.key(),
             collateral_amount: 0, // This doesn't seem right, check why
             // this isn't being set - set after we do the swap
             lp_vault: self.lp_vault.key(),
-            fees_to_be_paid: args.fee,
+            fees_to_be_paid: fee,
             last_funding_timestamp: Clock::get()?.unix_timestamp,
         });
 

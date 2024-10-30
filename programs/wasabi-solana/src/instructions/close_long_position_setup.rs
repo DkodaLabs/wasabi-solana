@@ -13,7 +13,7 @@ pub struct CloseLongPositionSetup<'info> {
 }
 
 impl<'info> CloseLongPositionSetup<'info> {
-    pub fn validate(ctx: &Context<CloseLongPositionSetup>, args: &ClosePositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<CloseLongPositionSetup>, expiration: i64) -> Result<()> {
         require_keys_eq!(
             ctx.accounts.owner.key(),
             ctx.accounts.close_position_setup.owner.key(),
@@ -30,7 +30,7 @@ impl<'info> CloseLongPositionSetup<'info> {
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,
-            &args,
+            expiration,
             CloseLongPositionCleanup::get_hash(),
         )?;
 
@@ -39,7 +39,13 @@ impl<'info> CloseLongPositionSetup<'info> {
 
     // The user is long WIF and used SOL as downpayment. When closing the long WIF position we
     // need to take all the WIF collateral and sell it for SOL.
-    pub fn close_long_position_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+    pub fn close_long_position_setup(
+        &mut self,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         // Allow "owner" to swap on behalf of the collateral vault
         let cps = &mut self.close_position_setup;
         cps.approve_swap_authority_delegation(
@@ -49,7 +55,12 @@ impl<'info> CloseLongPositionSetup<'info> {
         )?;
 
         // Create a close position request
-        cps.set_close_position_request(&args)?;
+        cps.set_close_position_request(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )?;
 
         Ok(())
     }

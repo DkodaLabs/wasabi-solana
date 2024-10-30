@@ -118,26 +118,35 @@ describe("ClaimPosition", () => {
       const principal = new anchor.BN(1_000);
       const swapAmount = principal;
       const minTargetAmount = new anchor.BN(1);
+      const args = {
+        nonce: 0,
+        minTargetAmount,
+        downPayment,
+        principal,
+        fee,
+        expiration: new anchor.BN(now + 3_600),
+      };
       const setupIx = await program.methods
-        .openShortPositionSetup({
-          nonce: 0,
-          minTargetAmount,
-          downPayment,
-          principal,
-          currency: tokenMintA,
-          expiration: new anchor.BN(now + 3_600),
-          fee,
-        })
+        .openShortPositionSetup(
+            args.nonce,
+            args.minTargetAmount,
+            args.downPayment,
+            args.principal,
+            args.fee,
+            args.expiration,
+       )
         .accounts({
           owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenB,
-          ownerTargetCurrencyAccount: ownerTokenA,
           lpVault: lpVaultKeyB,
           shortPool: shortPoolAKey,
+          currency: tokenMintB,
+          collateral: tokenMintA,
           permission: coSignerPermission,
+          //@ts-ignore
           authority: SWAP_AUTHORITY.publicKey,
           feeWallet: feeWalletA,
-          globalSettings: globalSettingsKey,
+          currencyTokenProgram: TOKEN_PROGRAM_ID,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -169,8 +178,12 @@ describe("ClaimPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           shortPool: shortPoolAKey,
-          position: positionKey,
+          //@ts-ignore
           lpVault: lpVaultKeyB,
+          collateral: tokenMintA,
+          currency: tokenMintB,
+          position: positionKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .preInstructions([setupIx, swapIx])
         .signers([SWAP_AUTHORITY])
@@ -194,7 +207,7 @@ describe("ClaimPosition", () => {
           lpVaultBVault,
           shortPoolAVaultKey,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
 
       assert.ok(positionBefore.trader.equals(program.provider.publicKey));
@@ -202,13 +215,15 @@ describe("ClaimPosition", () => {
       const computedMaxInterest = new anchor.BN(1);
 
       await program.methods
-        .claimPosition({})
+        .claimPosition()
         .accounts({
-          traderCollateralAccount: ownerTokenA,
-          traderCurrencyAccount: ownerTokenB,
           position: positionKey,
           pool: shortPoolAKey,
+          collateral: tokenMintA,
+          currency: tokenMintB,
           feeWallet: feeWalletA,
+          currencyTokenProgram: TOKEN_PROGRAM_ID,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc();
 
@@ -229,7 +244,7 @@ describe("ClaimPosition", () => {
           lpVaultBVault,
           shortPoolAVaultKey,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
       // validate position was closed
       assert.ok(positionAfter === null);
@@ -290,27 +305,35 @@ describe("ClaimPosition", () => {
         ],
         program.programId,
       );
+
+      const args = {
+        nonce,
+        minTargetAmount: minimumAmountOut,
+        downPayment,
+        principal,
+        fee,
+        expiration: new anchor.BN(now + 3_600),
+      };
       const setupIx = await program.methods
-        .openLongPositionSetup({
-          nonce,
-          minTargetAmount: minimumAmountOut,
-          downPayment,
-          principal,
-          currency: tokenMintA,
-          expiration: new anchor.BN(now + 3_600),
-          fee,
-        })
+        .openLongPositionSetup(
+            args.nonce,
+            args.minTargetAmount,
+            args.downPayment,
+            args.principal,
+            args.fee,
+            args.expiration,
+        )
         .accounts({
           owner: program.provider.publicKey,
-          ownerCurrencyAccount: ownerTokenA,
-          // @ts-ignore
-          currencyVault: longPoolBCurrencyVaultKey,
           lpVault: lpVaultKeyA,
           longPool: longPoolBKey,
+          collateral: tokenMintB,
+          currency: tokenMintA,
           permission: coSignerPermission,
+          //@ts-ignore
           authority: SWAP_AUTHORITY.publicKey,
           feeWallet: feeWalletA,
-          globalSettings: globalSettingsKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -343,6 +366,7 @@ describe("ClaimPosition", () => {
           owner: program.provider.publicKey,
           longPool: longPoolBKey,
           position: positionKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
         })
         .preInstructions([setupIx, swapIx])
         .signers([SWAP_AUTHORITY])
@@ -366,7 +390,7 @@ describe("ClaimPosition", () => {
           lpVaultAVault,
           longPoolBVaultKey,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
 
       assert.ok(positionBefore.trader.equals(program.provider.publicKey));
@@ -374,13 +398,15 @@ describe("ClaimPosition", () => {
       const computedMaxInterest = new anchor.BN(1);
 
       await program.methods
-        .claimPosition({})
+        .claimPosition()
         .accounts({
-          traderCollateralAccount: ownerTokenB,
-          traderCurrencyAccount: ownerTokenA,
+          collateral: tokenMintB,
+          currency: tokenMintA,
           position: positionKey,
           pool: longPoolBKey,
           feeWallet: feeWalletA,
+          currencyTokenProgram: TOKEN_PROGRAM_ID,
+          collateralTokenProgram: TOKEN_PROGRAM_ID,
         })
         .rpc({skipPreflight: true});
 
@@ -401,7 +427,7 @@ describe("ClaimPosition", () => {
           lpVaultAVault,
           longPoolBVaultKey,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
 
       // validate position was closed

@@ -295,6 +295,10 @@ const main = async () => {
         assetTokenProgram: TOKEN_PROGRAM_ID
     }).rpc();
     console.log("Withdraw:", withdrawBSig);
+    console.log(mintKeypair.publicKey.toBase58());
+    console.log(mintKeypair2.publicKey.toBase58());
+    console.log(getSharesMint(lpVaultA, mintKeypair.publicKey, program.programId).toBase58());
+    console.log(getSharesMint(lpVaultB, mintKeypair2.publicKey, program.programId).toBase58());
 
 }
 

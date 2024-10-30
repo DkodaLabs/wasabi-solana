@@ -12,7 +12,7 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(header: OpenLongPositionHeader)]
+#[instruction(nonce: u16)]
 pub struct OpenLongPositionSetup<'info> {
     /// The wallet that owns the assets
     #[account(mut)]
@@ -53,8 +53,8 @@ pub struct OpenLongPositionSetup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: InterfaceAccount<'info, Mint>,
 
     #[account(
         init,
@@ -73,7 +73,7 @@ pub struct OpenLongPositionSetup<'info> {
             owner.key().as_ref(), 
             long_pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
-            &header.nonce.to_le_bytes() // Ensures user can have multiple positions for this
+            &nonce.to_le_bytes() // Ensures user can have multiple positions for this
             // particular pool
         ],
         bump,
@@ -114,10 +114,10 @@ pub struct OpenLongPositionSetup<'info> {
 }
 
 impl<'info> OpenLongPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>, args: &OpenLongPositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, expiration: i64) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
 
-        require_gt!(args.expiration, now, ErrorCode::PositionReqExpired);
+        require_gt!(expiration, now, ErrorCode::PositionReqExpired);
 
         require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
 
@@ -131,7 +131,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
-        msg!("{}", self.vault.amount);
+        msg!("Transfer borrow amount from vault: {}", amount);
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -148,7 +148,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
-        msg!("down payment");
+        msg!("Transfer downpayment from user: {} ", amount);
 
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
@@ -162,7 +162,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
-        msg!("fee");
+        msg!("Transfer to fee_wallet: {}", amount);
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -174,6 +174,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
+        msg!("Approving delegate amount: {}", amount);
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
@@ -188,27 +189,39 @@ impl<'info> OpenLongPositionSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn open_long_position_setup(&mut self, header: &OpenLongPositionHeader, args: &OpenLongPositionArgs) -> Result<()> {
+    pub fn open_long_position_setup(
+        &mut self,
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         // This is due to some eccentricity of Anchor's deserialization, when the
         // nonce is not used like this it causes a byte misalignment for the other args
         // leading to erroneous values for principal, fee and expiration. TODO: Figure out
         // why using the nonce this way solves the issue.
-        msg!("{}", header.nonce);
+        msg!("Nonce: {}", nonce);
+        msg!("Min Target Amount: {}", min_target_amount);
+        msg!("Down Payment: {}", down_payment);
+        msg!("Principal: {}", principal);
+        msg!("Expiration: {}", expiration);
+        msg!("Fee: {}", fee);
 
-        self.transfer_borrow_amount_from_vault(args.principal)?;
-        self.transfer_down_payment_from_user(args.down_payment)?;
-        self.transfer_from_user_to_fee_wallet(args.fee)?;
+        self.transfer_borrow_amount_from_vault(principal)?;
+        self.transfer_down_payment_from_user(down_payment)?;
+        self.transfer_from_user_to_fee_wallet(fee)?;
         self.currency_vault.reload()?;
 
         let max_principal = self
             .debt_controller
-            .compute_max_principal(args.down_payment);
+            .compute_max_principal(down_payment);
 
-        require_gte!(max_principal, args.principal, ErrorCode::PrincipalTooHigh);
+        require_gte!(max_principal, principal, ErrorCode::PrincipalTooHigh);
 
-        let total_swap_amount = args
-            .principal
-            .checked_add(args.down_payment)
+        let total_swap_amount = principal
+            .checked_add(down_payment)
             .expect("overflow");
 
         // Approve authority to make a swap on behalf of the `currency_vault`
@@ -217,10 +230,9 @@ impl<'info> OpenLongPositionSetup<'info> {
         // Cache data on the `open_position_request` account. We use the value after the borrow in
         // order to track the entire amount being swapped.
         self.open_position_request.set_inner(OpenPositionRequest {
-            min_target_amount: args.min_target_amount,
-            max_amount_in: args
-                .down_payment
-                .checked_add(args.principal)
+            min_target_amount,
+            max_amount_in: down_payment
+                .checked_add(principal)
                 .expect("overflow"),
             pool_key: self.long_pool.key(),
             position: self.position.key(),
@@ -233,93 +245,15 @@ impl<'info> OpenLongPositionSetup<'info> {
             trader: self.owner.key(),
             currency: self.currency.key(),
             collateral: self.collateral.key(),
-            down_payment: args.down_payment,
-            principal: args.principal,
+            down_payment,
+            principal,
             collateral_vault: self.collateral_vault.key(),
             lp_vault: self.lp_vault.key(),
             collateral_amount: 0,
-            fees_to_be_paid: args.fee,
+            fees_to_be_paid: fee,
             last_funding_timestamp: Clock::get()?.unix_timestamp,
         });
 
         Ok(())
     }
 }
-
-#[derive(AnchorDeserialize, AnchorSerialize, Debug)]
-pub struct OpenLongPositionHeader {
-    nonce: u16,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Debug)]
-#[repr(C)]
-pub struct OpenLongPositionArgs {
-    /// The minimum amount out required when swapping
-    pub min_target_amount: u64,
-    /// The initial down payment amount required to open the position (is in `currency` for long, `
-    /// collateralCurrency` for short positions)
-    pub down_payment: u64,
-    /// The total principal amount to be borrowed for the position.
-    pub principal: u64,
-    /// The timestamp when this position request expires.
-    pub expiration: i64,
-    /// The fee to be paid for the position
-    pub fee: u64,
-}
-
-//pub fn handler(ctx: Context<OpenLongPositionSetup>, args: OpenLongPositionArgs) -> Result<()> {
-//    // Borrow from LP Vault
-//    ctx.accounts
-//        .transfer_borrow_amount_from_vault(args.principal)?;
-//    ctx.accounts
-//        .transfer_down_payment_from_user(args.down_payment)?;
-//    // Transfer fees
-//    ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
-//
-//    ctx.accounts.currency_vault.reload()?;
-//
-//    let max_principal = ctx
-//        .accounts
-//        .debt_controller
-//        .compute_max_principal(args.down_payment);
-//
-//    if args.principal > max_principal {
-//        return Err(ErrorCode::PrincipalTooHigh.into());
-//    }
-//
-//    let total_swap_amount = args
-//        .principal
-//        .checked_add(args.down_payment)
-//        .expect("overflow");
-//
-//    // Approve user to make swap on behalf of `currency_vault`
-//    ctx.accounts.approve_owner_delegation(total_swap_amount)?;
-//
-//    let collateral_amount = ctx.accounts.collateral_vault.amount;
-//
-//    // Cache data on the `open_position_request` account. We use the value
-//    // after the borrow in order to track the entire amount being swapped.
-//    let open_position_request = &mut ctx.accounts.open_position_request;
-//    open_position_request.min_target_amount = args.min_target_amount;
-//    open_position_request.max_amount_in = args
-//        .down_payment
-//        .checked_add(args.principal)
-//        .expect("overflow");
-//    open_position_request.pool_key = ctx.accounts.long_pool.key();
-//    open_position_request.position = ctx.accounts.position.key();
-//    open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
-//    open_position_request.swap_cache.destination_bal_before = collateral_amount;
-//
-//    let position = &mut ctx.accounts.position;
-//    position.trader = ctx.accounts.owner.key();
-//    position.currency = ctx.accounts.vault.mint;
-//    position.collateral_currency = ctx.accounts.collateral_vault.mint;
-//    position.down_payment = args.down_payment;
-//    position.principal = args.principal;
-//    position.collateral_vault = ctx.accounts.collateral_vault.key();
-//    position.lp_vault = ctx.accounts.lp_vault.key();
-//    position.fees_to_be_paid = args.fee;
-//    position.last_funding_timestamp = Clock::get()?.unix_timestamp;
-//
-//    Ok(())
-//}

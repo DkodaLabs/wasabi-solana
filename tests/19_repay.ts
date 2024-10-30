@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { tokenMintA } from "./rootHooks";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import { assert } from "chai";
 import { getMultipleTokenAccounts } from "./utils";
 
@@ -23,9 +23,9 @@ describe("Repay", () => {
             await program.methods
                 .repay({ amount: lpVaultBefore.totalBorrowed.addn(1) })
                 .accounts({
-                    source: ataTokenA,
+                    mint: tokenMintA,
                     lpVault: lpVaultKey,
-                    vault: lpVaultBefore.vault,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .rpc();
         } catch (err) {
@@ -41,20 +41,22 @@ describe("Repay", () => {
         const lpVaultBefore = await program.account.lpVault.fetch(lpVaultKey);
         const [vaultBefore] = await getMultipleTokenAccounts(
             program.provider.connection,
-            [lpVaultBefore.vault]
+            [lpVaultBefore.vault],
+            TOKEN_PROGRAM_ID
         );
         await program.methods
             .repay({ amount: lpVaultBefore.totalBorrowed })
             .accounts({
-                source: ataTokenA,
+                mint: tokenMintA,
                 lpVault: lpVaultKey,
-                vault: lpVaultBefore.vault,
+                tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
         const lpVaultAfter = await program.account.lpVault.fetch(lpVaultKey);
         const [vaultAfter] = await getMultipleTokenAccounts(
             program.provider.connection,
-            [lpVaultBefore.vault]
+            [lpVaultBefore.vault],
+            TOKEN_PROGRAM_ID
         );
         assert.equal(lpVaultAfter.totalBorrowed.toNumber(), 0);
         assert.equal(

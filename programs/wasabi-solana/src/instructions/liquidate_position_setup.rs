@@ -13,7 +13,7 @@ pub struct LiquidatePositionSetup<'info> {
 }
 
 impl<'info> LiquidatePositionSetup<'info> {
-    pub fn validate(ctx: &Context<LiquidatePositionSetup>, args: &ClosePositionArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<LiquidatePositionSetup>, expiration: i64) -> Result<()> {
         // Validate the authority has liquidate authority
         require!(
             ctx.accounts.close_position_setup.permission.can_liquidate(),
@@ -22,14 +22,20 @@ impl<'info> LiquidatePositionSetup<'info> {
 
         ClosePositionSetup::validate(
             &ctx.accounts.close_position_setup,
-            &args,
+            expiration,
             LiquidatePositionCleanup::get_hash(),
         )?;
 
         Ok(())
     }
 
-    pub fn liquidate_position_setup(&mut self, args: &ClosePositionArgs) -> Result<()> {
+    pub fn liquidate_position_setup(
+        &mut self,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
         if self.close_position_setup.pool.is_long_pool {
             self.close_position_setup
                 .approve_swap_authority_delegation(
@@ -45,7 +51,12 @@ impl<'info> LiquidatePositionSetup<'info> {
             )?;
         }
 
-        self.close_position_setup.set_close_position_request(&args)?;
+        self.close_position_setup.set_close_position_request(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )?;
 
         Ok(())
     }

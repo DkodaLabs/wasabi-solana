@@ -105,16 +105,23 @@ describe("OpenLongPosition", () => {
             try {
                 const now = new Date().getTime() / 1_000;
                 const args = {
+                    nonce,
                     minTargetAmount: new anchor.BN(1_900),
                     downPayment: new anchor.BN(1_000),
                     principal: new anchor.BN(1_000),
-                    expiration: new anchor.BN(now + 3_600),
                     fee: new anchor.BN(10),
-                    nonce,
+                    expiration: new anchor.BN(now + 3_600),
                 };
 
                 const setupIx = await program.methods
-                    .openLongPositionSetup({ nonce }, args)
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -157,14 +164,23 @@ describe("OpenLongPosition", () => {
         it("should fail", async () => {
             try {
                 const now = new Date().getTime() / 1_000;
+                const args = {
+                    nonce: 100,
+                    minTargetAmount: new anchor.BN(1_900),
+                    downPayment: new anchor.BN(1_000),
+                    principal: new anchor.BN(1_000),
+                    expiration: new anchor.BN(now + 3_600),
+                    fee: new anchor.BN(10),
+                };
                 await program.methods
-                    .openLongPositionSetup({ nonce: 100 }, {
-                        minTargetAmount: new anchor.BN(1_900),
-                        downPayment: new anchor.BN(1_000),
-                        principal: new anchor.BN(1_000),
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -220,14 +236,14 @@ describe("OpenLongPosition", () => {
             const minimumAmountOut = new anchor.BN(1_900);
 
             const setupIx = await program.methods
-                .openLongPositionSetup({ nonce: 0 }, {
-                    minTargetAmount: minimumAmountOut,
+                .openLongPositionSetup(
+                    nonce,
+                    minimumAmountOut,
                     downPayment,
                     principal,
-                    expiration: new anchor.BN(now + 3_600),
                     fee,
-                })
-                .accountsPartial({
+                    new anchor.BN(now + 3_600),
+                ).accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
                     longPool: longPoolBKey,
@@ -354,14 +370,23 @@ describe("OpenLongPosition", () => {
             const principal = new anchor.BN(1_000);
             const minimumAmountOut = new anchor.BN(1_900);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount: minimumAmountOut,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openLongPositionSetup({ nonce }, {
-                        minTargetAmount: minimumAmountOut,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -424,14 +449,23 @@ describe("OpenLongPosition", () => {
                     program.provider.publicKey,
                     transferAmount,
                 );
+                const args = {
+                    nonce,
+                    minTargetAmount: minimumAmountOut,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openLongPositionSetup({ nonce }, {
-                        minTargetAmount: minimumAmountOut,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -533,14 +567,23 @@ describe("OpenLongPosition", () => {
             const principal = new anchor.BN(1_000);
             const minimumAmountOut = new anchor.BN(1_900);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount: minimumAmountOut,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openLongPositionSetup({ nonce }, {
-                        minTargetAmount: minimumAmountOut,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -638,14 +681,23 @@ describe("OpenLongPosition", () => {
             const principal = new anchor.BN(1_000);
             const minimumAmountOut = new anchor.BN(1_900);
             try {
+                const args = {
+                    nonce,
+                    minTargetAmount: minimumAmountOut,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
                 const setupIx = await program.methods
-                    .openLongPositionSetup({ nonce }, {
-                        minTargetAmount: minimumAmountOut,
-                        downPayment,
-                        principal,
-                        expiration: new anchor.BN(now + 3_600),
-                        fee: new anchor.BN(10),
-                    })
+                    .openLongPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
@@ -737,14 +789,24 @@ describe("OpenLongPosition", () => {
                     program.programId,
                 );
 
+            const args = {
+                nonce,
+                minTargetAmount: minimumAmountOut,
+                downPayment,
+                principal,
+                fee: new anchor.BN(10),
+                expiration: new anchor.BN(now + 3_600),
+            }
+
             const setupIx = await program.methods
-                .openLongPositionSetup({ nonce }, {
-                    minTargetAmount: minimumAmountOut,
-                    downPayment,
-                    principal,
-                    expiration: new anchor.BN(now + 3_600),
-                    fee: new anchor.BN(10),
-                })
+                .openLongPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
                 .accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
