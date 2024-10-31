@@ -12,8 +12,6 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
         let shares_burn_amount = amount
             .checked_mul(self.shares_mint.supply)
             .expect("overflow")
-            .checked_add(total_assets)
-            .expect("overflow")
             .checked_div(total_assets)
             .expect("overflow");
 
