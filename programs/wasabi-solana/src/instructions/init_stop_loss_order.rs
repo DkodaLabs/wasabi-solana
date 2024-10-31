@@ -46,12 +46,3 @@ impl<'info> InitStopLossOrder<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitStopLossOrder>, args: InitStopLossOrderArgs) -> Result<()> {
-//    let stop_loss_order = &mut ctx.accounts.stop_loss_order;
-//    stop_loss_order.maker_amount = args.maker_amount;
-//    stop_loss_order.taker_amount = args.taker_amount;
-//    stop_loss_order.position = ctx.accounts.position.key();
-//
-//    Ok(())
-//}

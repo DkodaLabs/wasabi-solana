@@ -20,7 +20,7 @@ pub enum ErrorCode {
     InvalidPosition, // 6007
     #[msg("Invalid swap cosigner")]
     InvalidSwapCosigner, // 6008
-    #[msg("Maximum tokens swapped exceened")]
+    #[msg("Maximum tokens swapped exceeded")]
     MaxSwapExceeded, // 6009
     #[msg("Owner doesnt match")]
     IncorrectOwner, // 6010

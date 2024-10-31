@@ -47,7 +47,6 @@ impl<'info> Repay<'info> {
         Ok(())
     }
 
-    // Change: 20241017 - Change to `TransferChecked`
     fn transfer_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.source.to_account_info(),
@@ -70,14 +69,3 @@ impl<'info> Repay<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<Repay>, args: RepayArgs) -> Result<()> {
-//    ctx.accounts.transfer_to_vault(args.amount)?;
-//
-//    let lp_vault = &mut ctx.accounts.lp_vault;
-//    lp_vault.total_borrowed = lp_vault
-//        .total_borrowed
-//        .checked_sub(args.amount)
-//        .expect("overflow");
-//    Ok(())
-//}

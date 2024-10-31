@@ -70,15 +70,10 @@ pub fn deduct(amount: u64, deducted_amount: u64) -> (u64, u64) {
 
 /// Check if amount is within % range. `percentage` must be whole number, i.e. 3 == 3%
 pub fn validate_difference(value: u64, value_to_compare: u64, percentage: u8) -> Result<()> {
-    msg!("VALUE: {}", value);
-    msg!("VALUE TO COMPARE: {}", value_to_compare);
-
     let difference = value.abs_diff(value_to_compare);
-    msg!("difference: {}", difference);
 
     let scaled_difference = difference.checked_mul(100).expect("overflow");
     let max_allowed = value.checked_mul(u64::from(percentage)).expect("overflow");
-    msg!("max allowed: {}", max_allowed);
 
     require_gte!(max_allowed, scaled_difference, ErrorCode::ValueDeviatedTooMuch);
     //require!(

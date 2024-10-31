@@ -139,15 +139,3 @@ impl<'info> ClosePositionSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 }
-
-//#[derive(AnchorDeserialize, AnchorSerialize)]
-//pub struct ClosePositionArgs {
-//    /// The minimum amount out required when swapping
-//    pub min_target_amount: u64,
-//    /// The timestamp when this close position request expires.
-//    pub expiration: i64,
-//    /// The amount of interest the user must pay
-//    pub interest: u64,
-//    /// The amount of the execution fee to be paid
-//    pub execution_fee: u64,
-//}

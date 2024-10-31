@@ -43,10 +43,3 @@ impl<'info> InitDebtController<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitDebtController>, args: InitDebtControllerArgs) -> Result<()> {
-//    let debt_controller = &mut ctx.accounts.debt_controller;
-//    debt_controller.max_apy = args.max_apy;
-//    debt_controller.max_leverage = args.max_leverage;
-//    Ok(())
-//}

@@ -82,13 +82,3 @@ impl<'info> InitOrUpdatePermission<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitOrUpdatePermission>, args: InitOrUpdatePermissionArgs) -> Result<()> {
-//    let permission = &mut ctx.accounts.permission;
-//
-//    permission.authority = ctx.accounts.new_authority.key();
-//    permission.is_super_authority = false;
-//    permission.permissions_map = args.permissions_map();
-//    permission.status = args.status;
-//    Ok(())
-//}

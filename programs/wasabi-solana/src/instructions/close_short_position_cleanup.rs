@@ -60,11 +60,3 @@ impl<'info> CloseShortPositionCleanup<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<CloseShortPositionCleanup>) -> Result<()> {
-//    crate::instructions::close_position_cleanup::shared_position_cleanup(
-//        &mut ctx.accounts.close_position_cleanup,
-//        false,
-//    )?;
-//    Ok(())
-//}

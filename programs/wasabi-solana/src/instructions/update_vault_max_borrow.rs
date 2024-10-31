@@ -38,9 +38,3 @@ impl<'info> UpdateVaultMaxBorrow<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<UpdateVaultMaxBorrow>, args: UpdateVaultMaxBorrowArgs) -> Result<()> {
-//    let lp_vault = &mut ctx.accounts.lp_vault;
-//    lp_vault.max_borrow = args.max_borrow;
-//    Ok(())
-//}

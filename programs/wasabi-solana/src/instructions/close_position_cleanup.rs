@@ -12,7 +12,6 @@ use {
     },
 };
 
-// Want to seperate out this logic into CloseLongPositionCleanup and CloseShortPositionCleanup
 #[derive(Accounts)]
 pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
@@ -194,7 +193,6 @@ impl<'info> ClosePositionCleanup<'info> {
 
     /// Transfers funds from the pool account to the LP vault account
     fn transfer_from_pool_to_vault(&self, amount: u64) -> Result<()> {
-        msg!("Pool to vault: {}", amount);
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
@@ -227,7 +225,6 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 
     fn transfer_fees(&self, amount: u64) -> Result<()> {
-        msg!("Fees: {}", amount);
         if self.pool.is_long_pool {
             // Fees for long are paid in Currency token (typically SOL)
             let cpi_accounts = TransferChecked {
@@ -262,7 +259,6 @@ impl<'info> ClosePositionCleanup<'info> {
     }
 
     fn transfer_payout_from_pool_to_user(&self, amount: u64) -> Result<()> {
-        msg!("Pool to user: {}", amount);
         if self.pool.is_long_pool {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
@@ -409,101 +405,3 @@ pub struct CloseAmounts {
     pub past_fees: u64,
     pub close_fee: u64,
 }
-
-//pub fn shared_position_cleanup(
-//    close_position_cleanup: &mut ClosePositionCleanup,
-//    is_liquidation: bool,
-//) -> Result<CloseAmounts> {
-//    let mut close_amounts = CloseAmounts::default();
-//    // revoke "owner" ability to swap on behalf of the collateral vault
-//    if close_position_cleanup.pool.is_long_pool {
-//        close_position_cleanup
-//            .revoke_owner_delegation(&[long_pool_signer_seeds!(close_position_cleanup.pool)])?;
-//    } else {
-//        close_position_cleanup
-//            .revoke_owner_delegation(&[short_pool_signer_seeds!(close_position_cleanup.pool)])?;
-//    }
-//    // Total currency received after the swap.
-//    let close_position_request = &close_position_cleanup.close_position_request;
-//    let collateral_spent = close_position_cleanup.get_source_delta();
-//    let currency_diff = close_position_cleanup.get_destination_delta();
-//    let interest = close_position_cleanup.close_position_request.interest;
-//
-//    if close_position_cleanup.pool.is_long_pool
-//        && collateral_spent < close_position_cleanup.position.collateral_amount
-//    {
-//        let collateral_dust = close_position_cleanup.position.collateral_amount - collateral_spent;
-//        // TODO: What to do with any collateral_dust?
-//        msg!("collateral_dust: {}", collateral_dust);
-//    }
-//
-//    // Cap interest based on DebtController
-//    let now = Clock::get()?.unix_timestamp;
-//    let max_interest = close_position_cleanup
-//        .debt_controller
-//        .compute_max_interest(
-//            close_position_cleanup.position.principal,
-//            close_position_cleanup.position.last_funding_timestamp,
-//            now,
-//        )?;
-//    let interest: u64 = if interest == 0 || interest > max_interest {
-//        max_interest
-//    } else {
-//        interest
-//    };
-//
-//    // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
-//    let position = &close_position_cleanup.position;
-//    close_amounts.payout = if close_position_cleanup.pool.is_long_pool {
-//        // 1. Deduct principal
-//        let (_payout, _principal_repaid) = crate::utils::deduct(currency_diff, position.principal);
-//        close_amounts.principal_repaid = _principal_repaid;
-//        // 2. Deduct interest
-//        let (_payout, _interest_paid) = crate::utils::deduct(_payout, interest);
-//        close_amounts.interest_paid = _interest_paid;
-//        _payout
-//    } else {
-//        close_amounts.principal_repaid = currency_diff;
-//
-//        // 1. Deduct interest
-//        (close_amounts.interest_paid, close_amounts.principal_repaid) =
-//            crate::utils::deduct(close_amounts.principal_repaid, position.principal);
-//        if close_amounts.interest_paid > 0 {
-//            validate_difference(interest, close_amounts.interest_paid, 3)?;
-//        }
-//
-//        // Payout and fees are paid in collateral
-//        let (_payout, _) = crate::utils::deduct(position.collateral_amount, collateral_spent);
-//        _payout
-//    };
-//    // Deduct fees
-//    let (payout, close_fee) =
-//        crate::utils::deduct(close_amounts.payout, close_position_request.execution_fee);
-//    close_amounts.payout = payout;
-//    close_amounts.close_fee = close_fee;
-//    close_amounts.collateral_spent = collateral_spent;
-//    close_amounts.past_fees = position.fees_to_be_paid;
-//
-//    // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
-//    let lp_vault_payment = position.principal.checked_add(interest).expect("overflow");
-//
-//    // Transfer the prinicpal and interest amount to the LP Vault.
-//    close_position_cleanup.transfer_from_pool_to_vault(lp_vault_payment)?;
-//    if currency_diff < lp_vault_payment && !is_liquidation {
-//        return Err(ErrorCode::BadDebt.into());
-//    }
-//
-//    // Pay the fees
-//    close_position_cleanup.transfer_fees(close_fee)?;
-//
-//    // Transfer payout
-//    close_position_cleanup.transfer_payout_from_pool_to_user(close_amounts.payout)?;
-//
-//    // Emit close events
-//    if is_liquidation {
-//        emit!(PositionLiquidated::new(position, &close_amounts))
-//    } else {
-//        emit!(PositionClosed::new(position, &close_amounts))
-//    }
-//    Ok(close_amounts)
-//}

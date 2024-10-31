@@ -110,27 +110,6 @@ pub struct OpenShortPositionSetup<'info> {
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,
 }
-
-/// Deserialization errors - byte misalignment
-//#[derive(AnchorDeserialize, AnchorSerialize)]
-//pub struct OpenShortPositionHeader {
-//    nonce: u16,
-//}
-//
-//#[derive(AnchorDeserialize, AnchorSerialize)]
-//pub struct OpenShortPositionArgs {
-//    /// The minimum amount out required when swapping
-//    pub min_target_amount: u64,
-//    /// The initial down payment amount required to open the position (is in `currency` for long, `collateralCurrency` for short positions)
-//    pub down_payment: u64,
-//    /// The total principal amount to be borrowed for the position.
-//    pub principal: u64,
-//    /// The timestamp when this position request expires.
-//    pub expiration: i64,
-//    /// The fee to be paid for the position
-//    pub fee: u64,
-//}
-//
 impl<'info> OpenShortPositionSetup<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
@@ -260,52 +239,3 @@ impl<'info> OpenShortPositionSetup<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<OpenShortPositionSetup>, args: OpenShortPositionArgs) -> Result<()> {
-//    // Down payment is transfered from user to collateral_vault since it's
-//    // not used for swapping when opening a short position.
-//    ctx.accounts
-//        .transfer_from_user_to_collateral_vault(args.down_payment)?;
-//    // Transfer fees
-//    ctx.accounts.transfer_from_user_to_fee_wallet(args.fee)?;
-//
-//    // Reload the collateral_vault account so we can get the balance after
-//    // downpayment has been made.
-//    ctx.accounts.collateral_vault.reload()?;
-//
-//    if args.principal > ctx.accounts.vault.amount {
-//        return Err(ErrorCode::InsufficientAvailablePrincipal.into());
-//    }
-//
-//    // Transfer the borrowed amount to `currency_vault` to be used in swap.
-//    ctx.accounts
-//        .transfer_from_lp_vault_to_currency_vault(args.principal)?;
-//    // Reload the currency_vault account so we can get the balance after
-//    // princpal transfer has been made.
-//    ctx.accounts.currency_vault.reload()?;
-//
-//    // Approve user to make swap on behalf of `currency_vault`
-//    ctx.accounts.approve_owner_delegation(args.principal)?;
-//
-//    // Cache data on the `open_position_request` account. We use the value
-//    // after the borrow in order to track the entire amount being swapped.
-//    let open_position_request = &mut ctx.accounts.open_position_request;
-//
-//    open_position_request.position = ctx.accounts.position.key();
-//    open_position_request.pool_key = ctx.accounts.short_pool.key();
-//    open_position_request.min_target_amount = args.min_target_amount;
-//    open_position_request.swap_cache.destination_bal_before = ctx.accounts.collateral_vault.amount;
-//    open_position_request.swap_cache.source_bal_before = ctx.accounts.currency_vault.amount;
-//
-//    let position = &mut ctx.accounts.position;
-//    position.trader = ctx.accounts.owner.key();
-//    position.currency = ctx.accounts.vault.mint;
-//    position.collateral_currency = ctx.accounts.collateral_vault.mint;
-//    position.down_payment = args.down_payment;
-//    position.principal = args.principal;
-//    position.collateral_vault = ctx.accounts.collateral_vault.key();
-//    position.lp_vault = ctx.accounts.lp_vault.key();
-//    position.fees_to_be_paid = args.fee;
-//    position.last_funding_timestamp = Clock::get()?.unix_timestamp;
-//    Ok(())
-//}

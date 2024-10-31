@@ -47,11 +47,3 @@ impl<'info> SetMaxLeverage<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
-//    ctx.accounts.validate(&args)?;
-//
-//    let debt_controller = &mut ctx.accounts.debt_controller;
-//    debt_controller.max_leverage = args.max_leverage;
-//    Ok(())
-//}

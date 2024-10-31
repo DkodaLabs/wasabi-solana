@@ -27,7 +27,3 @@ impl<'info> CloseStopLossOrder<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(_ctx: Context<CloseStopLossOrder>) -> Result<()> {
-//    Ok(())
-//}

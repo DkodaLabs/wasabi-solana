@@ -8,7 +8,6 @@ use {
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
-// This will also require seperation of logic
 #[derive(Accounts)]
 pub struct ClaimPosition<'info> {
     #[account(mut)]
@@ -224,78 +223,3 @@ impl<'info> ClaimPosition<'info> {
         Ok(())
     }
 }
-
-//#[derive(AnchorDeserialize, AnchorSerialize)]
-//pub struct ClaimPositionArgs {}
-//
-//pub fn handler(ctx: Context<ClaimPosition>, _args: ClaimPositionArgs) -> Result<()> {
-//    ctx.accounts.validate()?;
-//    let now = Clock::get()?.unix_timestamp;
-//
-//    // Transfer the interest and principal
-//    let position = &ctx.accounts.position;
-//    let interest_paid = ctx.accounts.debt_controller.compute_max_interest(
-//        position.principal,
-//        position.last_funding_timestamp,
-//        now,
-//    )?;
-//
-//    let amount_owed = position
-//        .principal
-//        .checked_add(interest_paid)
-//        .expect("overflow");
-//    ctx.accounts.transfer_from_trader_to_vault(amount_owed)?;
-//
-//    let close_fee = position.fees_to_be_paid;
-//
-//    let close_amounts = if ctx.accounts.pool.is_long_pool {
-//        // pay out the collateral (claim_amount)
-//        ctx.accounts.transfer_from_collateral_vault_to_trader(
-//            position.collateral_amount,
-//            &[long_pool_signer_seeds!(ctx.accounts.pool)],
-//        )?;
-//
-//        let close_amounts = CloseAmounts {
-//            payout: 0,
-//            collateral_spent: position.collateral_amount,
-//            interest_paid,
-//            principal_repaid: position.principal,
-//            past_fees: position.fees_to_be_paid,
-//            close_fee,
-//        };
-//        // pay out the close fees
-//        ctx.accounts.transfer_fees(
-//            close_amounts.close_fee,
-//            &[long_pool_signer_seeds!(ctx.accounts.pool)],
-//        )?;
-//        close_amounts
-//    } else {
-//        let claim_amount = position.collateral_amount - close_fee;
-//
-//        let close_amounts = CloseAmounts {
-//            payout: claim_amount,
-//            collateral_spent: position.collateral_amount,
-//            interest_paid,
-//            principal_repaid: position.principal,
-//            past_fees: position.fees_to_be_paid,
-//            close_fee,
-//        };
-//        // pay out the collateral (claim_amount)
-//        ctx.accounts.transfer_from_collateral_vault_to_trader(
-//            claim_amount,
-//            &[short_pool_signer_seeds!(ctx.accounts.pool)],
-//        )?;
-//
-//        // pay out the close fees
-//        ctx.accounts.transfer_fees(
-//            close_amounts.close_fee,
-//            &[short_pool_signer_seeds!(ctx.accounts.pool)],
-//        )?;
-//        close_amounts
-//    };
-//
-//    // Emit the PositionClaimed event
-//    emit!(PositionClaimed::new(position, &close_amounts));
-//
-//    Ok(())
-//}

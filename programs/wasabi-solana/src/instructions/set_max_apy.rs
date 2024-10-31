@@ -46,11 +46,3 @@ impl<'info> SetMaxApy<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<SetMaxApy>, args: SetMaxApyArgs) -> Result<()> {
-//    ctx.accounts.validate(&args)?;
-//
-//    let debt_controller = &mut ctx.accounts.debt_controller;
-//    debt_controller.max_apy = args.max_apy;
-//    Ok(())
-//}

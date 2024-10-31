@@ -131,7 +131,6 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_borrow_amount_from_vault(&self, amount: u64) -> Result<()> {
-        msg!("Transfer borrow amount from vault: {}", amount);
         let cpi_accounts = TransferChecked {
             from: self.vault.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -148,8 +147,6 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
-        msg!("Transfer downpayment from user: {} ", amount);
-
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -162,7 +159,6 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
-        msg!("Transfer to fee_wallet: {}", amount);
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
@@ -174,7 +170,6 @@ impl<'info> OpenLongPositionSetup<'info> {
     }
 
     fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
-        msg!("Approving delegate amount: {}", amount);
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
@@ -198,17 +193,6 @@ impl<'info> OpenLongPositionSetup<'info> {
         fee: u64,
         expiration: i64,
     ) -> Result<()> {
-        // This is due to some eccentricity of Anchor's deserialization, when the
-        // nonce is not used like this it causes a byte misalignment for the other args
-        // leading to erroneous values for principal, fee and expiration. TODO: Figure out
-        // why using the nonce this way solves the issue.
-        msg!("Nonce: {}", nonce);
-        msg!("Min Target Amount: {}", min_target_amount);
-        msg!("Down Payment: {}", down_payment);
-        msg!("Principal: {}", principal);
-        msg!("Expiration: {}", expiration);
-        msg!("Fee: {}", fee);
-
         self.transfer_borrow_amount_from_vault(principal)?;
         self.transfer_down_payment_from_user(down_payment)?;
         self.transfer_from_user_to_fee_wallet(fee)?;

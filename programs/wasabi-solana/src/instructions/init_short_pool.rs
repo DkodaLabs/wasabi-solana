@@ -77,15 +77,3 @@ impl<'info> InitShortPool<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitShortPool>) -> Result<()> {
-//    let short_pool = &mut ctx.accounts.short_pool;
-//    short_pool.is_long_pool = false;
-//    short_pool.collateral = ctx.accounts.asset_mint.key();
-//    short_pool.collateral_vault = ctx.accounts.collateral_vault.key();
-//    short_pool.currency = ctx.accounts.currency_mint.key();
-//    short_pool.currency_vault = ctx.accounts.currency_vault.key();
-//    short_pool.bump = ctx.bumps.short_pool;
-//
-//    Ok(())
-//}

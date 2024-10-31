@@ -46,12 +46,3 @@ impl<'info> InitTakeProfitOrder<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<InitTakeProfitOrder>, args: InitTakeProfitOrderArgs) -> Result<()> {
-//    let take_profit_order = &mut ctx.accounts.take_profit_order;
-//    take_profit_order.maker_amount = args.maker_amount;
-//    take_profit_order.taker_amount = args.taker_amount;
-//    take_profit_order.position = ctx.accounts.position.key();
-//
-//    Ok(())
-//}

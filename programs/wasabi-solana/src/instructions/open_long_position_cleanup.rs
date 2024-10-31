@@ -123,18 +123,3 @@ impl<'info> OpenLongPositionCleanup<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(ctx: Context<OpenLongPositionCleanup>) -> Result<()> {
-//    ctx.accounts.validate()?;
-//    // Revoke owner's ability to transfer on behalf of the `currency_vault`
-//    ctx.accounts.revoke_owner_delegation()?;
-//
-//    let destination_delta = ctx.accounts.get_destination_delta();
-//
-//    let position = &mut ctx.accounts.position;
-//    position.collateral_amount = destination_delta;
-//
-//    emit!(PositionOpened::new(position));
-//
-//    Ok(())
-//}

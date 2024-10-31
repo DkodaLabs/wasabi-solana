@@ -27,7 +27,3 @@ impl<'info> CloseTakeProfitOrder<'info> {
         Ok(())
     }
 }
-
-//pub fn handler(_ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
-//  Ok(())
-//}
