@@ -27,17 +27,11 @@ pub struct InitDebtController<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct InitDebtControllerArgs {
-    pub max_apy: u64,
-    pub max_leverage: u64,
-}
-
 impl<'info> InitDebtController<'info> {
-    pub fn init_debt_controller(&mut self, args: &InitDebtControllerArgs) -> Result<()> {
+    pub fn init_debt_controller(&mut self, max_apy: u64, max_leverage: u64) -> Result<()> {
         self.debt_controller.set_inner(DebtController {
-            max_apy: args.max_apy,
-            max_leverage: args.max_leverage,
+            max_apy,
+            max_leverage,
         });
 
         Ok(())

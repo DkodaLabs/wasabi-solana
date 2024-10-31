@@ -23,26 +23,21 @@ pub struct SetMaxLeverage<'info> {
     pub debt_controller: Account<'info, DebtController>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct SetMaxLeverageArgs {
-    pub max_leverage: u64,
-}
-
 impl<'info> SetMaxLeverage<'info> {
-    fn validate(&self, args: &SetMaxLeverageArgs) -> Result<()> {
-        require_neq!(args.max_leverage, 0, ErrorCode::InvalidValue);
+    fn validate(&self, max_leverage: u64) -> Result<()> {
+        require_neq!(max_leverage, 0, ErrorCode::InvalidValue);
         require_gt!(
             100 * LEVERAGE_DENOMINATOR,
-            args.max_leverage,
+            max_leverage,
             ErrorCode::InvalidValue
         );
         Ok(())
     }
 
-    pub fn set_max_leverage(&mut self, args: &SetMaxLeverageArgs) -> Result<()> {
-        self.validate(args)?;
+    pub fn set_max_leverage(&mut self, max_leverage: u64) -> Result<()> {
+        self.validate(max_leverage)?;
 
-        self.debt_controller.max_leverage = args.max_leverage;
+        self.debt_controller.max_leverage = max_leverage;
 
         Ok(())
     }

@@ -52,10 +52,6 @@ pub struct DepositOrWithdraw<'info> {
     pub shares_token_program: Program<'info, Token2022>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct DepositArgs {
-    pub amount: u64,
-}
 
 impl<'info> DepositOrWithdraw<'info> {
     pub(crate) fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
@@ -110,15 +106,15 @@ impl<'info> DepositOrWithdraw<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.asset_mint.decimals)
     }
 
-    pub fn deposit(&mut self, args: &DepositArgs) -> Result<()> {
-        self.transfer_token_from_owner_to_vault(args.amount)?;
+    pub fn deposit(&mut self, amount: u64) -> Result<()> {
+        self.transfer_token_from_owner_to_vault(amount)?;
 
         let shares_supply = self.shares_mint.supply;
         let shares_to_mint = if shares_supply == 0 {
-            args.amount
+            amount
         } else {
             shares_supply
-                .checked_mul(args.amount)
+                .checked_mul(amount)
                 .expect("overflow")
                 .checked_div(self.lp_vault.total_assets)
                 .expect("overflow")
@@ -129,14 +125,14 @@ impl<'info> DepositOrWithdraw<'info> {
         self.lp_vault.total_assets = self
             .lp_vault
             .total_assets
-            .checked_add(args.amount)
+            .checked_add(amount)
             .expect("overflow");
 
         emit!(Deposit {
             vault: self.lp_vault.shares_mint,
             sender: self.owner.key(),
             owner: self.owner.key(),
-            assets: args.amount,
+            assets: amount,
             shares: shares_to_mint,
         });
 

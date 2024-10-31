@@ -29,20 +29,15 @@ pub struct InitStopLossOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct InitStopLossOrderArgs {
-    maker_amount: u64,
-    taker_amount: u64,
-}
-
 impl<'info> InitStopLossOrder<'info> {
-    pub fn init_stop_loss_order(&mut self, args: &InitStopLossOrderArgs) -> Result<()> {
+    pub fn init_stop_loss_order(&mut self, maker_amount: u64, taker_amount: u64) -> Result<()> {
         self.stop_loss_order.set_inner(StopLossOrder {
-            maker_amount: args.maker_amount,
-            taker_amount: args.taker_amount,
+            maker_amount,
+            taker_amount,
             position: self.position.key(),
         });
 
         Ok(())
     }
 }
+

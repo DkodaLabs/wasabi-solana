@@ -19,11 +19,6 @@ pub struct UpdateVaultMaxBorrow<'info> {
     pub lp_vault: Account<'info, LpVault>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct UpdateVaultMaxBorrowArgs {
-    max_borrow: u64,
-}
-
 impl<'info> UpdateVaultMaxBorrow<'info> {
     pub fn validate(ctx: &Context<UpdateVaultMaxBorrow>) -> Result<()> {
         require!(
@@ -33,8 +28,8 @@ impl<'info> UpdateVaultMaxBorrow<'info> {
         Ok(())
     }
 
-    pub fn update_lp_vault_max_borrow(&mut self, args: &UpdateVaultMaxBorrowArgs) -> Result<()> {
-        self.lp_vault.max_borrow = args.max_borrow;
+    pub fn update_lp_vault_max_borrow(&mut self, max_borrow: u64) -> Result<()> {
+        self.lp_vault.max_borrow = max_borrow;
         Ok(())
     }
 }

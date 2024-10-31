@@ -32,16 +32,12 @@ pub struct Repay<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct RepayArgs {
-    amount: u64,
-}
-
 impl<'info> Repay<'info> {
-    pub fn validate(ctx: &Context<Repay>, args: &RepayArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<Repay>, amount: u64) -> Result<()> {
         // Prevent over repaying to ensure vault accounting works
-        require!(
-            args.amount <= ctx.accounts.lp_vault.total_borrowed,
+        require_gte!(
+            ctx.accounts.lp_vault.total_borrowed,
+            amount,
             ErrorCode::MaxRepayExceeded
         );
         Ok(())
@@ -58,12 +54,12 @@ impl<'info> Repay<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.mint.decimals)
     }
 
-    pub fn repay(&mut self, args: &RepayArgs) -> Result<()> {
-        self.transfer_to_vault(args.amount)?;
+    pub fn repay(&mut self, amount: u64) -> Result<()> {
+        self.transfer_to_vault(amount)?;
         self.lp_vault.total_borrowed = self
             .lp_vault
             .total_borrowed
-            .checked_sub(args.amount)
+            .checked_sub(amount)
             .expect("overflow");
 
         Ok(())

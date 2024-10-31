@@ -12,9 +12,9 @@ describe("setDebtControllerMaxLeverage", () => {
 
     it("should fail if not super admin", async () => {
         try {
-            await program.methods.setMaxLeverage({
-                maxLeverage: new anchor.BN(50),
-            }).accounts({
+            await program.methods.setMaxLeverage(
+                new anchor.BN(50),
+            ).accounts({
                 authority: program.provider.publicKey,
             }).rpc();
             assert.fail("Expected error");
@@ -29,9 +29,9 @@ describe("setDebtControllerMaxLeverage", () => {
 
     it("should fail with invalid max leverage", async () => {
         try {
-            await superAdminProgram.methods.setMaxLeverage({
-                maxLeverage: new anchor.BN(0),
-            }).accounts({
+            await superAdminProgram.methods.setMaxLeverage(
+                new anchor.BN(0),
+            ).accounts({
                 authority: superAdminProgram.provider.publicKey,
             }).rpc();
             assert.fail("Expected error");
@@ -46,9 +46,9 @@ describe("setDebtControllerMaxLeverage", () => {
         }
 
         try {
-            await superAdminProgram.methods.setMaxLeverage({
-                maxLeverage: new anchor.BN(101 * 100),
-            }).accounts({
+            await superAdminProgram.methods.setMaxLeverage(
+                new anchor.BN(101 * 100),
+            ).accounts({
                 authority: superAdminProgram.provider.publicKey,
             }).rpc();
             assert.fail("Expected error");
@@ -65,9 +65,9 @@ describe("setDebtControllerMaxLeverage", () => {
 
     it("should set max leverage", async () => {
         const debtControllerBefore = await program.account.debtController.fetch(debtControllerKey);
-        await superAdminProgram.methods.setMaxLeverage({
-            maxLeverage: new anchor.BN(200),
-        }).accounts({
+        await superAdminProgram.methods.setMaxLeverage(
+            new anchor.BN(200),
+        ).accounts({
             authority: superAdminProgram.provider.publicKey,
         }).rpc();
         const debtControllerAfter = await program.account.debtController.fetch(debtControllerKey);

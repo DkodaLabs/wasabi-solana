@@ -23,25 +23,20 @@ pub struct SetMaxApy<'info> {
     pub debt_controller: Account<'info, DebtController>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct SetMaxApyArgs {
-    pub max_apy: u64,
-}
-
 impl<'info> SetMaxApy<'info> {
-    fn validate(&self, args: &SetMaxApyArgs) -> Result<()> {
-        require_neq!(args.max_apy, 0, ErrorCode::InvalidValue);
+    fn validate(&self, max_apy: u64) -> Result<()> {
+        require_neq!(max_apy, 0, ErrorCode::InvalidValue);
         require_gt!(
             1000 * APY_DENOMINATOR,
-            args.max_apy,
+            max_apy,
             ErrorCode::InvalidValue
         );
         Ok(())
     }
 
-    pub fn set_max_apy(&mut self, args: &SetMaxApyArgs) -> Result<()> {
-        self.validate(&args)?;
-        self.debt_controller.max_apy = args.max_apy;
+    pub fn set_max_apy(&mut self, max_apy: u64) -> Result<()> {
+        self.validate(max_apy)?;
+        self.debt_controller.max_apy = max_apy;
 
         Ok(())
     }

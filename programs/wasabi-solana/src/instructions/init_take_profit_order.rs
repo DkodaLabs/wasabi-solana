@@ -29,17 +29,11 @@ pub struct InitTakeProfitOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct InitTakeProfitOrderArgs {
-    maker_amount: u64,
-    taker_amount: u64,
-}
-
 impl<'info> InitTakeProfitOrder<'info> {
-    pub fn init_take_profit_order(&mut self, args: &InitTakeProfitOrderArgs) -> Result<()> {
+    pub fn init_take_profit_order(&mut self, maker_amount: u64, taker_amount: u64) -> Result<()> {
         self.take_profit_order.set_inner(TakeProfitOrder {
-            maker_amount: args.maker_amount,
-            taker_amount: args.taker_amount,
+            maker_amount,
+            taker_amount,
             position: self.position.key(),
         });
 

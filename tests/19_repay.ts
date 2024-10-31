@@ -21,7 +21,7 @@ describe("Repay", () => {
         const lpVaultBefore = await program.account.lpVault.fetch(lpVaultKey);
         try {
             await program.methods
-                .repay({ amount: lpVaultBefore.totalBorrowed.addn(1) })
+                .repay(lpVaultBefore.totalBorrowed.addn(1))
                 .accounts({
                     mint: tokenMintA,
                     lpVault: lpVaultKey,
@@ -45,7 +45,7 @@ describe("Repay", () => {
             TOKEN_PROGRAM_ID
         );
         await program.methods
-            .repay({ amount: lpVaultBefore.totalBorrowed })
+            .repay(lpVaultBefore.totalBorrowed)
             .accounts({
                 mint: tokenMintA,
                 lpVault: lpVaultKey,

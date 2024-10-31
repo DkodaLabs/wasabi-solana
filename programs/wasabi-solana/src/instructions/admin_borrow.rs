@@ -39,13 +39,8 @@ pub struct AdminBorrow<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct AdminBorrowArgs {
-    amount: u64,
-}
-
 impl<'info> AdminBorrow<'info> {
-    pub fn validate(ctx: &Context<AdminBorrow>, args: &AdminBorrowArgs) -> Result<()> {
+    pub fn validate(ctx: &Context<AdminBorrow>, amount: u64) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vault(),
             ErrorCode::InvalidPermissions
@@ -56,7 +51,7 @@ impl<'info> AdminBorrow<'info> {
             ctx.accounts
                 .lp_vault
                 .total_borrowed
-                .checked_add(args.amount)
+                .checked_add(amount)
                 .expect("overflow"),
             ErrorCode::MaxBorrowExceeded
         );
@@ -81,15 +76,15 @@ impl<'info> AdminBorrow<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
-    pub fn admin_borrow(&mut self, args: &AdminBorrowArgs) -> Result<()> {
+    pub fn admin_borrow(&mut self, amount: u64) -> Result<()> {
         // Transfer from vault to destination
-        self.transfer_from_vault(args.amount)?;
+        self.transfer_from_vault(amount)?;
 
         // increment total borrowed of the vault
         self.lp_vault.total_borrowed = self
             .lp_vault
             .total_borrowed
-            .checked_add(args.amount)
+            .checked_add(amount)
             .expect("overflow");
 
         Ok(())

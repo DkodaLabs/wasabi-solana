@@ -178,11 +178,13 @@ impl<'info> OpenShortPositionSetup<'info> {
 
     pub fn open_short_position_setup(
         &mut self, 
+        #[allow(unused_variables)]
         nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
         fee: u64,
+        #[allow(unused_variables)]
         expiration: i64,
     ) -> Result<()> {
         // Down payment is transferred from the user to the `collateral_vault` since it's not used
@@ -226,8 +228,8 @@ impl<'info> OpenShortPositionSetup<'info> {
             trader: self.owner.key(),
             currency: self.currency.key(),
             collateral: self.collateral.key(),
-            down_payment: down_payment,
-            principal: principal,
+            down_payment,
+            principal,
             collateral_vault: self.collateral_vault.key(),
             collateral_amount: 0, // This doesn't seem right, check why
             // this isn't being set - set after we do the swap

@@ -238,10 +238,10 @@ describe("stopLoss", () => {
       const makerAmount = new anchor.BN(100);
       const takerAmount = new anchor.BN(200);
       await program.methods
-        .initStopLossOrder({
+        .initStopLossOrder(
           makerAmount,
           takerAmount,
-        })
+        )
         .accounts({
             //@ts-ignore
           trader: user2.publicKey,
@@ -402,10 +402,10 @@ describe("stopLoss", () => {
       );
 
       await program.methods
-        .initStopLossOrder({
+        .initStopLossOrder(
           makerAmount,
           takerAmount,
-        })
+        )
         .accounts({
             //@ts-ignore
           trader: user2.publicKey,
@@ -546,10 +546,10 @@ describe("stopLoss", () => {
         ], TOKEN_PROGRAM_ID);
 
       await program.methods
-        .initStopLossOrder({
+        .initStopLossOrder(
           makerAmount,
           takerAmount,
-        })
+        )
         .accounts({
             //@ts-ignore
           trader: user2.publicKey,
@@ -782,10 +782,10 @@ describe("stopLoss", () => {
       );
 
       await program.methods
-        .initStopLossOrder({
+        .initStopLossOrder(
           makerAmount,
           takerAmount,
-        })
+        )
         .accounts({
             //@ts-ignore
           trader: user2.publicKey,
@@ -927,10 +927,10 @@ describe("stopLoss", () => {
         ], TOKEN_PROGRAM_ID);
 
       await program.methods
-        .initStopLossOrder({
+        .initStopLossOrder(
           makerAmount,
           takerAmount,
-        })
+        )
         .accounts({
             //@ts-ignore
           trader: user2.publicKey,

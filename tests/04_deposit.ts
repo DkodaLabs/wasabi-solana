@@ -64,7 +64,7 @@ describe("Deposit", () => {
             ], TOKEN_2022_PROGRAM_ID),
         ]);
         await program.methods
-            .deposit({ amount })
+            .deposit(amount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,
@@ -143,7 +143,7 @@ describe("Deposit", () => {
             (sharesMintBefore.supply * BigInt(amount.toString())) /
             BigInt(lpVaultBefore.totalAssets.toString());
         await program.methods
-            .deposit({ amount })
+            .deposit(amount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

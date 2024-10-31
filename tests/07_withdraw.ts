@@ -60,7 +60,7 @@ describe("Withdraw", () => {
             .div(lpVaultBefore.totalAssets);
 
         await program.methods
-            .withdraw({ amount: tokenAmount })
+            .withdraw(tokenAmount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

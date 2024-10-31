@@ -37,7 +37,7 @@ describe("Donate", () => {
             ]);
 
         await program.methods
-            .donate({ amount: tokenAmount })
+            .donate(tokenAmount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

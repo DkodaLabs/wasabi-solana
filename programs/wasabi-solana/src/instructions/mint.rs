@@ -1,25 +1,20 @@
 use {super::DepositOrWithdraw, crate::events::Deposit, anchor_lang::prelude::*};
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct MintArgs {
-    pub shares_amount: u64,
-}
-
 pub trait MintTrait {
-    fn mint(&mut self, args: &MintArgs) -> Result<()>;
+    fn mint(&mut self, shares_amount: u64) -> Result<()>;
 }
 
 impl MintTrait for DepositOrWithdraw<'_> {
-    fn mint(&mut self, args: &MintArgs) -> Result<()> {
-        self.mint_shares_to_user(args.shares_amount)?;
+    fn mint(&mut self, shares_amount: u64) -> Result<()> {
+        self.mint_shares_to_user(shares_amount)?;
         let shares_supply = self.shares_mint.supply;
 
         let tokens_in = if shares_supply == 0 {
-            args.shares_amount
+            shares_amount
         } else {
             self.lp_vault
                 .total_assets
-                .checked_mul(args.shares_amount)
+                .checked_mul(shares_amount)
                 .expect("overflow")
                 .checked_add(shares_supply)
                 .expect("overflow")
@@ -40,7 +35,7 @@ impl MintTrait for DepositOrWithdraw<'_> {
             sender: self.owner.key(),
             owner: self.owner.key(),
             assets: tokens_in,
-            shares: args.shares_amount,
+            shares: shares_amount,
         });
 
         Ok(())

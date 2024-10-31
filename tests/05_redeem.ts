@@ -58,7 +58,7 @@ describe("Redeem", () => {
             sharesMintBefore.supply;
 
         await program.methods
-            .redeem({ sharesAmount })
+            .redeem(sharesAmount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

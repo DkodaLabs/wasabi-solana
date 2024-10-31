@@ -62,7 +62,7 @@ describe("Mint", () => {
                 : sharesAmount;
 
         await program.methods
-            .mint({ sharesAmount })
+            .mint(sharesAmount)
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

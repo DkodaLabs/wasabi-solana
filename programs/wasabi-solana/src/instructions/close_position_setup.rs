@@ -9,7 +9,6 @@ use {
 };
 
 // Makes a swap using balances in the vault, but settles the payout to user account
-
 #[derive(Accounts)]
 pub struct ClosePositionSetup<'info> {
     #[account(mut)]
@@ -99,6 +98,7 @@ impl<'info> ClosePositionSetup<'info> {
         min_target_amount: u64,
         interest: u64,
         execution_fee: u64,
+        #[allow(unused_variables)]
         expiration: i64,
     ) -> Result<()> {
         // Create a close position request

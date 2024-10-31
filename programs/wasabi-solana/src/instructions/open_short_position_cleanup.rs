@@ -43,7 +43,6 @@ pub struct OpenShortPositionCleanup<'info> {
     pub collateral: InterfaceAccount<'info, Mint>,
 
     /// The LP Vault that the user will borrow from
-    /// In a 
     #[account(
         has_one = vault,
     )]
@@ -106,9 +105,6 @@ impl<'info> OpenShortPositionCleanup<'info> {
         );
 
         // Validate owner receives at least the minimum amount of token being swapped to.
-        //if self.get_destination_delta() < self.open_position_request.min_target_amount {
-        //    return Err(ErrorCode::MinTokensNotMet.into());
-        //}
         require_gt!(
             self.get_destination_delta(),
             self.open_position_request.min_target_amount,
@@ -157,9 +153,6 @@ impl<'info> OpenShortPositionCleanup<'info> {
         let collateral_received = self.get_destination_delta();
         let principal_used = self.get_source_delta();
 
-        //if down_payment.checked_mul(ctx.accounts.debt_controller.max_leverage).expect("overflow") <= collateral_received {
-        //    return Err(ErrorCode::PrincipalTooHigh.into());
-        //}
         require_gt!(
             self.position
                 .down_payment

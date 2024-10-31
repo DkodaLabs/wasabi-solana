@@ -33,11 +33,6 @@ pub struct Donate<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct DonateArgs {
-    pub amount: u64,
-}
-
 impl<'info> Donate<'info> {
     fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
@@ -50,19 +45,19 @@ impl<'info> Donate<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
-    pub fn donate(&mut self, args: &DonateArgs) -> Result<()> {
-        self.transfer_token_from_owner_to_vault(args.amount)?;
+    pub fn donate(&mut self, amount: u64) -> Result<()> {
+        self.transfer_token_from_owner_to_vault(amount)?;
         self.lp_vault.total_assets = self
             .lp_vault
             .total_assets
-            .checked_add(args.amount)
+            .checked_add(amount)
             .expect("overflow");
 
         emit!(NativeYieldClaimed {
             source: self.owner.key(),
             vault: self.lp_vault.shares_mint,
             token: self.lp_vault.asset,
-            amount: args.amount,
+            amount: amount,
         });
 
         Ok(())

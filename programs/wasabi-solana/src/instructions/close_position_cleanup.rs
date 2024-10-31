@@ -167,7 +167,6 @@ impl<'info> ClosePositionCleanup<'info> {
 
         require_gt!(self.get_source_delta(), 0, ErrorCode::MaxSwapExceeded);
 
-        // NOTE: This check is performed as the clean-up function can't really infer the addresses
         require_keys_eq!(
             self.fee_wallet.owner,
             self.global_settings.protocol_fee_wallet,
@@ -345,7 +344,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let (remaining_after_interest, interest_paid) = crate::utils::deduct(currency_diff, interest);
             close_amounts.interest_paid = interest_paid;
 
-            let (payout, principal_repaid) = crate::utils::deduct(remaining_after_interest, self.position.principal);
+            let (_payout, principal_repaid) = crate::utils::deduct(remaining_after_interest, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
 
             // Deduct interest

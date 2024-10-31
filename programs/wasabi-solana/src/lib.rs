@@ -16,7 +16,6 @@ declare_id!("Amxm1TKpMsue3x5KrnAzV9U8Sn7afDQQnmMV9znTfd96");
 
 #[program]
 pub mod wasabi_solana {
-    use log::info;
     use super::*;
 
     pub fn init_global_settings(
@@ -28,17 +27,18 @@ pub mod wasabi_solana {
 
     pub fn init_debt_controller(
         ctx: Context<InitDebtController>,
-        args: InitDebtControllerArgs,
+        max_apy: u64,
+        max_leverage: u64,
     ) -> Result<()> {
-        ctx.accounts.init_debt_controller(&args)
+        ctx.accounts.init_debt_controller(max_apy, max_leverage)
     }
 
-    pub fn set_max_apy(ctx: Context<SetMaxApy>, args: SetMaxApyArgs) -> Result<()> {
-        ctx.accounts.set_max_apy(&args)
+    pub fn set_max_apy(ctx: Context<SetMaxApy>, max_apy: u64) -> Result<()> {
+        ctx.accounts.set_max_apy(max_apy)
     }
 
-    pub fn set_max_leverage(ctx: Context<SetMaxLeverage>, args: SetMaxLeverageArgs) -> Result<()> {
-        ctx.accounts.set_max_leverage(&args)
+    pub fn set_max_leverage(ctx: Context<SetMaxLeverage>, max_leverage: u64) -> Result<()> {
+        ctx.accounts.set_max_leverage(max_leverage)
     }
 
     pub fn init_or_update_permission(
@@ -56,19 +56,19 @@ pub mod wasabi_solana {
     #[access_control(UpdateVaultMaxBorrow::validate(&ctx))]
     pub fn update_lp_vault_max_borrow(
         ctx: Context<UpdateVaultMaxBorrow>,
-        args: UpdateVaultMaxBorrowArgs,
+        max_borrow: u64,
     ) -> Result<()> {
-        ctx.accounts.update_lp_vault_max_borrow(&args)
+        ctx.accounts.update_lp_vault_max_borrow(max_borrow)
     }
 
-    #[access_control(AdminBorrow::validate(&ctx, &args))]
-    pub fn admin_borrow(ctx: Context<AdminBorrow>, args: AdminBorrowArgs) -> Result<()> {
-        ctx.accounts.admin_borrow(&args)
+    #[access_control(AdminBorrow::validate(&ctx, amount))]
+    pub fn admin_borrow(ctx: Context<AdminBorrow>, amount: u64) -> Result<()> {
+        ctx.accounts.admin_borrow(amount)
     }
 
-    #[access_control(Repay::validate(&ctx, &args))]
-    pub fn repay(ctx: Context<Repay>, args: RepayArgs) -> Result<()> {
-        ctx.accounts.repay(&args)
+    #[access_control(Repay::validate(&ctx, amount))]
+    pub fn repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
+        ctx.accounts.repay(amount)
     }
 
     #[access_control(InitLongPool::validate(&ctx))]
@@ -83,9 +83,11 @@ pub mod wasabi_solana {
 
     pub fn init_take_profit_order(
         ctx: Context<InitTakeProfitOrder>,
-        args: InitTakeProfitOrderArgs,
+        maker_amount: u64,
+        taker_amount: u64,
     ) -> Result<()> {
-        ctx.accounts.init_take_profit_order(&args)
+        ctx.accounts
+            .init_take_profit_order(maker_amount, taker_amount)
     }
 
     pub fn close_take_profit_order(ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
@@ -94,33 +96,35 @@ pub mod wasabi_solana {
 
     pub fn init_stop_loss_order(
         ctx: Context<InitStopLossOrder>,
-        args: InitStopLossOrderArgs,
+        maker_amount: u64,
+        taker_amount: u64,
     ) -> Result<()> {
-        ctx.accounts.init_stop_loss_order(&args)
+        ctx.accounts
+            .init_stop_loss_order(maker_amount, taker_amount)
     }
 
     pub fn close_stop_loss_order(ctx: Context<CloseStopLossOrder>) -> Result<()> {
         ctx.accounts.close_stop_loss_order()
     }
 
-    pub fn deposit(ctx: Context<DepositOrWithdraw>, args: DepositArgs) -> Result<()> {
-        ctx.accounts.deposit(&args)
+    pub fn deposit(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.deposit(amount)
     }
 
-    pub fn withdraw(ctx: Context<DepositOrWithdraw>, args: WithdrawArgs) -> Result<()> {
-        ctx.accounts.withdraw(&args)
+    pub fn withdraw(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        ctx.accounts.withdraw(amount)
     }
 
-    pub fn mint(ctx: Context<DepositOrWithdraw>, args: MintArgs) -> Result<()> {
-        ctx.accounts.mint(&args)
+    pub fn mint(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
+        ctx.accounts.mint(shares_amount)
     }
 
-    pub fn redeem(ctx: Context<DepositOrWithdraw>, args: RedeemArgs) -> Result<()> {
-        ctx.accounts.redeem(&args)
+    pub fn redeem(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
+        ctx.accounts.redeem(shares_amount)
     }
 
-    pub fn donate(ctx: Context<Donate>, args: DonateArgs) -> Result<()> {
-        ctx.accounts.donate(&args)
+    pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
+        ctx.accounts.donate(amount)
     }
 
     #[access_control(OpenLongPositionSetup::validate(&ctx, expiration))]
@@ -239,12 +243,8 @@ pub mod wasabi_solana {
         execution_fee: u64,
         expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.take_profit_setup(
-            min_target_amount,
-            interest,
-            execution_fee,
-            expiration,
-        )
+        ctx.accounts
+            .take_profit_setup(min_target_amount, interest, execution_fee, expiration)
     }
 
     pub fn take_profit_cleanup(ctx: Context<TakeProfitCleanup>) -> Result<()> {
@@ -259,12 +259,8 @@ pub mod wasabi_solana {
         execution_fee: u64,
         expiration: i64,
     ) -> Result<()> {
-        ctx.accounts.stop_loss_setup(
-            min_target_amount,
-            interest,
-            execution_fee,
-            expiration,
-        )
+        ctx.accounts
+            .stop_loss_setup(min_target_amount, interest, execution_fee, expiration)
     }
 
     pub fn stop_loss_cleanup(ctx: Context<StopLossCleanup>) -> Result<()> {

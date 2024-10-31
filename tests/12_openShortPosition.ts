@@ -114,7 +114,7 @@ describe("OpenShortPosition", () => {
             TOKEN_2022_PROGRAM_ID,
         );
         await program.methods
-            .deposit({ amount: new anchor.BN(500_000) })
+            .deposit(new anchor.BN(500_000))
             .accounts({
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,

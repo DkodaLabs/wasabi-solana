@@ -186,11 +186,13 @@ impl<'info> OpenLongPositionSetup<'info> {
 
     pub fn open_long_position_setup(
         &mut self,
+        #[allow(unused_variables)]
         nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
         fee: u64,
+        #[allow(unused_variables)]
         expiration: i64,
     ) -> Result<()> {
         self.transfer_borrow_amount_from_vault(principal)?;
