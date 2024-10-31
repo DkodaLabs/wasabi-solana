@@ -54,7 +54,7 @@ pub struct DepositOrWithdraw<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositArgs {
-    amount: u64,
+    pub amount: u64,
 }
 
 impl<'info> DepositOrWithdraw<'info> {
@@ -111,7 +111,6 @@ impl<'info> DepositOrWithdraw<'info> {
     }
 
     pub fn deposit(&mut self, args: &DepositArgs) -> Result<()> {
-        msg!("{}", args.amount);
         self.transfer_token_from_owner_to_vault(args.amount)?;
 
         let shares_supply = self.shares_mint.supply;

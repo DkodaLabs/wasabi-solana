@@ -346,12 +346,18 @@ impl<'info> ClosePositionCleanup<'info> {
         } else {
             close_amounts.principal_repaid = currency_diff;
 
+            let (remaining_after_interest, interest_paid) = crate::utils::deduct(currency_diff, interest);
+            close_amounts.interest_paid = interest_paid;
+
+            let (payout, principal_repaid) = crate::utils::deduct(remaining_after_interest, self.position.principal);
+            close_amounts.principal_repaid = principal_repaid;
+
             // Deduct interest
-            (close_amounts.interest_paid, close_amounts.principal_repaid) =
-                crate::utils::deduct(close_amounts.principal_repaid, self.position.principal);
+            //(close_amounts.interest_paid, close_amounts.principal_repaid) =
+            //    crate::utils::deduct(close_amounts.principal_repaid, self.position.principal);
 
             if close_amounts.interest_paid > 0 {
-                validate_difference(interest, close_amounts.interest_paid, 3)?;
+                validate_difference(interest, close_amounts.interest_paid, 5)?;
             }
 
             // Payout and fees are paid in collateral

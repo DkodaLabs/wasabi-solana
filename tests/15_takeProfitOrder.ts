@@ -18,10 +18,11 @@ import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { PublicKey } from "@solana/web3.js"
+import {PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY} from "@solana/web3.js"
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import { assert } from "chai";
 import { getMultipleTokenAccounts } from "./utils";
+import {SYSTEM_PROGRAM_ID} from "@coral-xyz/anchor/dist/cjs/native/system";
 
 describe("takeProfitOrder", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -43,6 +44,10 @@ describe("takeProfitOrder", () => {
     const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("global_settings")],
         program.programId
+    );
+    const [debtControllerKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("debt_controller")],
+        program.programId,
     );
     const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
@@ -175,6 +180,7 @@ describe("takeProfitOrder", () => {
                     authority: SWAP_AUTHORITY.publicKey,
                     feeWallet: feeWalletA,
                     tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: SYSTEM_PROGRAM_ID,
                 })
                 .instruction();
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -306,6 +312,17 @@ describe("takeProfitOrder", () => {
                 executionFee: new anchor.BN(11),
                 expiration: closeRequestExpiration,
             };
+
+            const ownerCurrencyAccount = getAssociatedTokenAddressSync(tokenMintA, user2.publicKey, false, TOKEN_PROGRAM_ID);
+            const ownerCollateralAccount = getAssociatedTokenAddressSync(tokenMintB, user2.publicKey, false, TOKEN_PROGRAM_ID);
+
+            const collateralVaultKey = getAssociatedTokenAddressSync(tokenMintB, longPoolBKey, true, TOKEN_PROGRAM_ID);
+            const currencyVaultKey = getAssociatedTokenAddressSync(tokenMintA, longPoolBKey, true, TOKEN_PROGRAM_ID);
+            const vaultKey = getAssociatedTokenAddressSync(tokenMintA, lpVaultTokenAKey, true, TOKEN_PROGRAM_ID);
+            const [closePositionRequestKey] = PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("close_pos"), user2.publicKey.toBuffer()],
+                program.programId,
+            )
             const setupIx = await program.methods
                 .takeProfitSetup(
                     args.minTargetAmount,
@@ -313,13 +330,12 @@ describe("takeProfitOrder", () => {
                     args.executionFee,
                     args.expiration,
                 )
-                .accounts({
+                .accountsPartial({
                     closePositionSetup: {
                         owner: user2.publicKey,
                         position: longPositionKey,
                         pool: longPoolBKey,
                         collateral: tokenMintB,
-                        // @ts-ignore
                         authority: NON_SWAP_AUTHORITY.publicKey,
                         permission: nonSwapAuthSignerPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
@@ -353,21 +369,20 @@ describe("takeProfitOrder", () => {
             try {
                 const _tx = await program.methods
                     .takeProfitCleanup()
-                    .accounts({
+                    .accountsPartial({
                         closePositionCleanup: {
                             owner: user2.publicKey,
-                            pool: longPoolBKey,
-                            collateral: tokenMintB,
-                            currency: tokenMintA,
                             position: longPositionKey,
+                            pool: longPoolBKey,
+                            currency: tokenMintA,
+                            collateral: tokenMintB,
                             authority: NON_SWAP_AUTHORITY.publicKey,
-                            //@ts-ignore
                             lpVault: lpVaultTokenAKey,
                             feeWallet: feeWalletA,
-                            globalSettings: globalSettingsKey,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
+                        takeProfitOrder: longTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -387,19 +402,15 @@ describe("takeProfitOrder", () => {
                 });
                 throw new Error("Failed to error");
             } catch (e) {
-                console.log(e);
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
                 );
                 if (err instanceof anchor.AnchorError) {
-                    console.log(err);
                     assert.equal(err.error.errorCode.number, 6000);
                 } else if (err instanceof anchor.ProgramError) {
-                    console.log(err);
                     assert.equal(err.code, 6000);
                 } else {
-                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -454,12 +465,12 @@ describe("takeProfitOrder", () => {
                 .accounts({
                     closePositionSetup: {
                         owner: user2.publicKey,
+                        position: longPositionKey,
                         pool: longPoolBKey,
                         collateral: tokenMintA,
-                        position: longPositionKey,
-                        permission: coSignerPermission,
                         // @ts-ignore
                         authority: SWAP_AUTHORITY.publicKey,
+                        permission: coSignerPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
@@ -491,18 +502,20 @@ describe("takeProfitOrder", () => {
             try {
                 const _tx = await program.methods
                     .takeProfitCleanup()
-                    .accounts({
+                    .accountsPartial({
                         closePositionCleanup: {
                             owner: user2.publicKey,
-                            pool: longPoolBKey,
                             position: longPositionKey,
+                            pool: longPoolBKey,
                             currency: tokenMintA,
                             collateral: tokenMintB,
                             authority: SWAP_AUTHORITY.publicKey,
+                            lpVault: lpVaultTokenAKey,
                             feeWallet: feeWalletA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
+                        takeProfitOrder: longTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -632,7 +645,7 @@ describe("takeProfitOrder", () => {
             );
             const _tx = await program.methods
                 .takeProfitCleanup()
-                .accounts({
+                .accountsPartial({
                     closePositionCleanup: {
                         owner: user2.publicKey,
                         pool: longPoolBKey,
@@ -644,6 +657,7 @@ describe("takeProfitOrder", () => {
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
+                    takeProfitOrder: longTakeProfitOrderKey,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
@@ -878,6 +892,8 @@ describe("takeProfitOrder", () => {
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
+                        //@ts-ignore
+                        takeProfitOrder: shortTakeProfitOrderKey,
                     })
                     .preInstructions([setupIx, swapIx])
                     .transaction();
@@ -1020,6 +1036,7 @@ describe("takeProfitOrder", () => {
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
+                    takeProfitOrder: shortTakeProfitOrderKey,
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();

@@ -620,11 +620,11 @@ describe("liquidate", () => {
         .accounts({
           closePositionCleanup: {
             owner: user2.publicKey,
-            position: shortPositionKey,
             pool: shortPoolAKey,
-            currency: tokenMintB,
             collateral: tokenMintA,
-            authority: SWAP_AUTHORITY.publicKey,
+            currency: tokenMintB,
+            position: shortPositionKey,
+            authority: NON_SWAP_AUTHORITY.publicKey,
             //@ts-ignore
             lpVault: lpVaultTokenBKey,
             feeWallet: feeWalletA,

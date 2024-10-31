@@ -31,7 +31,6 @@ impl<'info> TakeProfitCleanup<'info> {
             // uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
             // if (actualTakerAmount < _order.takerAmount) revert PriceTargetNotReached();
             require_gt!(
-                self.take_profit_order.taker_amount,
                 close_amounts
                     .payout
                     .checked_add(close_amounts.close_fee)
@@ -40,6 +39,7 @@ impl<'info> TakeProfitCleanup<'info> {
                     .expect("overflow")
                     .checked_add(close_amounts.principal_repaid)
                     .expect("overflow"),
+                self.take_profit_order.taker_amount,
                 ErrorCode::PriceTargetNotReached
             );
         } else {

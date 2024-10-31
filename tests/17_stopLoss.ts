@@ -147,7 +147,6 @@ describe("stopLoss", () => {
       // Create Long position that will have a TP order
       const fee = new anchor.BN(10);
       const now = new Date().getTime() / 1_000;
-
       const downPayment = new anchor.BN(1_000);
       // amount to be borrowed
       const principal = new anchor.BN(1_000);
@@ -393,7 +392,7 @@ describe("stopLoss", () => {
     });
 
     it("Should fail when the SL taker amount is exceeded", async () => {
-      const makerAmount = new anchor.BN(2_000_000);
+      const makerAmount = new anchor.BN(200);
       const takerAmount = new anchor.BN(100);
       const closeRequestExpiration = new anchor.BN(
         Date.now() / 1_000 + 60 * 60
@@ -415,24 +414,28 @@ describe("stopLoss", () => {
         .signers([user2])
         .rpc({ skipPreflight: true });
       const args = {
-          expiration: closeRequestExpiration,
           minTargetAmount: new anchor.BN(0),
           interest: new anchor.BN(10),
           executionFee: new anchor.BN(11),
-
+          expiration: closeRequestExpiration,
       };
       const setupIx = await program.methods
-        .stopLossSetup({
-        })
+        .stopLossSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration
+        )
         .accounts({
           closePositionSetup: {
+              owner: user2.publicKey,
+              position: longPositionKey,
             pool: longPoolBKey,
-            owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
-            position: longPositionKey,
-            permission: coSignerPermission,
+              collateral: tokenMintA,
             // @ts-ignore
             authority: SWAP_AUTHORITY.publicKey,
+              permission: coSignerPermission,
+              tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -466,15 +469,16 @@ describe("stopLoss", () => {
           .accounts({
             closePositionCleanup: {
               owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenA,
-              ownerCollateralAccount: ownerTokenB,
-              currencyVault: longPoolBCurrencyVaultKey,
               pool: longPoolBKey,
               position: longPositionKey,
-              lpVault: lpVaultTokenAKey,
+                currency: tokenMintA,
+                collateral: tokenMintB,
+                authority: SWAP_AUTHORITY.publicKey,
               feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
+                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                collateralTokenProgram: TOKEN_PROGRAM_ID,
             },
+              //@ts-ignore
             stopLossOrder: longStopLossOrderKey,
           })
           .preInstructions([setupIx, swapIx])
@@ -512,6 +516,7 @@ describe("stopLoss", () => {
       await program.methods
         .closeStopLossOrder()
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: longPositionKey,
         })
@@ -538,7 +543,7 @@ describe("stopLoss", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]);
+        ], TOKEN_PROGRAM_ID);
 
       await program.methods
         .initStopLossOrder({
@@ -546,27 +551,36 @@ describe("stopLoss", () => {
           takerAmount,
         })
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: longPositionKey,
         })
         .signers([user2])
         .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .stopLossSetup({
-          expiration: closeRequestExpiration,
+
+      const args = {
           minTargetAmount: new anchor.BN(0),
           interest: new anchor.BN(10),
           executionFee: new anchor.BN(11),
-        })
+          expiration: closeRequestExpiration,
+      };
+      const setupIx = await program.methods
+        .stopLossSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration
+        )
         .accounts({
           closePositionSetup: {
+              owner: user2.publicKey,
             pool: longPoolBKey,
-            owner: user2.publicKey,
-            currencyVault: longPoolBCurrencyVaultKey,
             position: longPositionKey,
+              collateral: tokenMintB,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
             permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+              tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -598,16 +612,17 @@ describe("stopLoss", () => {
         .stopLossCleanup()
         .accounts({
           closePositionCleanup: {
-            owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenA,
-            ownerCollateralAccount: ownerTokenB,
-            currencyVault: longPoolBCurrencyVaultKey,
-            pool: longPoolBKey,
-            position: longPositionKey,
-            lpVault: lpVaultTokenAKey,
-            feeWallet: feeWalletA,
-            globalSettings: globalSettingsKey,
+              owner: user2.publicKey,
+              pool: longPoolBKey,
+              position: longPositionKey,
+              collateral: tokenMintB,
+              currency: tokenMintA,
+              authority: SWAP_AUTHORITY.publicKey,
+              feeWallet: feeWalletA,
+              currencyTokenProgram: TOKEN_PROGRAM_ID,
+              collateralTokenProgram: TOKEN_PROGRAM_ID,
           },
+            //@ts-ignore
           stopLossOrder: longStopLossOrderKey,
         })
         .preInstructions([setupIx, swapIx])
@@ -638,7 +653,7 @@ describe("stopLoss", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
       // Position should be cleaned up
       assert.isNull(positionAfter);
@@ -669,26 +684,35 @@ describe("stopLoss", () => {
       const principal = new anchor.BN(1_000);
       const swapAmount = principal;
       const minTargetAmount = new anchor.BN(1);
-      const setupIx = await program.methods
-        .openShortPositionSetup({
+      const args = {
           nonce,
           minTargetAmount,
           downPayment,
           principal,
-          currency: tokenMintA,
-          expiration: new anchor.BN(now + 3_600),
           fee,
-        })
+          expiration: new anchor.BN(now + 3_600),
+      };
+      const setupIx = await program.methods
+        .openShortPositionSetup(
+            args.nonce,
+            args.minTargetAmount,
+            args.downPayment,
+            args.principal,
+            args.fee,
+            args.expiration,
+        )
         .accounts({
-          owner: user2.publicKey,
-          ownerCurrencyAccount: ownerTokenB,
-          ownerTargetCurrencyAccount: ownerTokenA,
-          lpVault: lpVaultTokenBKey,
-          shortPool: shortPoolAKey,
-          permission: coSignerPermission,
-          authority: SWAP_AUTHORITY.publicKey,
-          feeWallet: feeWalletA,
-          globalSettings: globalSettingsKey,
+            owner: user2.publicKey,
+            shortPool: shortPoolAKey,
+            collateral: tokenMintA,
+            currency: tokenMintB,
+            lpVault: lpVaultTokenBKey,
+            //@ts-ignore
+            authority: SWAP_AUTHORITY.publicKey,
+            permission: coSignerPermission,
+            feeWallet: feeWalletA,
+            currencyTokenProgram: TOKEN_PROGRAM_ID,
+            collateralTokenProgram: TOKEN_PROGRAM_ID
         })
         .instruction();
       const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -718,10 +742,14 @@ describe("stopLoss", () => {
       const _tx = await program.methods
         .openShortPositionCleanup()
         .accounts({
-          owner: user2.publicKey,
-          shortPool: shortPoolAKey,
-          position: shortPositionKey,
-          lpVault: lpVaultTokenBKey,
+            owner: user2.publicKey,
+            position: shortPositionKey,
+            shortPool: shortPoolAKey,
+            //@ts-ignore
+            lpVault: lpVaultTokenBKey,
+            currency: tokenMintB,
+            collateral: tokenMintA,
+            tokenProgram: TOKEN_PROGRAM_ID,
         })
         .preInstructions([setupIx, swapIx])
         .transaction();
@@ -759,27 +787,35 @@ describe("stopLoss", () => {
           takerAmount,
         })
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: shortPositionKey,
         })
         .signers([user2])
         .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .stopLossSetup({
-          expiration: closeRequestExpiration,
+      const args = {
           minTargetAmount: new anchor.BN(0),
-          interest: new anchor.BN(10),
+          interest: new anchor.BN(1),
           executionFee: new anchor.BN(11),
-        })
+          expiration: closeRequestExpiration,
+      };
+      const setupIx = await program.methods
+        .stopLossSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration,
+        )
         .accounts({
           closePositionSetup: {
-            pool: shortPoolAKey,
-            owner: user2.publicKey,
-            currencyVault: shortPoolACurrencyVaultKey,
-            position: shortPositionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+              owner: user2.publicKey,
+              pool: shortPoolAKey,
+              position: shortPositionKey,
+              collateral: tokenMintA,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+              permission: coSignerPermission,
+              tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -812,16 +848,17 @@ describe("stopLoss", () => {
           .stopLossCleanup()
           .accounts({
             closePositionCleanup: {
-              owner: user2.publicKey,
-              ownerCurrencyAccount: ownerTokenB,
-              ownerCollateralAccount: ownerTokenA,
-              currencyVault: shortPoolACurrencyVaultKey,
-              pool: shortPoolAKey,
-              position: shortPositionKey,
-              lpVault: lpVaultTokenBKey,
-              feeWallet: feeWalletA,
-              globalSettings: globalSettingsKey,
+                owner: user2.publicKey,
+                pool: shortPoolAKey,
+                position: shortPositionKey,
+                currency: tokenMintB,
+                collateral: tokenMintA,
+                authority: SWAP_AUTHORITY.publicKey,
+                feeWallet: feeWalletA,
+                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                collateralTokenProgram: TOKEN_PROGRAM_ID,
             },
+              //@ts-ignore
             stopLossOrder: shortStopLossOrderKey,
           })
           .preInstructions([setupIx, swapIx])
@@ -859,6 +896,7 @@ describe("stopLoss", () => {
       await program.methods
         .closeStopLossOrder()
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: shortPositionKey,
         })
@@ -886,7 +924,7 @@ describe("stopLoss", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]);
+        ], TOKEN_PROGRAM_ID);
 
       await program.methods
         .initStopLossOrder({
@@ -894,27 +932,35 @@ describe("stopLoss", () => {
           takerAmount,
         })
         .accounts({
+            //@ts-ignore
           trader: user2.publicKey,
           position: shortPositionKey,
         })
         .signers([user2])
         .rpc({ skipPreflight: true });
-      const setupIx = await program.methods
-        .stopLossSetup({
-          expiration: closeRequestExpiration,
+      const args = {
           minTargetAmount: new anchor.BN(0),
           interest: new anchor.BN(10),
           executionFee: new anchor.BN(11),
-        })
+          expiration: closeRequestExpiration,
+      };
+      const setupIx = await program.methods
+        .stopLossSetup(
+            args.minTargetAmount,
+            args.interest,
+            args.executionFee,
+            args.expiration,
+        )
         .accounts({
           closePositionSetup: {
-            pool: shortPoolAKey,
-            owner: user2.publicKey,
-            currencyVault: shortPoolACurrencyVaultKey,
-            position: shortPositionKey,
-            permission: coSignerPermission,
-            // @ts-ignore
-            authority: SWAP_AUTHORITY.publicKey,
+              owner: user2.publicKey,
+              pool: shortPoolAKey,
+              position: shortPositionKey,
+              collateral: tokenMintA,
+              // @ts-ignore
+              authority: SWAP_AUTHORITY.publicKey,
+              permission: coSignerPermission,
+              tokenProgram: TOKEN_PROGRAM_ID,
           },
         })
         .instruction();
@@ -946,16 +992,17 @@ describe("stopLoss", () => {
         .stopLossCleanup()
         .accounts({
           closePositionCleanup: {
-            owner: user2.publicKey,
-            ownerCurrencyAccount: ownerTokenB,
-            ownerCollateralAccount: ownerTokenA,
-            currencyVault: shortPoolACurrencyVaultKey,
-            pool: shortPoolAKey,
-            position: shortPositionKey,
-            lpVault: lpVaultTokenBKey,
-            feeWallet: feeWalletA,
-            globalSettings: globalSettingsKey,
+              owner: user2.publicKey,
+              pool: shortPoolAKey,
+              position: shortPositionKey,
+              collateral: tokenMintA,
+              currency: tokenMintB,
+              authority: SWAP_AUTHORITY.publicKey,
+              feeWallet: feeWalletA,
+              currencyTokenProgram: TOKEN_PROGRAM_ID,
+              collateralTokenProgram: TOKEN_PROGRAM_ID,
           },
+            //@ts-ignore
           stopLossOrder: shortStopLossOrderKey,
         })
         .preInstructions([setupIx, swapIx])
@@ -986,7 +1033,7 @@ describe("stopLoss", () => {
           vaultKey,
           ownerTokenA,
           feeWalletA,
-        ]),
+        ], TOKEN_PROGRAM_ID),
       ]);
 
       // Position should be cleaned up

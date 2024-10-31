@@ -8,7 +8,6 @@ import {
 } from "@solana/spl-token";
 import fs from 'fs';
 import dotenv from 'dotenv';
-import { PublicKey } from "@solana/web3.js";
 
 // @ts-ignore
 const { BN } = anchor.default;

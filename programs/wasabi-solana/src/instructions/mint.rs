@@ -37,8 +37,8 @@ impl MintTrait for DepositOrWithdraw<'_> {
 
         emit!(Deposit {
             vault: self.shares_mint.key(),
-            sender: self.owner_asset_account.key(),
-            owner: self.owner_asset_account.owner.key(),
+            sender: self.owner.key(),
+            owner: self.owner.key(),
             assets: tokens_in,
             shares: args.shares_amount,
         });

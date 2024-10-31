@@ -437,13 +437,13 @@ describe("CloseShortPosition", () => {
           .accounts({
             owner: program.provider.publicKey,
             closePositionSetup: {
-              pool: shortPoolAKey,
               owner: program.provider.publicKey,
-              collateral: tokenMintA,
               position: positionKey,
-              permission: coSignerPermission,
+              pool: shortPoolAKey,
+              collateral: tokenMintA,
               //@ts-ignore
               authority: SWAP_AUTHORITY.publicKey,
+              permission: coSignerPermission,
               tokenProgram: TOKEN_PROGRAM_ID,
             }
           })
