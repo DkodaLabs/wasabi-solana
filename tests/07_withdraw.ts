@@ -56,6 +56,7 @@ describe("Withdraw", () => {
         // more shares rather than less.
         const expectedSharesBurned = tokenAmount
             .mul(new anchor.BN(sharesMintBefore.supply.toString()))
+            .add(lpVaultBefore.totalAssets.sub(new anchor.BN(1)))
             .div(lpVaultBefore.totalAssets);
 
         await program.methods

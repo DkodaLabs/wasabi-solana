@@ -6,22 +6,33 @@ pub trait WithdrawTrait {
 
 impl WithdrawTrait for DepositOrWithdraw<'_> {
     fn withdraw(&mut self, amount: u64) -> Result<()> {
-        self.transfer_token_from_vault_to_owner(amount)?;
-        let total_assets = self.lp_vault.total_assets;
+        let amount_u128 = amount as u128;
+        let total_assets_u128 = self.lp_vault.total_assets as u128;
+        let shares_supply_u128 = self.shares_mint.supply as u128;
 
-        let shares_burn_amount = amount
-            .checked_mul(self.shares_mint.supply)
-            .expect("overflow")
-            .checked_div(total_assets)
-            .expect("overflow");
+        let shares_burn_amount = amount_u128
+            .checked_mul(shares_supply_u128)
+            .expect("amount * shares supply overflow")
+            .checked_add(
+                total_assets_u128
+                    .checked_sub(1)
+                    .expect("total assets underflow"),
+            )
+            .expect("numerator addition overflow")
+            .checked_div(total_assets_u128)
+            .expect("division by zero");
 
-        self.burn_shares_from_user(shares_burn_amount)?;
+        let shares_burn_u64 =
+            u64::try_from(shares_burn_amount).expect("shares burn amount exceeds u64");
+
+        self.burn_shares_from_user(shares_burn_u64)?;
 
         self.lp_vault.total_assets = self
             .lp_vault
             .total_assets
             .checked_sub(amount)
-            .expect("underflow");
+            .expect("total assets underflow");
+        self.transfer_token_from_vault_to_owner(amount)?;
 
         emit!(Withdraw {
             vault: self.lp_vault.shares_mint,
@@ -29,7 +40,7 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
             owner: self.owner_asset_account.owner.key(),
             receiver: self.owner_asset_account.key(),
             assets: amount,
-            shares: shares_burn_amount,
+            shares: shares_burn_u64,
         });
 
         Ok(())
