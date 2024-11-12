@@ -6,7 +6,7 @@ import fs from 'fs';
 const key = fs.readFileSync(process.env.DEVNET_KEYPAIR_FILE);
 const jsonKey = Buffer.from(JSON.parse(key.toString()));
 export const owner: Keypair = Keypair.fromSecretKey(jsonKey);
-export const connection = new Connection('https://devnet.helius-rpc.com/?api-key=ec9d36a7-f864-477f-b644-d28cffa65b9b');
+export const connection = new Connection('https://api.devnet.solana.com');
 // MUST BE SET TO LEGACY FOR DEVNET
 export const txVersion = TxVersion.LEGACY // or TxVersion.LEGACY
 const cluster = 'devnet' // 'mainnet' | 'devnet'
