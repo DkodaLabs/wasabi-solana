@@ -18,7 +18,7 @@ pub struct OpenLongPositionCleanup<'info> {
         has_one = currency_vault,
     )]
     /// The LongPool that owns the Position
-    pub long_pool: Account<'info, BasePool>,
+    pub pool: Account<'info, BasePool>,
     /// The collateral account that is the destination of the swap
     pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
     // The token account that is the source of the swap (where principal and downpayment are sent)
@@ -60,7 +60,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
         require_keys_eq!(
-            self.long_pool.key(),
+            self.pool.key(),
             self.open_position_request.pool_key,
             ErrorCode::InvalidPool
         );
@@ -101,13 +101,13 @@ impl<'info> OpenLongPositionCleanup<'info> {
     fn revoke_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
             source: self.currency_vault.to_account_info(),
-            authority: self.long_pool.to_account_info(),
+            authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
             program: self.token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
-            signer_seeds: &[long_pool_signer_seeds!(self.long_pool)],
+            signer_seeds: &[long_pool_signer_seeds!(self.pool)],
         };
         token_interface::revoke(cpi_ctx)
     }

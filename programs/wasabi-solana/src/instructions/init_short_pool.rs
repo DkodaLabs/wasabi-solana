@@ -11,7 +11,7 @@ use {
 pub struct InitShortPool<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// The key that has permission to init the short_pool
+    /// The key that has permission to init the pool
     pub authority: Signer<'info>,
 
     #[account(
@@ -29,13 +29,13 @@ pub struct InitShortPool<'info> {
       bump,
       space = 8 + std::mem::size_of::<BasePool>(),
     )]
-    pub short_pool: Account<'info, BasePool>,
+    pub pool: Account<'info, BasePool>,
 
     #[account(
         init,
         payer = payer,
         associated_token::mint = collateral,
-        associated_token::authority = short_pool,
+        associated_token::authority = pool,
         associated_token::token_program = collateral_token_program,
     )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -44,7 +44,7 @@ pub struct InitShortPool<'info> {
         init,
         payer = payer,
         associated_token::mint = currency,
-        associated_token::authority = short_pool,
+        associated_token::authority = pool,
         associated_token::token_program = currency_token_program,
     )]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -65,13 +65,13 @@ impl<'info> InitShortPool<'info> {
     }
 
     pub fn init_short_pool(&mut self, bumps: &InitShortPoolBumps) -> Result<()> {
-        self.short_pool.set_inner(BasePool {
+        self.pool.set_inner(BasePool {
             is_long_pool: false,
             collateral: self.collateral.key(),
             collateral_vault: self.collateral_vault.key(),
             currency: self.currency.key(),
             currency_vault: self.currency_vault.key(),
-            bump: bumps.short_pool,
+            bump: bumps.pool,
         });
 
         Ok(())

@@ -30,9 +30,10 @@ pub struct InitGlobalSettings<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitGlobalSettingsArgs {
-    super_admin: Pubkey,
-    fee_wallet: Pubkey,
-    statuses: u16,
+    pub super_admin: Pubkey,
+    // NOTE: This may not be consistent
+    pub fee_wallet: Pubkey,
+    pub statuses: u16,
 }
 
 impl<'info> InitGlobalSettings<'info> {

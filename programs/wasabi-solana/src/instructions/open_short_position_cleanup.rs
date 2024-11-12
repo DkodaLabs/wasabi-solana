@@ -29,7 +29,7 @@ pub struct OpenShortPositionCleanup<'info> {
         has_one = collateral_vault,
         has_one = currency_vault,
     )]
-    pub short_pool: Account<'info, BasePool>,
+    pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the destination of the swap
     #[account(mut)]
@@ -99,7 +99,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
         );
         // Validate the same pool, and thus collateral_vault was used in setup and cleanup.
         require_keys_eq!(
-            self.short_pool.key(),
+            self.pool.key(),
             self.open_position_request.pool_key,
             ErrorCode::InvalidPool
         );
@@ -117,13 +117,13 @@ impl<'info> OpenShortPositionCleanup<'info> {
     fn revoke_owner_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
             source: self.currency_vault.to_account_info(),
-            authority: self.short_pool.to_account_info(),
+            authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
             program: self.token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
-            signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
+            signer_seeds: &[short_pool_signer_seeds!(self.pool)],
         };
         token_interface::revoke(cpi_ctx)
     }
@@ -133,13 +133,13 @@ impl<'info> OpenShortPositionCleanup<'info> {
             from: self.currency_vault.to_account_info(),
             mint: self.currency.to_account_info(),
             to: self.vault.to_account_info(),
-            authority: self.short_pool.to_account_info(),
+            authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
             program: self.token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
-            signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
+            signer_seeds: &[short_pool_signer_seeds!(self.pool)],
         };
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }

@@ -49,7 +49,7 @@ pub struct OpenShortPositionSetup<'info> {
         has_one = currency_vault,
     )]
     /// The ShortPool that owns the Position
-    pub short_pool: Account<'info, BasePool>,
+    pub pool: Account<'info, BasePool>,
     #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -76,7 +76,7 @@ pub struct OpenShortPositionSetup<'info> {
         seeds = [
             b"position", 
             owner.key().as_ref(), 
-            short_pool.key().as_ref(), 
+            pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
             &nonce.to_le_bytes()
         ],
@@ -165,13 +165,13 @@ impl<'info> OpenShortPositionSetup<'info> {
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
-            authority: self.short_pool.to_account_info(),
+            authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
             program: self.currency_token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
-            signer_seeds: &[short_pool_signer_seeds!(self.short_pool)],
+            signer_seeds: &[short_pool_signer_seeds!(self.pool)],
         };
         token_interface::approve(cpi_ctx, amount)
     }
@@ -212,7 +212,7 @@ impl<'info> OpenShortPositionSetup<'info> {
 
         self.open_position_request.set_inner(OpenPositionRequest {
             position: self.position.key(),
-            pool_key: self.short_pool.key(),
+            pool_key: self.pool.key(),
             min_target_amount,
             max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
             // collateral_amount - set to the `args.principal`

@@ -43,7 +43,7 @@ pub struct OpenLongPositionSetup<'info> {
         has_one = collateral_vault,
         has_one = currency_vault,
     )]
-    pub long_pool: Account<'info, BasePool>,
+    pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the destination of the swap
     #[account(mut)]
@@ -71,7 +71,7 @@ pub struct OpenLongPositionSetup<'info> {
         seeds = [
             b"position", 
             owner.key().as_ref(), 
-            long_pool.key().as_ref(), 
+            pool.key().as_ref(), 
             lp_vault.key().as_ref(), 
             &nonce.to_le_bytes() // Ensures user can have multiple positions for this
             // particular pool
@@ -173,13 +173,13 @@ impl<'info> OpenLongPositionSetup<'info> {
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
-            authority: self.long_pool.to_account_info(),
+            authority: self.pool.to_account_info(),
         };
         let cpi_ctx = CpiContext {
             program: self.token_program.to_account_info(),
             accounts: cpi_accounts,
             remaining_accounts: Vec::new(),
-            signer_seeds: &[long_pool_signer_seeds!(self.long_pool)],
+            signer_seeds: &[long_pool_signer_seeds!(self.pool)],
         };
         token_interface::approve(cpi_ctx, amount)
     }
@@ -220,7 +220,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             max_amount_in: down_payment
                 .checked_add(principal)
                 .expect("overflow"),
-            pool_key: self.long_pool.key(),
+            pool_key: self.pool.key(),
             position: self.position.key(),
             swap_cache: SwapCache {
                 source_bal_before: self.currency_vault.amount,

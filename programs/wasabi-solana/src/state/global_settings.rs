@@ -10,6 +10,8 @@ pub struct GlobalSettings {
     pub protocol_fee_wallet: Pubkey,
 }
 
+// It seems odd that these statuses exist and these methods exist but there isn't
+// any checks that utilise them or can edit them
 impl GlobalSettings {
     /// Returns true if the platform has trading enabled
     pub fn can_trade(&self) -> bool {

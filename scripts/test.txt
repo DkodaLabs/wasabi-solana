@@ -15,3 +15,32 @@ D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF
 3ZisF3cx5Zav6aw6mpubYSQrk5LGahxQwNeW1e6GCdiX
 Vault initialized successfully!
 
+ marketId: "4dCdw8Am7FW5JsKyS3iBex7v2cMYiPodxZyJ2CFVq5fn",
+  requestQueue: "HQWh85Gpg5w6siriKNviC3BsECbam1NkHZU3uFJUVVHw",
+  eventQueue: "DQEFJBEdCRNjcmCQGdznb1Vd8VHaa8JRKyjYeksVk3kL",
+  bids: "CC9661goaJ4xe55FPSSaLEFV9QLjwz9kyKcSDUv7WeLC",
+  asks: "BuWYLwERq3Lf7Ndes8pjKNHdwPfPzC39h9j1KZgRdcf2",
+  baseVault: "2N8F8zWGYPqtFd3UbScjfdj8FYYdnNouieFAmawXmL3t",
+  quoteVault: "AHQ1PfrJc1z1zkS1hYNgqmv5jR3ihLmhNvpmHc4dbLYz",
+  baseMint: "D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF",
+  quoteMin: "8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X",
+
+amm pool created! txId:  57QXHTyA3aRozZ8Fc789YwMQvoyeVAjuRgCy3HKzsBZeCLxakLLxH4JqwqdaydvYASCYUDg4hb4Ucy5ozP76k4pq , poolKeys: {
+  programId: "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8",
+  ammId: "i76e7ZM784vUMoHQDGnE39Z44Z6pdiTEGYUWfCX85Ay",
+  ammAuthority: "DbQqP6ehDYmeYjcBaMRuA8tAJY1EjDUz9DpwSLjaQqfC",
+  ammOpenOrders: "FYE2u9bWzKX6n4d4tGc9StcP3ppqbCgWuvn7YdL685fV",
+  lpMint: "FscqDNtgwvXXFGsG4sPdXwP688zSDYhbSMAhykq7Q5sV",
+  coinMint: "D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF",
+  pcMint: "8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X",
+  coinVault: "8nuayDvoWsMrbMCNLk7kPodpfXbqUZ4FKJCfJSnWk7ob",
+  pcVault: "8iYnnYCTL86Pe3Vu2Kn28ucw4BVWVv6oYD7CpsTm81Uw",
+  withdrawQueue: "9DiocNzEupKVyQZixqspwaGi7TVTjx6UTvhb36A4vjn2",
+  ammTargetOrders: "CWmX6Ktt1u6Yoteo3JU7ABS3cNW49jdC7gWG1A8f7RJp",
+  poolTempLp: "CrLirBmTCyxLpgQJtNBpwcKGsyXSrwCsoUPxMHd9V6C4",
+  marketProgramId: "EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj",
+  marketId: "4dCdw8Am7FW5JsKyS3iBex7v2cMYiPodxZyJ2CFVq5fn",
+  ammConfigId: "8QN9yfKqWDoKjvZmqFsgCzAqwZBQuzVVnC388dN5RCPo",
+  feeDestinationId: "3XMrhbv989VxAMi3DErLV9eJht1pHppW5LbKxe9fkEFR",
+}
+
