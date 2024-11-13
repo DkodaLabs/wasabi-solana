@@ -117,9 +117,8 @@ impl<'info> OpenLongPositionCleanup<'info> {
         self.revoke_delegation()?;
         self.position.collateral_amount = self.get_destination_delta();
 
-        emit!(PositionOpened::new(&self.position));
+        emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
 
         Ok(())
     }
 }
-

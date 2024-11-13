@@ -341,10 +341,12 @@ impl<'info> ClosePositionCleanup<'info> {
         } else {
             close_amounts.principal_repaid = currency_diff;
 
-            let (remaining_after_interest, interest_paid) = crate::utils::deduct(currency_diff, interest);
+            let (remaining_after_interest, interest_paid) =
+                crate::utils::deduct(currency_diff, interest);
             close_amounts.interest_paid = interest_paid;
 
-            let (_payout, principal_repaid) = crate::utils::deduct(remaining_after_interest, self.position.principal);
+            let (_payout, principal_repaid) =
+                crate::utils::deduct(remaining_after_interest, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
 
             // Deduct interest
@@ -386,9 +388,17 @@ impl<'info> ClosePositionCleanup<'info> {
 
         // Emit close event
         if is_liquidation {
-            emit!(PositionLiquidated::new(&self.position, &close_amounts))
+            emit!(PositionLiquidated::new(
+                &self.position,
+                &close_amounts,
+                self.pool.is_long_pool
+            ))
         } else {
-            emit!(PositionClosed::new(&self.position, &close_amounts))
+            emit!(PositionClosed::new(
+                &self.position,
+                &close_amounts,
+                self.pool.is_long_pool
+            ))
         }
 
         Ok(close_amounts)

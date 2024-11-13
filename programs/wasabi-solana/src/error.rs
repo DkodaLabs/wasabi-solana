@@ -37,9 +37,13 @@ pub enum ErrorCode {
     #[msg("Value deviated too much")]
     ValueDeviatedTooMuch, // 6016
     #[msg("Price target not reached")]
-    PriceTargetNotReached,  // 6017
+    PriceTargetNotReached, // 6017
     #[msg("Max borrow exceeded")]
     MaxBorrowExceeded, // 6018
     #[msg("Max repay exceeded")]
     MaxRepayExceeded, // 6019
+    #[msg("Trading disabled")]
+    TradingDisabled, // 6020
+    #[msg("LPing disabled")]
+    LPingDisabled, // 6021
 }

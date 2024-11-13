@@ -113,6 +113,7 @@ pub struct OpenShortPositionSetup<'info> {
 impl<'info> OpenShortPositionSetup<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
+        require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
         position_setup_transaction_introspecation_validation(

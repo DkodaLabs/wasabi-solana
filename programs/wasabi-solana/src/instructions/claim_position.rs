@@ -48,7 +48,7 @@ pub struct ClaimPosition<'info> {
     pub collateral: InterfaceAccount<'info, Mint>,
     pub currency: InterfaceAccount<'info, Mint>,
 
-   #[account(
+    #[account(
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
@@ -218,8 +218,13 @@ impl<'info> ClaimPosition<'info> {
             close_amounts
         };
 
-        emit!(PositionClaimed::new(&self.position, &close_amounts));
+        emit!(PositionClaimed::new(
+            &self.position,
+            &close_amounts,
+            self.pool.is_long_pool
+        ));
 
         Ok(())
     }
 }
+

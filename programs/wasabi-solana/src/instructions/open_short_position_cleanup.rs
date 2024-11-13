@@ -179,7 +179,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
             .checked_add(self.position.down_payment)
             .expect("overflow");
 
-        emit!(PositionOpened::new(&self.position));
+        emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
 
         Ok(())
     }

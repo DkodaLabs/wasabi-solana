@@ -1,5 +1,7 @@
 use {
-    crate::{events::Deposit, lp_vault_signer_seeds, LpVault},
+    crate::{
+        error::ErrorCode, events::Deposit, lp_vault_signer_seeds, state::GlobalSettings, LpVault,
+    },
     anchor_lang::prelude::*,
     anchor_spl::{
         token_2022::Token2022,
@@ -48,12 +50,23 @@ pub struct DepositOrWithdraw<'info> {
     #[account(mut)]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    #[account(
+        seeds = [b"global_settings"],
+        bump,
+    )]
+    pub global_settings: Account<'info, GlobalSettings>,
+
     pub asset_token_program: Interface<'info, TokenInterface>,
     pub shares_token_program: Program<'info, Token2022>,
 }
 
-
 impl<'info> DepositOrWithdraw<'info> {
+    pub fn validate(ctx: &Context<DepositOrWithdraw>) -> Result<()> {
+        require!(ctx.accounts.global_settings.can_lp(), ErrorCode::UnpermittedIx);
+
+        Ok(())
+    }
+
     pub(crate) fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_asset_account.to_account_info(),

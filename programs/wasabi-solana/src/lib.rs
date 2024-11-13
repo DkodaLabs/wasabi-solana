@@ -33,6 +33,21 @@ pub mod wasabi_solana {
         ctx.accounts.init_debt_controller(max_apy, max_leverage)
     }
 
+    #[access_control(SetSuperAdmin::validate(&ctx))]
+    pub fn set_super_admin(ctx: Context<SetSuperAdmin>, new_super_admin: Pubkey) -> Result<()> {
+        ctx.accounts.set_super_admin(new_super_admin)
+    }
+
+    #[access_control(TradingState::validate(&ctx))]
+    pub fn set_trading_state(ctx: Context<TradingState>, allow_trading: bool) -> Result<()> {
+        ctx.accounts.set_trading_state(allow_trading)
+    }
+
+    #[access_control(LpState::validate(&ctx))]
+    pub fn set_lp_state(ctx: Context<LpState>, allow_lp: bool) -> Result<()> {
+        ctx.accounts.set_lp_state(allow_lp)
+    }
+
     pub fn set_max_apy(ctx: Context<SetMaxApy>, max_apy: u64) -> Result<()> {
         ctx.accounts.set_max_apy(max_apy)
     }
@@ -107,6 +122,7 @@ pub mod wasabi_solana {
         ctx.accounts.close_stop_loss_order()
     }
 
+    #[access_control(DepositOrWithdraw::validate(&ctx))]
     pub fn deposit(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
         ctx.accounts.deposit(amount)
     }
@@ -123,6 +139,7 @@ pub mod wasabi_solana {
         ctx.accounts.redeem(shares_amount)
     }
 
+    #[access_control(Donate::validate(&ctx))]
     pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
         ctx.accounts.donate(amount)
     }

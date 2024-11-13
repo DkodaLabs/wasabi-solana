@@ -1,5 +1,5 @@
 use {
-    crate::{events::NativeYieldClaimed, LpVault},
+    crate::{events::NativeYieldClaimed, LpVault, error::ErrorCode, state::GlobalSettings},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
@@ -30,10 +30,21 @@ pub struct Donate<'info> {
 
     pub currency: InterfaceAccount<'info, Mint>,
 
+    #[account(
+        seeds = [b"global_settings"],
+        bump,
+    )]
+    pub global_settings: Account<'info, GlobalSettings>,
     pub token_program: Interface<'info, TokenInterface>,
 }
 
 impl<'info> Donate<'info> {
+    pub fn validate(ctx: &Context<Donate>) -> Result<()> {
+        require!(ctx.accounts.global_settings.can_lp(), ErrorCode::UnpermittedIx);
+
+        Ok(())
+    }
+
     fn transfer_token_from_owner_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_asset_account.to_account_info(),
