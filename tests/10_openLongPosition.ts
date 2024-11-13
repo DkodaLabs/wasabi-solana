@@ -246,7 +246,7 @@ describe("OpenLongPosition", () => {
                 ).accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
-                    longPool: longPoolBKey,
+                    long: longPoolBKey,
                     collateral: tokenMintB,
                     currency: tokenMintA,
                     authority: SWAP_AUTHORITY.publicKey,

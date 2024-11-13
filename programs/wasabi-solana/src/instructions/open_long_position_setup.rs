@@ -47,14 +47,14 @@ pub struct OpenLongPositionSetup<'info> {
 
     /// The collateral account that is the destination of the swap
     #[account(mut)]
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // The token account that is the source of the swap (where principal and downpayment are sent)
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: InterfaceAccount<'info, Mint>,
-    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,

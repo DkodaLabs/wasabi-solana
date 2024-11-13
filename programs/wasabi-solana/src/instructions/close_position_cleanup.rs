@@ -46,7 +46,7 @@ pub struct ClosePositionCleanup<'info> {
     pub pool: Account<'info, BasePool>,
 
     /// The collateral account that is the source of the swap
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The token account that is the destination of the swap
     #[account(mut)]

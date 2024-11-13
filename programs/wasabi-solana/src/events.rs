@@ -50,7 +50,7 @@ impl NewVault {
 
 #[event]
 pub struct PositionOpened {
-    pub position: Pubkey,
+    pub position_id: Pubkey,
     pub trader: Pubkey,
     pub currency: Pubkey,
     pub collateral_currency: Pubkey,
@@ -63,7 +63,7 @@ pub struct PositionOpened {
 impl PositionOpened {
     pub fn new(position: &Account<'_, Position>) -> Self {
         Self {
-            position: position.key(),
+            position_id: position.key(),
             trader: position.trader,
             currency: position.currency,
             collateral_currency: position.collateral,
@@ -77,7 +77,7 @@ impl PositionOpened {
 
 #[event]
 pub struct PositionClosed {
-    pub position: Pubkey,
+    pub position_id: Pubkey,
     pub trader: Pubkey,
     pub payout: u64,
     pub principal_repaid: u64,
@@ -87,7 +87,7 @@ pub struct PositionClosed {
 impl PositionClosed {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
         Self {
-            position: position.key(),
+            position_id: position.key(),
             trader: position.trader,
             payout: close_amounts.payout,
             principal_repaid: close_amounts.principal_repaid,
@@ -99,7 +99,7 @@ impl PositionClosed {
 
 #[event]
 pub struct PositionClosedWithOrder {
-    pub position: Pubkey,
+    pub position_id: Pubkey,
     pub trader: Pubkey,
     pub order_type: u8,
     pub payout: u64,
@@ -110,7 +110,7 @@ pub struct PositionClosedWithOrder {
 
 #[event]
 pub struct PositionLiquidated {
-    pub position: Pubkey,
+    pub position_id: Pubkey,
     pub trader: Pubkey,
     pub payout: u64,
     pub principal_repaid: u64,
@@ -120,7 +120,7 @@ pub struct PositionLiquidated {
 impl PositionLiquidated {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
         Self {
-            position: position.key(),
+            position_id: position.key(),
             trader: position.trader,
             payout: close_amounts.payout,
             principal_repaid: close_amounts.principal_repaid,
@@ -132,7 +132,7 @@ impl PositionLiquidated {
 
 #[event]
 pub struct PositionClaimed {
-    pub position: Pubkey,
+    pub position_id: Pubkey,
     pub trader: Pubkey,
     pub amount_claimed: u64,
     pub principal_repaid: u64,
@@ -143,7 +143,7 @@ pub struct PositionClaimed {
 impl PositionClaimed {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts) -> Self {
         Self {
-            position: position.key(),
+            position_id: position.key(),
             trader: position.trader,
             amount_claimed: close_amounts.payout,
             principal_repaid: close_amounts.principal_repaid,
