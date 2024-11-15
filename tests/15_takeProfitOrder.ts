@@ -158,7 +158,7 @@ describe("takeProfitOrder", () => {
                 .accounts({
                     owner: user2.publicKey,
                     lpVault: lpVaultTokenAKey,
-                    longPool: longPoolBKey,
+                    pool: longPoolBKey,
                     collateral: tokenMintB,
                     currency: tokenMintA,
                     permission: coSignerPermission,
@@ -197,7 +197,7 @@ describe("takeProfitOrder", () => {
                 .openLongPositionCleanup()
                 .accounts({
                     owner: user2.publicKey,
-                    longPool: longPoolBKey,
+                    pool: longPoolBKey,
                     position: longPositionKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
@@ -714,7 +714,7 @@ describe("takeProfitOrder", () => {
                 .accounts({
                     owner: user2.publicKey,
                     lpVault: lpVaultTokenBKey,
-                    shortPool: shortPoolAKey,
+                    pool: shortPoolAKey,
                     currency: tokenMintB,
                     collateral: tokenMintA,
                     permission: coSignerPermission,
@@ -753,7 +753,7 @@ describe("takeProfitOrder", () => {
                 .openShortPositionCleanup()
                 .accounts({
                     owner: user2.publicKey,
-                    shortPool: shortPoolAKey,
+                    pool: shortPoolAKey,
                     position: shortPositionKey,
                     //@ts-ignore
                     lpVault: lpVaultTokenBKey,

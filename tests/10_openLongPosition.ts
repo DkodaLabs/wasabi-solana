@@ -125,7 +125,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -139,7 +139,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -184,7 +184,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -246,7 +246,7 @@ describe("OpenLongPosition", () => {
                 ).accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
-                    long: longPoolBKey,
+                    pool: longPoolBKey,
                     collateral: tokenMintB,
                     currency: tokenMintA,
                     authority: SWAP_AUTHORITY.publicKey,
@@ -284,7 +284,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -390,7 +390,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -403,7 +403,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -469,7 +469,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -507,7 +507,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -587,7 +587,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -625,7 +625,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: shortPoolBKey,
+                        pool: shortPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -701,7 +701,7 @@ describe("OpenLongPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -739,7 +739,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: badPositionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -810,7 +810,7 @@ describe("OpenLongPosition", () => {
                 .accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
-                    longPool: longPoolBKey,
+                    pool: longPoolBKey,
                     collateral: tokenMintB,
                     currency: tokenMintA,
                     authority: NON_SWAP_AUTHORITY.publicKey,
@@ -848,7 +848,7 @@ describe("OpenLongPosition", () => {
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        longPool: longPoolBKey,
+                        pool: longPoolBKey,
                         position: positionKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })

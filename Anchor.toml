@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-wasabi_solana = "Amxm1TKpMsue3x5KrnAzV9U8Sn7afDQQnmMV9znTfd96"
+wasabi_solana = "spicyfuhLBKM2ebrUF7jf59WDNgF7xXeLq62GyKnKrB"
 
 [registry]
 url = "https://api.apr.dev"

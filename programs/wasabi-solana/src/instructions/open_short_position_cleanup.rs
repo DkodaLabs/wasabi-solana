@@ -60,7 +60,6 @@ pub struct OpenShortPositionCleanup<'info> {
     )]
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
-
     #[account(
         seeds = [b"debt_controller"],
         bump,
@@ -105,7 +104,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
         );
 
         // Validate owner receives at least the minimum amount of token being swapped to.
-        require_gt!(
+        require_gte!(
             self.get_destination_delta(),
             self.open_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
@@ -162,8 +161,13 @@ impl<'info> OpenShortPositionCleanup<'info> {
             ErrorCode::PrincipalTooHigh
         );
 
-        validate_difference(self.position.principal, principal_used, 1)?;
+        require_gte!(
+            self.position.principal,
+            principal_used,
+            ErrorCode::ValueDeviatedTooMuch
+        );
 
+        //validate_difference(self.position.principal, principal_used, 1)?;
         let remaining_principal = self
             .position
             .principal

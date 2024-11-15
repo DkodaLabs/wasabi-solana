@@ -3,12 +3,8 @@ use {
     anchor_lang::prelude::*,
 };
 
-#[repr(C)]
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub enum TradeSide {
-    Long,
-    Short,
-}
+const LONG: &str = "LONG";
+const SHORT: &str = "SHORT";
 
 #[event]
 pub struct Deposit {
@@ -57,7 +53,7 @@ impl NewVault {
 
 #[event]
 pub struct PositionOpened {
-    pub side: TradeSide,
+    pub side: String,
     pub position_id: Pubkey,
     pub trader: Pubkey,
     pub currency: Pubkey,
@@ -71,7 +67,11 @@ pub struct PositionOpened {
 impl PositionOpened {
     pub fn new(position: &Account<'_, Position>, side: bool) -> Self {
         Self {
-            side: if side { TradeSide::Long } else { TradeSide::Short },
+            side: if side {
+                LONG.to_string()
+            } else {
+                SHORT.to_string()
+            },
             position_id: position.key(),
             trader: position.trader,
             currency: position.currency,
@@ -86,7 +86,7 @@ impl PositionOpened {
 
 #[event]
 pub struct PositionClosed {
-    pub side: TradeSide,
+    pub side: String,
     pub id: Pubkey,
     pub trader: Pubkey,
     pub payout: u64,
@@ -97,7 +97,11 @@ pub struct PositionClosed {
 impl PositionClosed {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts, side: bool) -> Self {
         Self {
-            side: if side { TradeSide::Long } else { TradeSide::Short },
+            side: if side {
+                LONG.to_string()
+            } else {
+                SHORT.to_string()
+            },
             id: position.key(),
             trader: position.trader,
             payout: close_amounts.payout,
@@ -110,7 +114,7 @@ impl PositionClosed {
 
 #[event]
 pub struct PositionClosedWithOrder {
-    pub side: TradeSide,
+    pub side: String,
     pub id: Pubkey,
     pub trader: Pubkey,
     pub order_type: u8,
@@ -122,7 +126,7 @@ pub struct PositionClosedWithOrder {
 
 #[event]
 pub struct PositionLiquidated {
-    pub side: TradeSide,
+    pub side: String,
     pub id: Pubkey,
     pub trader: Pubkey,
     pub payout: u64,
@@ -133,7 +137,11 @@ pub struct PositionLiquidated {
 impl PositionLiquidated {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts, side: bool) -> Self {
         Self {
-            side: if side { TradeSide::Long } else { TradeSide::Short },
+            side: if side {
+                LONG.to_string()
+            } else {
+                SHORT.to_string()
+            },
             id: position.key(),
             trader: position.trader,
             payout: close_amounts.payout,
@@ -146,7 +154,7 @@ impl PositionLiquidated {
 
 #[event]
 pub struct PositionClaimed {
-    pub side: TradeSide,
+    pub side: String,
     pub id: Pubkey,
     pub trader: Pubkey,
     pub amount_claimed: u64,
@@ -158,7 +166,11 @@ pub struct PositionClaimed {
 impl PositionClaimed {
     pub fn new(position: &Account<'_, Position>, close_amounts: &CloseAmounts, side: bool) -> Self {
         Self {
-            side: if side { TradeSide::Long } else { TradeSide::Short },
+            side: if side {
+                LONG.to_string()
+            } else {
+                SHORT.to_string()
+            },
             id: position.key(),
             trader: position.trader,
             amount_claimed: close_amounts.payout,

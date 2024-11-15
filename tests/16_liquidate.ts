@@ -151,7 +151,7 @@ describe("liquidate", () => {
         .accounts({
           owner: user2.publicKey,
           lpVault: lpVaultTokenAKey,
-          longPool: longPoolBKey,
+          pool: longPoolBKey,
           collateral: tokenMintB,
           currency: tokenMintA,
           //@ts-ignore
@@ -189,7 +189,7 @@ describe("liquidate", () => {
         .openLongPositionCleanup()
         .accounts({
           owner: user2.publicKey,
-          longPool: longPoolBKey,
+          pool: longPoolBKey,
           position: longPositionKey,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
@@ -480,7 +480,7 @@ describe("liquidate", () => {
         .accounts({
           owner: user2.publicKey,
           lpVault: lpVaultTokenBKey,
-          shortPool: shortPoolAKey,
+          pool: shortPoolAKey,
           currency: tokenMintB,
           collateral: tokenMintA,
           //@ts-ignore
@@ -520,7 +520,7 @@ describe("liquidate", () => {
         .accounts({
           owner: user2.publicKey,
           position: shortPositionKey,
-          shortPool: shortPoolAKey,
+          pool: shortPoolAKey,
           currency: tokenMintB,
           collateral: tokenMintA,
           //@ts-ignore

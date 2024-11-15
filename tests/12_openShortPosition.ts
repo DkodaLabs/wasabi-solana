@@ -160,7 +160,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         collateral: tokenMintA,
                         currency: tokenMintB,
                         authority: SWAP_AUTHORITY.publicKey,
@@ -175,7 +175,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         //@ts-ignore
@@ -226,7 +226,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         permission: coSignerPermission,
@@ -297,7 +297,7 @@ describe("OpenShortPosition", () => {
                 .accountsPartial({
                     owner: program.provider.publicKey,
                     lpVault: lpVaultKey,
-                    shortPool: shortPoolAKey,
+                    pool: shortPoolAKey,
                     collateral: tokenMintA,
                     currency: tokenMintB,
                     authority: NON_SWAP_AUTHORITY.publicKey,
@@ -312,7 +312,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,
@@ -392,7 +392,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         //@ts-ignore
@@ -431,7 +431,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,
@@ -567,7 +567,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         collateral: tokenMintA,
                         currency: tokenMintB,
                         permission: coSignerPermission,
@@ -581,7 +581,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         currency: tokenMintB,
@@ -652,7 +652,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         collateral: tokenMintA,
                         currency: tokenMintB,
                         permission: coSignerPermission,
@@ -691,7 +691,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolBKey,
+                        pool: shortPoolBKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,
@@ -770,7 +770,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         permission: coSignerPermission,
@@ -809,7 +809,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,
@@ -885,7 +885,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         permission: coSignerPermission,
@@ -924,7 +924,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,
@@ -993,7 +993,7 @@ describe("OpenShortPosition", () => {
                     .accountsPartial({
                         owner: program.provider.publicKey,
                         lpVault: lpVaultKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         permission: coSignerPermission,
@@ -1032,7 +1032,7 @@ describe("OpenShortPosition", () => {
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
-                        shortPool: shortPoolAKey,
+                        pool: shortPoolAKey,
                         //@ts-ignore
                         lpVault: lpVaultKey,
                         collateral: tokenMintA,

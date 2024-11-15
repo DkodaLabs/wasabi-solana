@@ -173,7 +173,7 @@ describe("stopLoss", () => {
         .accounts({
             owner: user2.publicKey,
             lpVault: lpVaultTokenAKey,
-            longPool: longPoolBKey,
+            pool: longPoolBKey,
             currency: tokenMintA,
             collateral: tokenMintB,
             //@ts-ignore
@@ -211,7 +211,7 @@ describe("stopLoss", () => {
         .openLongPositionCleanup()
         .accounts({
           owner: user2.publicKey,
-          longPool: longPoolBKey,
+          pool: longPoolBKey,
           position: longPositionKey,
             tokenProgram: TOKEN_PROGRAM_ID,
         })
@@ -703,7 +703,7 @@ describe("stopLoss", () => {
         )
         .accounts({
             owner: user2.publicKey,
-            shortPool: shortPoolAKey,
+            pool: shortPoolAKey,
             collateral: tokenMintA,
             currency: tokenMintB,
             lpVault: lpVaultTokenBKey,
@@ -744,7 +744,7 @@ describe("stopLoss", () => {
         .accounts({
             owner: user2.publicKey,
             position: shortPositionKey,
-            shortPool: shortPoolAKey,
+            pool: shortPoolAKey,
             //@ts-ignore
             lpVault: lpVaultTokenBKey,
             currency: tokenMintB,

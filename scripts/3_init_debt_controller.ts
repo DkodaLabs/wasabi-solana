@@ -24,10 +24,10 @@ const main = async () => {
     const maxApy = new BN(300);      // 300% APR
     const maxLeverage = new BN(500); // 5x leverage
 
-    const tx = await program.methods.initDebtController({
+    const tx = await program.methods.initDebtController(
         maxApy,
         maxLeverage,
-      }).accounts({
+      ).accounts({
         superAdmin: program.provider.publicKey,
       }).rpc();
 
