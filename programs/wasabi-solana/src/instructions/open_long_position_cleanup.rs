@@ -72,11 +72,6 @@ impl<'info> OpenLongPositionCleanup<'info> {
             ErrorCode::MinTokensNotMet
         );
 
-        //if destination_balance_delta < self.open_position_request.min_target_amount {
-        //    // InsufficientCollateralReceived
-        //    return Err(ErrorCode::MinTokensNotMet.into());
-        //}
-
         // Validate owner does not spend more tokens than requested.
         let source_balance_delta = self
             .open_position_request
@@ -84,10 +79,6 @@ impl<'info> OpenLongPositionCleanup<'info> {
             .source_bal_before
             .checked_sub(self.currency_vault.amount)
             .expect("overflow");
-
-        //if source_balance_delta > self.open_position_request.max_amount_in {
-        //    return Err(ErrorCode::SwapAmountExceeded.into());
-        //}
 
         require_gte!(
             self.open_position_request.max_amount_in,

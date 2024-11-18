@@ -96,26 +96,26 @@ pub mod wasabi_solana {
         ctx.accounts.init_short_pool(&ctx.bumps)
     }
 
-    pub fn init_take_profit_order(
-        ctx: Context<InitTakeProfitOrder>,
+    pub fn init_or_update_take_profit_order(
+        ctx: Context<InitOrUpdateTakeProfitOrder>,
         maker_amount: u64,
         taker_amount: u64,
     ) -> Result<()> {
         ctx.accounts
-            .init_take_profit_order(maker_amount, taker_amount)
+            .init_or_update_take_profit_order(maker_amount, taker_amount)
     }
 
     pub fn close_take_profit_order(ctx: Context<CloseTakeProfitOrder>) -> Result<()> {
         ctx.accounts.close_take_profit_order()
     }
 
-    pub fn init_stop_loss_order(
-        ctx: Context<InitStopLossOrder>,
+    pub fn init_or_update_stop_loss_order(
+        ctx: Context<InitOrUpdateStopLossOrder>,
         maker_amount: u64,
         taker_amount: u64,
     ) -> Result<()> {
         ctx.accounts
-            .init_stop_loss_order(maker_amount, taker_amount)
+            .init_or_update_stop_loss_order(maker_amount, taker_amount)
     }
 
     pub fn close_stop_loss_order(ctx: Context<CloseStopLossOrder>) -> Result<()> {

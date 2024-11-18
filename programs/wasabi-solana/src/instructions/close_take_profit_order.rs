@@ -1,5 +1,5 @@
 use {
-    crate::{Position, TakeProfitOrder},
+    crate::{Position, TakeProfitOrder, events::ExitOrderCancelled},
     anchor_lang::prelude::*,
 };
 
@@ -24,6 +24,11 @@ pub struct CloseTakeProfitOrder<'info> {
 
 impl<'info> CloseTakeProfitOrder<'info> {
     pub fn close_take_profit_order(&self) -> Result<()> {
+        emit!(ExitOrderCancelled {
+            order_type: 0,
+            position_id: self.position.key(),
+        });
+
         Ok(())
     }
 }

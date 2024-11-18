@@ -1,14 +1,13 @@
 use {
-    crate::{Position, TakeProfitOrder},
+    crate::{events::ExitOrder, Position, TakeProfitOrder},
     anchor_lang::prelude::*,
 };
 
 // Only Position's trader can invoke InitTakeProfitOrder.
-// Limitation of 1 TP Order per Position. To modify, user must close the
-// TP order and init a new one.
+// Limitation of 1 TP Order per Position.
 
 #[derive(Accounts)]
-pub struct InitTakeProfitOrder<'info> {
+pub struct InitOrUpdateTakeProfitOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
@@ -18,7 +17,7 @@ pub struct InitTakeProfitOrder<'info> {
     pub position: Account<'info, Position>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = trader,
         seeds = [b"take_profit_order", position.key().as_ref()],
         bump,
@@ -29,12 +28,23 @@ pub struct InitTakeProfitOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> InitTakeProfitOrder<'info> {
-    pub fn init_take_profit_order(&mut self, maker_amount: u64, taker_amount: u64) -> Result<()> {
+impl<'info> InitOrUpdateTakeProfitOrder<'info> {
+    pub fn init_or_update_take_profit_order(
+        &mut self,
+        maker_amount: u64,
+        taker_amount: u64,
+    ) -> Result<()> {
         self.take_profit_order.set_inner(TakeProfitOrder {
             maker_amount,
             taker_amount,
             position: self.position.key(),
+        });
+
+        emit!(ExitOrder {
+            order_type: 0,
+            position_id: self.position.key(),
+            maker_amount,
+            taker_amount,
         });
 
         Ok(())

@@ -1,14 +1,13 @@
 use {
-    crate::{Position, StopLossOrder},
+    crate::{events::ExitOrder, Position, StopLossOrder},
     anchor_lang::prelude::*,
 };
 
 // Only Position's trader can invoke InitStopLossOrder.
-// Limitation of 1 SL Order per Position. To modify, user must close the
-// SL order and init a new one.
+// Limitation of 1 SL Order per Position.
 
 #[derive(Accounts)]
-pub struct InitStopLossOrder<'info> {
+pub struct InitOrUpdateStopLossOrder<'info> {
     #[account(mut)]
     pub trader: Signer<'info>,
 
@@ -18,7 +17,7 @@ pub struct InitStopLossOrder<'info> {
     pub position: Account<'info, Position>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = trader,
         seeds = [b"stop_loss_order", position.key().as_ref()],
         bump,
@@ -29,15 +28,25 @@ pub struct InitStopLossOrder<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> InitStopLossOrder<'info> {
-    pub fn init_stop_loss_order(&mut self, maker_amount: u64, taker_amount: u64) -> Result<()> {
+impl<'info> InitOrUpdateStopLossOrder<'info> {
+    pub fn init_or_update_stop_loss_order(
+        &mut self,
+        maker_amount: u64,
+        taker_amount: u64,
+    ) -> Result<()> {
         self.stop_loss_order.set_inner(StopLossOrder {
             maker_amount,
             taker_amount,
             position: self.position.key(),
         });
 
+        emit!(ExitOrder {
+            order_type: 1,
+            position_id: self.position.key(),
+            maker_amount,
+            taker_amount,
+        });
+
         Ok(())
     }
 }
-

@@ -113,6 +113,20 @@ impl PositionClosed {
 }
 
 #[event]
+pub struct ExitOrder {
+    pub order_type: u8,
+    pub position_id: Pubkey,
+    pub maker_amount: u64,
+    pub taker_amount: u64,
+}
+
+#[event]
+pub struct ExitOrderCancelled {
+    pub order_type: u8,
+    pub position_id: Pubkey,
+}
+
+#[event]
 pub struct PositionClosedWithOrder {
     pub side: String,
     pub id: Pubkey,

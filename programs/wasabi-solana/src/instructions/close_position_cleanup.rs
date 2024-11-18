@@ -159,7 +159,7 @@ impl<'info> ClosePositionCleanup<'info> {
         //if self.get_destination_delta() < self.close_position_request.min_target_amount {
         //    return Err(ErrorCode::MinTokensNotMet.into());
         //}
-        require_gt!(
+        require_gte!(
             self.get_destination_delta(),
             self.close_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
