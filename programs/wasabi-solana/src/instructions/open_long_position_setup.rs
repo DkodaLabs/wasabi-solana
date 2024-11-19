@@ -209,7 +209,7 @@ impl<'info> OpenLongPositionSetup<'info> {
 
         let total_swap_amount = principal
             .checked_add(down_payment)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         // Approve authority to make a swap on behalf of the `currency_vault`
         self.approve_owner_delegation(total_swap_amount)?;
@@ -220,7 +220,7 @@ impl<'info> OpenLongPositionSetup<'info> {
             min_target_amount,
             max_amount_in: down_payment
                 .checked_add(principal)
-                .expect("overflow"),
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
             pool_key: self.pool.key(),
             position: self.position.key(),
             swap_cache: SwapCache {

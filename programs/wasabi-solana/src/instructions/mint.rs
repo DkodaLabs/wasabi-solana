@@ -26,7 +26,7 @@ impl MintTrait for DepositOrWithdraw<'_> {
                 .checked_div(shares_supply_u128)
                 .expect("overflow")
                 .try_into()
-                .map_err(|_| ErrorCode::ArithmeticOverflow)?
+                .map_err(|_| ErrorCode::U64Overflow)?
         };
 
         self.transfer_token_from_owner_to_vault(tokens_in)?;

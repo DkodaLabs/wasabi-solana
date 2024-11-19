@@ -382,7 +382,7 @@ impl<'info> ClosePositionCleanup<'info> {
             self.position
                 .principal
                 .checked_add(interest)
-                .expect("overflow"),
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
         )?;
 
         // Pay fees

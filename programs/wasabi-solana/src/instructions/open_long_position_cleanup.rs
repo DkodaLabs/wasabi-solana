@@ -43,11 +43,11 @@ impl<'info> OpenLongPositionCleanup<'info> {
         get_function_hash("global", "open_long_position_cleanup")
     }
 
-    fn get_destination_delta(&self) -> u64 {
-        self.collateral_vault
+    fn get_destination_delta(&self) -> Result<u64> {
+        Ok(self.collateral_vault
             .amount
             .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn validate(&self) -> Result<()> {
@@ -67,7 +67,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
         // Validate owner receives at least the minimum amount of token being swapped to.
         require_gte!(
-            self.get_destination_delta(),
+            self.get_destination_delta()?,
             self.open_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
@@ -78,7 +78,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
             .swap_cache
             .source_bal_before
             .checked_sub(self.currency_vault.amount)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         require_gte!(
             self.open_position_request.max_amount_in,
@@ -106,7 +106,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
     pub fn open_long_position_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
-        self.position.collateral_amount = self.get_destination_delta();
+        self.position.collateral_amount = self.get_destination_delta()?;
 
         emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
 

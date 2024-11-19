@@ -53,11 +53,6 @@ jobs:
           solana --version
           solana-keygen new --no-bip39-passphrase
 
-      - name: Install Solana build tools
-        run: |
-          export PATH="${{ env.SOLANA_BIN_PATH }}:$PATH"
-          cargo install cargo-build-sbf cargo-test-sbf
-
       - name: Install Anchor CLI
         run: |
           cargo install time@0.3.35

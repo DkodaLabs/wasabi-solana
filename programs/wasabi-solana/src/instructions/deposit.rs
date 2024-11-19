@@ -136,7 +136,7 @@ impl<'info> DepositOrWithdraw<'info> {
                 .checked_div(self.lp_vault.total_assets as u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?
                 .try_into()
-                .map_err(|_| ErrorCode::ArithmeticOverflow)?
+                .map_err(|_| ErrorCode::U64Overflow)?
         };
 
         self.mint_shares_to_user(shares_to_mint)?;
