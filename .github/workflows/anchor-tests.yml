@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 env:
-  SOLANA_VERSION: "1.17.0"
+  SOLANA_VERSION: "1.18.22"
   ANCHOR_VERSION: "0.30.1"
   RUST_TOOLCHAIN: "1.79.0"
   AGAVE: "/home/runner/.local/share/agave/target/debug"
@@ -50,6 +50,14 @@ jobs:
           rustup toolchain list
           echo "Default toolchain:"
           rustup default
+
+      - name: Set Rust Default Version
+        run: |
+          rustup default ${{ env.RUST_TOOLCHAIN }}
+          rustup override set ${{ env.RUST_TOOLCHAIN }}
+          echo "After setting default and override:"
+          rustc --version
+          rustup show active-toolchain
 
       - name: Cache dependencies
         uses: actions/cache@v4
