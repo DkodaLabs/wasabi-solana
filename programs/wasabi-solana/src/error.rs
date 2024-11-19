@@ -48,4 +48,10 @@ pub enum ErrorCode {
     LPingDisabled, // 6021
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow, // 6022
+    #[msg("Arithmetic underflow")]
+    ArithmeticUnderflow, // 6023
+    #[msg("Amount exceeds u64")]
+    U64Overflow, // 6024
+    #[msg("Division by zero")]
+    ZeroDivision, // 6025
 }

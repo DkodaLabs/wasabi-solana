@@ -62,7 +62,7 @@ impl<'info> Donate<'info> {
             .lp_vault
             .total_assets
             .checked_add(amount)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         emit!(NativeYieldClaimed {
             source: self.owner.key(),

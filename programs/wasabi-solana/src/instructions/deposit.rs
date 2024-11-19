@@ -132,9 +132,9 @@ impl<'info> DepositOrWithdraw<'info> {
         } else {
             shares_supply
                 .checked_mul(amount_u128)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_div(self.lp_vault.total_assets as u128)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .try_into()
                 .map_err(|_| ErrorCode::ArithmeticOverflow)?
         };
@@ -145,7 +145,7 @@ impl<'info> DepositOrWithdraw<'info> {
             .lp_vault
             .total_assets
             .checked_add(amount)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         emit!(Deposit {
             vault: self.lp_vault.shares_mint,

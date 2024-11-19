@@ -1,4 +1,8 @@
-use {super::DepositOrWithdraw, crate::events::Withdraw, anchor_lang::prelude::*};
+use {
+    super::DepositOrWithdraw,
+    crate::{error::ErrorCode, events::Withdraw},
+    anchor_lang::prelude::*,
+};
 
 pub trait WithdrawTrait {
     fn withdraw(&mut self, amount: u64) -> Result<()>;
@@ -16,11 +20,11 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
 
         let shares_burn_amount = amount_u128
             .checked_mul(shares_supply_u128)
-            .expect("amount * shares supply overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_add(rounding_protection)
-            .expect("numerator addition overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_div(total_assets_u128)
-            .expect("division by zero");
+            .ok_or(ErrorCode::ZeroDivision)?;
 
         //let shares_burn_amount = amount_u128
         //    .checked_mul(shares_supply_u128)
@@ -35,7 +39,7 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
         //    .expect("division by zero");
 
         let shares_burn_u64 =
-            u64::try_from(shares_burn_amount).expect("shares burn amount exceeds u64");
+            u64::try_from(shares_burn_amount).map_err(|_| ErrorCode::U64Overflow)?;
 
         self.burn_shares_from_user(shares_burn_u64)?;
 
@@ -43,7 +47,7 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
             .lp_vault
             .total_assets
             .checked_sub(amount)
-            .expect("total assets underflow");
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         self.transfer_token_from_vault_to_owner(amount)?;
 
