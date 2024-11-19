@@ -29,9 +29,12 @@ jobs:
           node-version: '20'
           
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+          profile: minimal
+          components: rustfmt, clippy
           targets: wasm32-unknown-unknown
 
       - name: Cache dependencies
