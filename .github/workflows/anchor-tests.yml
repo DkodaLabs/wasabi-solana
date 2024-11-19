@@ -62,5 +62,5 @@ jobs:
 
       - name: Run tests
         env:
-          PATH: "${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:$PATH"
+          PATH: "${{ env.CARGO_HOME }}/bin:${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:$PATH"
         run: anchor test
