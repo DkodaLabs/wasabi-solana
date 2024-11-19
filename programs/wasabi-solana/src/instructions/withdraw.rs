@@ -26,18 +26,6 @@ impl WithdrawTrait for DepositOrWithdraw<'_> {
             .checked_div(total_assets_u128)
             .ok_or(ErrorCode::ZeroDivision)?;
 
-        //let shares_burn_amount = amount_u128
-        //    .checked_mul(shares_supply_u128)
-        //    .expect("amount * shares supply overflow")
-        //    .checked_add(
-        //        total_assets_u128
-        //            .checked_sub(1)
-        //            .expect("total assets underflow"),
-        //    )
-        //    .expect("numerator addition overflow")
-        //    .checked_div(total_assets_u128)
-        //    .expect("division by zero");
-
         let shares_burn_u64 =
             u64::try_from(shares_burn_amount).map_err(|_| ErrorCode::U64Overflow)?;
 

@@ -48,16 +48,14 @@ jobs:
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           echo "${{ env.SOLANA_BIN_PATH }}" >> $GITHUB_PATH
-          echo "${{ env.SOLANA_INSTALL_PATH }}/bin" >> $GITHUB_PATH
+          export PATH="${{ env.SOLANA_BIN_PATH }}:$PATH"
           solana --version
           solana-keygen new --no-bip39-passphrase
 
       - name: Install Solana build tools
-        env:
-          PATH: "${{ env.SOLANA_BIN_PATH }}:${{ env.PATH }}"
         run: |
+          export PATH="${{ env.SOLANA_BIN_PATH }}:$PATH"
           cargo install cargo-build-sbf cargo-test-sbf
 
       - name: Install Anchor CLI
@@ -70,5 +68,5 @@ jobs:
 
       - name: Run tests
         env:
-          PATH: "${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:${{ github.workspace }}/.cargo/bin:$PATH"
+          PATH: "${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:$PATH"
         run: anchor test

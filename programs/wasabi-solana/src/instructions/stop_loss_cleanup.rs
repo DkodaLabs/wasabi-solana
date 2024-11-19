@@ -34,11 +34,11 @@ impl<'info> StopLossCleanup<'info> {
             let actual_taker_amount = close_amounts
                 .payout
                 .checked_add(close_amounts.close_fee)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_add(close_amounts.interest_paid)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_add(close_amounts.principal_repaid)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             msg!(
                 "TAKER AMOUNTS {:?} {:?}",
@@ -65,16 +65,16 @@ impl<'info> StopLossCleanup<'info> {
             let actual_taker_amount = close_amounts
                 .interest_paid
                 .checked_add(close_amounts.principal_repaid)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             let lhs = close_amounts
                 .collateral_spent
                 .checked_mul(self.stop_loss_order.taker_amount)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             let rhs = self
                 .stop_loss_order
                 .maker_amount
                 .checked_mul(actual_taker_amount)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             require_gt!(lhs, rhs, ErrorCode::PriceTargetNotReached);
         }
 

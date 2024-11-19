@@ -34,11 +34,11 @@ impl<'info> TakeProfitCleanup<'info> {
                 close_amounts
                     .payout
                     .checked_add(close_amounts.close_fee)
-                    .expect("overflow")
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
                     .checked_add(close_amounts.interest_paid)
-                    .expect("overflow")
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
                     .checked_add(close_amounts.principal_repaid)
-                    .expect("overflow"),
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
                 self.take_profit_order.taker_amount,
                 ErrorCode::PriceTargetNotReached
             );
@@ -54,16 +54,16 @@ impl<'info> TakeProfitCleanup<'info> {
             let actual_taker_amount = close_amounts
                 .interest_paid
                 .checked_add(close_amounts.principal_repaid)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             let lhs = close_amounts
                 .collateral_spent
                 .checked_mul(self.take_profit_order.taker_amount)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
             let rhs = self
                 .take_profit_order
                 .maker_amount
                 .checked_mul(actual_taker_amount)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             require_gt!(rhs, lhs, ErrorCode::PriceTargetNotReached);
         }
@@ -74,3 +74,4 @@ impl<'info> TakeProfitCleanup<'info> {
         Ok(())
     }
 }
+
