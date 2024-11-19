@@ -1,10 +1,7 @@
 use {
     crate::{
-        error::ErrorCode,
-        events::PositionOpened,
-        short_pool_signer_seeds,
-        utils::{get_function_hash, validate_difference},
-        BasePool, DebtController, LpVault, OpenPositionRequest, Position,
+        error::ErrorCode, events::PositionOpened, short_pool_signer_seeds,
+        utils::get_function_hash, BasePool, DebtController, LpVault, OpenPositionRequest, Position,
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{
@@ -74,19 +71,19 @@ impl<'info> OpenShortPositionCleanup<'info> {
         get_function_hash("global", "open_short_position_cleanup")
     }
 
-    fn get_destination_delta(&self) -> u64 {
-        self.collateral_vault
+    fn get_destination_delta(&self) -> Result<u64> {
+        Ok(self.collateral_vault
             .amount
             .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
-            .expect("underflow")
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    fn get_source_delta(&self) -> u64 {
-        self.open_position_request
+    fn get_source_delta(&self) -> Result<u64> {
+        Ok(self.open_position_request
             .swap_cache
             .source_bal_before
             .checked_sub(self.currency_vault.amount)
-            .expect("underflow")
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn validate(&self) -> Result<()> {
@@ -105,7 +102,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
 
         // Validate owner receives at least the minimum amount of token being swapped to.
         require_gte!(
-            self.get_destination_delta(),
+            self.get_destination_delta()?,
             self.open_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
@@ -149,14 +146,14 @@ impl<'info> OpenShortPositionCleanup<'info> {
         // Revoke owner's ability to transfer on behalf of the `currency_vault`
         self.revoke_owner_delegation()?;
 
-        let collateral_received = self.get_destination_delta();
-        let principal_used = self.get_source_delta();
+        let collateral_received = self.get_destination_delta()?;
+        let principal_used = self.get_source_delta()?;
 
         require_gt!(
             self.position
                 .down_payment
                 .checked_mul(self.debt_controller.max_leverage)
-                .expect("overflow"),
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
             collateral_received,
             ErrorCode::PrincipalTooHigh
         );
@@ -167,12 +164,11 @@ impl<'info> OpenShortPositionCleanup<'info> {
             ErrorCode::ValueDeviatedTooMuch
         );
 
-        //validate_difference(self.position.principal, principal_used, 1)?;
         let remaining_principal = self
             .position
             .principal
             .checked_sub(principal_used)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         if remaining_principal > 0 {
             self.transfer_remaining_principal_from_currency_vault(remaining_principal)?;
@@ -181,7 +177,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
         self.position.principal = principal_used;
         self.position.collateral_amount = collateral_received
             .checked_add(self.position.down_payment)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
 

@@ -45,7 +45,9 @@ pub fn position_setup_transaction_introspecation_validation(
                 }
             }
             // TODO: Check against whitelisted programs
-            post_current_idx = post_current_idx.checked_add(1).expect("overflow");
+            post_current_idx = post_current_idx
+                .checked_add(1)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
         }
     }
 
@@ -72,15 +74,18 @@ pub fn deduct(amount: u64, deducted_amount: u64) -> (u64, u64) {
 pub fn validate_difference(value: u64, value_to_compare: u64, percentage: u8) -> Result<()> {
     let difference = value.abs_diff(value_to_compare);
 
-    let scaled_difference = difference.checked_mul(100).expect("overflow");
-    let max_allowed = value.checked_mul(u64::from(percentage)).expect("overflow");
+    let scaled_difference = difference
+        .checked_mul(100)
+        .ok_or(ErrorCode::ArithmeticOverflow)?;
+    let max_allowed = value
+        .checked_mul(u64::from(percentage))
+        .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-    require_gte!(max_allowed, scaled_difference, ErrorCode::ValueDeviatedTooMuch);
-    //require!(
-    //    difference * 100 <= value.checked_mul(u64::from(percentage)).expect("overflow"),
-    //    ErrorCode::ValueDeviatedTooMuch
-    //);
+    require_gte!(
+        max_allowed,
+        scaled_difference,
+        ErrorCode::ValueDeviatedTooMuch
+    );
 
     Ok(())
 }
-

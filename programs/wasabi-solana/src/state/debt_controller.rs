@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use {crate::error::ErrorCode, anchor_lang::prelude::*};
 
 const ONE_YEAR_IN_SECONDS: u64 = 31_536_000;
 pub const APY_DENOMINATOR: u64 = 100;
@@ -24,11 +24,11 @@ impl DebtController {
         let seconds_since = seconds_since as u64;
         let max_interest_to_pay = principal
             .checked_mul(self.max_apy)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_mul(seconds_since)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_div(APY_DENOMINATOR * ONE_YEAR_IN_SECONDS)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
         if max_interest_to_pay == 0 {
             Ok(1)
         } else {
@@ -36,15 +36,15 @@ impl DebtController {
         }
     }
 
-    pub fn compute_max_principal(&self, down_payment: u64) -> u64 {
+    pub fn compute_max_principal(&self, down_payment: u64) -> Result<u64> {
         // EVM logic:
         // maxPrincipal = _downPayment * (maxLeverage - LEVERAGE_DENOMINATOR) / LEVERAGE_DENOMINATOR;
         let max_principal = down_payment
             .checked_mul(self.max_leverage - LEVERAGE_DENOMINATOR)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_div(LEVERAGE_DENOMINATOR)
-            .expect("overflow");
-        max_principal
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        Ok(max_principal)
     }
 }
 #[cfg(test)]
@@ -67,4 +67,3 @@ mod tests {
         assert_eq!(max_interest, 1);
     }
 }
-

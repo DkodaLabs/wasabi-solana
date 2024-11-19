@@ -70,10 +70,10 @@ impl<'info> ClosePositionSetup<'info> {
         // Validate pool is correct based on seeds
         let expected_pool_key = if self.pool.is_long_pool {
             Pubkey::create_program_address(long_pool_signer_seeds!(self.pool), &crate::ID)
-                .expect("key")
+                .map_err(|_| ErrorCode::InvalidPool)?
         } else {
             Pubkey::create_program_address(short_pool_signer_seeds!(self.pool), &crate::ID)
-                .expect("key")
+                .map_err(|_| ErrorCode::InvalidPool)?
         };
         require_keys_eq!(expected_pool_key, self.pool.key(), ErrorCode::InvalidPool);
 
@@ -98,8 +98,7 @@ impl<'info> ClosePositionSetup<'info> {
         min_target_amount: u64,
         interest: u64,
         execution_fee: u64,
-        #[allow(unused_variables)]
-        expiration: i64,
+        #[allow(unused_variables)] expiration: i64,
     ) -> Result<()> {
         // Create a close position request
         self.close_position_request.set_inner(ClosePositionRequest {

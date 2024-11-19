@@ -52,7 +52,7 @@ impl<'info> AdminBorrow<'info> {
                 .lp_vault
                 .total_borrowed
                 .checked_add(amount)
-                .expect("overflow"),
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
             ErrorCode::MaxBorrowExceeded
         );
 
@@ -85,7 +85,7 @@ impl<'info> AdminBorrow<'info> {
             .lp_vault
             .total_borrowed
             .checked_add(amount)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         Ok(())
     }

@@ -55,7 +55,6 @@ jobs:
 
       - name: Install Anchor CLI
         run: |
-          cargo install time@0.3.35
           cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
           
       - name: Install node dependencies

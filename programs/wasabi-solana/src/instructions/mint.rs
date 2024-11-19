@@ -20,11 +20,11 @@ impl MintTrait for DepositOrWithdraw<'_> {
         } else {
             total_assets_u128
                 .checked_mul(shares_amount_u128)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_add(shares_supply_u128)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_div(shares_supply_u128)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .try_into()
                 .map_err(|_| ErrorCode::U64Overflow)?
         };
@@ -35,7 +35,7 @@ impl MintTrait for DepositOrWithdraw<'_> {
             .lp_vault
             .total_assets
             .checked_add(tokens_in)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         emit!(Deposit {
             vault: self.shares_mint.key(),

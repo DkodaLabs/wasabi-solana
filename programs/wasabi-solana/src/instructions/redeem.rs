@@ -21,11 +21,11 @@ impl RedeemTrait for DepositOrWithdraw<'_> {
 
         let token_transfer_amount = shares_amount_u128
             .checked_mul(total_assets_u128)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .checked_div(shares_supply_u128)
-            .expect("overflow")
+            .ok_or(ErrorCode::ArithmeticOverflow)?
             .try_into()
-            .map_err(|_| ErrorCode::ArithmeticOverflow)?;
+            .map_err(|_| ErrorCode::U64Overflow)?;
 
         self.transfer_token_from_vault_to_owner(token_transfer_amount)?;
         self.burn_shares_from_user(shares_amount)?;
@@ -34,7 +34,7 @@ impl RedeemTrait for DepositOrWithdraw<'_> {
             .lp_vault
             .total_assets
             .checked_sub(token_transfer_amount)
-            .expect("underflow");
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         emit!(Withdraw {
             vault: self.shares_mint.key(),
