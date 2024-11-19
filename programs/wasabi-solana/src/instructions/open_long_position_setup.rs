@@ -203,7 +203,7 @@ impl<'info> OpenLongPositionSetup<'info> {
 
         let max_principal = self
             .debt_controller
-            .compute_max_principal(down_payment);
+            .compute_max_principal(down_payment)?;
 
         require_gte!(max_principal, principal, ErrorCode::PrincipalTooHigh);
 
