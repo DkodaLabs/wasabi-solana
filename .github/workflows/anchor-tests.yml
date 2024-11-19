@@ -8,7 +8,7 @@ on:
 
 env:
   SOLANA_VERSION: "1.17.0"
-  ANCHOR_VERSION: "0.28.0"
+  ANCHOR_VERSION: "0.30.1"
   RUST_TOOLCHAIN: "1.79.0"
   AGAVE: "/home/runner/.local/share/agave/target/debug"
   SOLANA_INSTALL_PATH: "/home/runner/.local/share/solana/install/active_release"
