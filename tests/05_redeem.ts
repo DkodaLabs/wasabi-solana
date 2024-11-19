@@ -57,6 +57,7 @@ describe("Redeem", () => {
                 BigInt(lpVaultBefore.totalAssets.toString())) /
             sharesMintBefore.supply;
 
+        try {
         await program.methods
             .redeem(sharesAmount)
             .accounts({
@@ -66,6 +67,9 @@ describe("Redeem", () => {
                 assetTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
+        } catch (e: any) {
+            e.getLogs(program.provider.connection);
+        }
 
         const [
             [ownerTokenAAfter, vaultAAfter],

@@ -224,7 +224,7 @@ describe("takeProfitOrder", () => {
             const makerAmount = new anchor.BN(100);
             const takerAmount = new anchor.BN(200);
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )
@@ -280,7 +280,7 @@ describe("takeProfitOrder", () => {
             );
 
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )
@@ -414,7 +414,7 @@ describe("takeProfitOrder", () => {
             );
 
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )
@@ -558,7 +558,7 @@ describe("takeProfitOrder", () => {
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )
@@ -792,7 +792,7 @@ describe("takeProfitOrder", () => {
             );
 
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )
@@ -937,7 +937,7 @@ describe("takeProfitOrder", () => {
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
-                .initTakeProfitOrder(
+                .initOrUpdateTakeProfitOrder(
                     makerAmount,
                     takerAmount,
                 )

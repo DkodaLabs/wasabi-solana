@@ -1,4 +1,8 @@
-use {super::DepositOrWithdraw, crate::events::Deposit, anchor_lang::prelude::*};
+use {
+    super::DepositOrWithdraw,
+    crate::{error::ErrorCode, events::Deposit},
+    anchor_lang::prelude::*,
+};
 
 pub trait MintTrait {
     fn mint(&mut self, shares_amount: u64) -> Result<()>;
@@ -7,19 +11,22 @@ pub trait MintTrait {
 impl MintTrait for DepositOrWithdraw<'_> {
     fn mint(&mut self, shares_amount: u64) -> Result<()> {
         self.mint_shares_to_user(shares_amount)?;
-        let shares_supply = self.shares_mint.supply;
+        let shares_amount_u128 = shares_amount as u128;
+        let shares_supply_u128 = self.shares_mint.supply as u128;
+        let total_assets_u128 = self.lp_vault.total_assets as u128;
 
-        let tokens_in = if shares_supply == 0 {
+        let tokens_in = if shares_supply_u128 == 0 {
             shares_amount
         } else {
-            self.lp_vault
-                .total_assets
-                .checked_mul(shares_amount)
+            total_assets_u128
+                .checked_mul(shares_amount_u128)
                 .expect("overflow")
-                .checked_add(shares_supply)
+                .checked_add(shares_supply_u128)
                 .expect("overflow")
-                .checked_div(shares_supply)
+                .checked_div(shares_supply_u128)
                 .expect("overflow")
+                .try_into()
+                .map_err(|_| ErrorCode::ArithmeticOverflow)?
         };
 
         self.transfer_token_from_owner_to_vault(tokens_in)?;

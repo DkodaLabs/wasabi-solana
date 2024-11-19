@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, createMintToCheckedInstruction } from "@solana/spl-token";
 import { tokenMintA } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
@@ -190,6 +190,114 @@ describe("Deposit", () => {
         assert.equal(sharesSupplyDiff, BigInt(expectedSharesAmount.toString()));
     });
 
+    it("should handle deposits near u64 max", async () => {
+        // First deposit to establish initial shares
+        const initialAmount = new anchor.BN(1_000_000);
+        await program.methods
+            .deposit(initialAmount)
+            .accounts({
+                owner: program.provider.publicKey,
+                lpVault: lpVaultKey,
+                assetMint: tokenMintA,
+                assetTokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc();
+
+        // Try deposit with amount close to u64 max
+        const largeAmount = new anchor.BN("18446744073709551615"); // u64::MAX
+
+        try {
+            await program.methods
+                .deposit(largeAmount)
+                .accounts({
+                    owner: program.provider.publicKey,
+                    lpVault: lpVaultKey,
+                    assetMint: tokenMintA,
+                    assetTokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .rpc();
+            assert.fail("Should have thrown error");
+        } catch (e) {
+            assert.include(e.message, "insufficient funds");
+        }
+    });
+
+    it("should handle depositing exactly u64::MAX", async () => {
+        const userAta = getAssociatedTokenAddressSync(
+            tokenMintA,
+            program.provider.publicKey,
+            false,
+            TOKEN_PROGRAM_ID,
+        );
+        const vaultBefore = await program.account.lpVault.fetch(lpVaultKey);
+
+        const U64_MAX = BigInt("18346744073716551615");
+
+        const mintIx = createMintToCheckedInstruction(
+            tokenMintA,
+            userAta,
+            program.provider.publicKey,
+            BigInt(U64_MAX),
+            6,
+            [],
+            TOKEN_PROGRAM_ID
+        );
+
+        await program.provider.sendAndConfirm(
+            new anchor.web3.Transaction().add(mintIx)
+        );
+
+        try {
+            await program.methods
+                .deposit(new anchor.BN(String(U64_MAX)))
+                .accounts({
+                    owner: program.provider.publicKey,
+                    lpVault: lpVaultKey,
+                    assetMint: tokenMintA,
+                    assetTokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .rpc();
+
+            const vaultAfter = await program.account.lpVault.fetch(lpVaultKey);
+            assert.equal(String(vaultAfter.totalAssets.sub(vaultBefore.totalAssets)), String(U64_MAX));
+        } catch (e) {
+            console.log(e);
+        }
+    });
+
+    it("should maintain correct share ratio even with tiny deposits", async () => {
+        // First make a large deposit to establish initial shares
+        const largeAmount = new anchor.BN("1000000000000"); // 1M tokens
+        await program.methods
+            .deposit(largeAmount)
+            .accounts({
+                owner: program.provider.publicKey,
+                lpVault: lpVaultKey,
+                assetMint: tokenMintA,
+                assetTokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc();
+
+        // Then try a very small deposit
+        const tinyAmount = new anchor.BN(1); // 1 token
+        const beforeLpVault = await program.account.lpVault.fetch(lpVaultKey);
+
+        await program.methods
+            .deposit(tinyAmount)
+            .accounts({
+                owner: program.provider.publicKey,
+                lpVault: lpVaultKey,
+                assetMint: tokenMintA,
+                assetTokenProgram: TOKEN_PROGRAM_ID,
+            })
+            .rpc();
+
+        const afterLpVault = await program.account.lpVault.fetch(lpVaultKey);
+
+        // Verify total assets increased by tiny amount
+        assert.ok(afterLpVault.totalAssets.sub(beforeLpVault.totalAssets).eq(tinyAmount));
+    });
+
     //it("should not allow a user to withdraw more than deposited", async () => {
     //    const totalDeposits = 100;
     //    const amount = new anchor.BN(2_000_000);
@@ -209,7 +317,7 @@ describe("Deposit", () => {
 
     //    for (let i = 0; i < totalDeposits; i++) {
     //        await program.methods
-    //            .deposit({ amount })
+    //            .deposit(amount)
     //            .accounts({
     //                owner: program.provider.publicKey,
     //                lpVault: lpVaultKey,
@@ -221,7 +329,7 @@ describe("Deposit", () => {
 
     //    for (let j = 0; j < totalDeposits; j++) {
     //        await program.methods
-    //            .withdraw({ amount })
+    //            .withdraw(amount)
     //            .accounts({
     //                owner: program.provider.publicKey,
     //                lpVault: lpVaultKey,

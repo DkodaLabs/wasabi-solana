@@ -1,4 +1,8 @@
-use {super::DepositOrWithdraw, crate::events::Withdraw, anchor_lang::prelude::*};
+use {
+    super::DepositOrWithdraw,
+    crate::{error::ErrorCode, events::Withdraw},
+    anchor_lang::prelude::*,
+};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct RedeemArgs {
@@ -11,11 +15,17 @@ pub trait RedeemTrait {
 
 impl RedeemTrait for DepositOrWithdraw<'_> {
     fn redeem(&mut self, shares_amount: u64) -> Result<()> {
-        let token_transfer_amount = shares_amount
-            .checked_mul(self.lp_vault.total_assets)
+        let shares_amount_u128 = shares_amount as u128;
+        let total_assets_u128 = self.lp_vault.total_assets as u128;
+        let shares_supply_u128 = self.shares_mint.supply as u128;
+
+        let token_transfer_amount = shares_amount_u128
+            .checked_mul(total_assets_u128)
             .expect("overflow")
-            .checked_div(self.shares_mint.supply)
-            .expect("overflow");
+            .checked_div(shares_supply_u128)
+            .expect("overflow")
+            .try_into()
+            .map_err(|_| ErrorCode::ArithmeticOverflow)?;
 
         self.transfer_token_from_vault_to_owner(token_transfer_amount)?;
         self.burn_shares_from_user(shares_amount)?;

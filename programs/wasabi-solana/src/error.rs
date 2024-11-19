@@ -46,4 +46,6 @@ pub enum ErrorCode {
     TradingDisabled, // 6020
     #[msg("LPing disabled")]
     LPingDisabled, // 6021
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow, // 6022
 }

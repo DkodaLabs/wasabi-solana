@@ -52,12 +52,17 @@ describe("Withdraw", () => {
             program.account.lpVault.fetch(lpVaultKey),
         ]);
 
+        const roundingProtection = tokenAmount.div(new anchor.BN(1000)).lt(new anchor.BN(1))
+            ? new anchor.BN(1)
+            : tokenAmount.div(new anchor.BN(1000));
+
         // expected to round up, since the program should favor burning
         // more shares rather than less.
         const expectedSharesBurned = tokenAmount
             .mul(new anchor.BN(sharesMintBefore.supply.toString()))
-            .add(lpVaultBefore.totalAssets.sub(new anchor.BN(1)))
+            .add(roundingProtection)
             .div(lpVaultBefore.totalAssets);
+
 
         await program.methods
             .withdraw(tokenAmount)

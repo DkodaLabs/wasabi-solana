@@ -62,7 +62,10 @@ pub struct DepositOrWithdraw<'info> {
 
 impl<'info> DepositOrWithdraw<'info> {
     pub fn validate(ctx: &Context<DepositOrWithdraw>) -> Result<()> {
-        require!(ctx.accounts.global_settings.can_lp(), ErrorCode::UnpermittedIx);
+        require!(
+            ctx.accounts.global_settings.can_lp(),
+            ErrorCode::UnpermittedIx
+        );
 
         Ok(())
     }
@@ -121,16 +124,19 @@ impl<'info> DepositOrWithdraw<'info> {
 
     pub fn deposit(&mut self, amount: u64) -> Result<()> {
         self.transfer_token_from_owner_to_vault(amount)?;
+        let amount_u128 = amount as u128;
 
-        let shares_supply = self.shares_mint.supply;
+        let shares_supply = self.shares_mint.supply as u128;
         let shares_to_mint = if shares_supply == 0 {
             amount
         } else {
             shares_supply
-                .checked_mul(amount)
+                .checked_mul(amount_u128)
                 .expect("overflow")
-                .checked_div(self.lp_vault.total_assets)
+                .checked_div(self.lp_vault.total_assets as u128)
                 .expect("overflow")
+                .try_into()
+                .map_err(|_| ErrorCode::ArithmeticOverflow)?
         };
 
         self.mint_shares_to_user(shares_to_mint)?;

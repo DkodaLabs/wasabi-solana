@@ -4,7 +4,6 @@ import { assert } from "chai";
 import {
   abSwapKey,
   feeWalletA,
-  globalSettingsKey,
   poolFeeAccount,
   poolMint,
   SWAP_AUTHORITY,
@@ -138,7 +137,7 @@ describe("ClaimPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           lpVault: lpVaultKeyB,
-          shortPool: shortPoolAKey,
+          pool: shortPoolAKey,
           currency: tokenMintB,
           collateral: tokenMintA,
           permission: coSignerPermission,
@@ -177,7 +176,7 @@ describe("ClaimPosition", () => {
         .openShortPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
-          shortPool: shortPoolAKey,
+          pool: shortPoolAKey,
           //@ts-ignore
           lpVault: lpVaultKeyB,
           collateral: tokenMintA,
@@ -326,7 +325,7 @@ describe("ClaimPosition", () => {
         .accounts({
           owner: program.provider.publicKey,
           lpVault: lpVaultKeyA,
-          longPool: longPoolBKey,
+          pool: longPoolBKey,
           collateral: tokenMintB,
           currency: tokenMintA,
           permission: coSignerPermission,
@@ -364,7 +363,7 @@ describe("ClaimPosition", () => {
         .openLongPositionCleanup()
         .accounts({
           owner: program.provider.publicKey,
-          longPool: longPoolBKey,
+          pool: longPoolBKey,
           position: positionKey,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
