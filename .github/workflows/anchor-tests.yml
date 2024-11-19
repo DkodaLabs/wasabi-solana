@@ -14,6 +14,7 @@ env:
   SOLANA_INSTALL_PATH: "/home/runner/.local/share/solana/install/active_release"
   SOLANA_SDK_PATH: "/home/runner/.local/share/solana/install/active_release/bin/solana/sdk"
   SOLANA_BIN_PATH: "/home/runner/.local/share/solana/install/active_release/bin"
+  CARGO_HOME: "/home/runner/.cargo"
 
 jobs:
   test:
@@ -65,6 +66,7 @@ jobs:
         run: yarn install
 
       - name: Run tests
-        env:
-          PATH: "${{ env.CARGO_HOME }}/bin:${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:$PATH"
-        run: anchor test
+        run: |
+          echo "Current PATH: $PATH"
+          which anchor || echo "anchor not found"
+          anchor test
