@@ -28,7 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -37,6 +37,19 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown
+
+      - name: Debug Rust Post-Install
+        run: |
+          echo "Rust version:"
+          rustc --version
+          echo "Rustup version:"
+          rustup --version
+          echo "Current toolchain:"
+          rustup show active-toolchain
+          echo "All toolchains:"
+          rustup toolchain list
+          echo "Default toolchain:"
+          rustup default
 
       - name: Cache dependencies
         uses: actions/cache@v4
