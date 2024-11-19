@@ -161,7 +161,7 @@ impl<'info> ClaimPosition<'info> {
             .position
             .principal
             .checked_add(interest_paid)
-            .expect("overflow");
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.transfer_from_trader_to_vault(amount_owed)?;
 
@@ -193,7 +193,7 @@ impl<'info> ClaimPosition<'info> {
                 .position
                 .collateral_amount
                 .checked_sub(close_fee)
-                .expect("overflow");
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             let close_amounts = CloseAmounts {
                 payout: claim_amount,
@@ -227,4 +227,3 @@ impl<'info> ClaimPosition<'info> {
         Ok(())
     }
 }
-

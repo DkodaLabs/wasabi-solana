@@ -8,8 +8,12 @@ on:
 
 env:
   SOLANA_VERSION: "1.17.0"
-  ANCHOR_VERSION: "0.30.1"
+  ANCHOR_VERSION: "0.28.0"
   RUST_TOOLCHAIN: "1.79.0"
+  AGAVE: "/home/runner/.local/share/agave/target/debug"
+  SOLANA_INSTALL_PATH: "/home/runner/.local/share/solana/install/active_release"
+  SOLANA_SDK_PATH: "/home/runner/.local/share/solana/install/active_release/bin/solana/sdk"
+  SOLANA_BIN_PATH: "/home/runner/.local/share/solana/install/active_release/bin"
 
 jobs:
   test:
@@ -23,11 +27,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
+          
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }} 
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -44,22 +48,24 @@ jobs:
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          echo "${{ env.SOLANA_BIN_PATH }}" >> $GITHUB_PATH
+          echo "${{ env.SOLANA_INSTALL_PATH }}/bin" >> $GITHUB_PATH
           solana --version
           solana-keygen new --no-bip39-passphrase
 
       - name: Install Solana build tools
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
-          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
           cargo install cargo-build-sbf cargo-test-sbf
 
       - name: Install Anchor CLI
         run: |
+          cargo install time@0.3.35
           cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
           
       - name: Install node dependencies
         run: yarn install
 
       - name: Run tests
+        env:
+          PATH: "${{ env.SOLANA_BIN_PATH }}:${{ env.SOLANA_INSTALL_PATH }}/bin:${{ github.workspace }}/.cargo/bin:$PATH"
         run: anchor test

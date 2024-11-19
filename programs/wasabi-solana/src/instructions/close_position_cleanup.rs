@@ -102,41 +102,45 @@ pub struct ClosePositionCleanup<'info> {
 }
 
 impl<'info> ClosePositionCleanup<'info> {
-    fn get_destination_delta(&self) -> u64 {
+    fn get_destination_delta(&self) -> Result<u64> {
         if self.pool.is_long_pool {
-            self.currency_vault
+            Ok(self
+                .currency_vault
                 .amount
                 .checked_sub(
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
                 )
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
         } else {
-            self.currency_vault
+            Ok(self
+                .currency_vault
                 .amount
                 .checked_sub(
                     self.close_position_request
                         .swap_cache
                         .destination_bal_before,
                 )
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
         }
     }
 
-    fn get_source_delta(&self) -> u64 {
+    fn get_source_delta(&self) -> Result<u64> {
         if self.pool.is_long_pool {
-            self.close_position_request
+            Ok(self
+                .close_position_request
                 .swap_cache
                 .source_bal_before
                 .checked_sub(self.collateral_vault.amount)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
         } else {
-            self.close_position_request
+            Ok(self
+                .close_position_request
                 .swap_cache
                 .source_bal_before
                 .checked_sub(self.collateral_vault.amount)
-                .expect("overflow")
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
         }
     }
 
@@ -160,12 +164,12 @@ impl<'info> ClosePositionCleanup<'info> {
         //    return Err(ErrorCode::MinTokensNotMet.into());
         //}
         require_gte!(
-            self.get_destination_delta(),
+            self.get_destination_delta()?,
             self.close_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
 
-        require_gt!(self.get_source_delta(), 0, ErrorCode::MaxSwapExceeded);
+        require_gt!(self.get_source_delta()?, 0, ErrorCode::MaxSwapExceeded);
 
         // NOTE: DISABLED FOR TESTING
         //require_keys_eq!(
@@ -302,8 +306,8 @@ impl<'info> ClosePositionCleanup<'info> {
         }
 
         let close_position_req = &self.close_position_request;
-        let collateral_spent = self.get_source_delta();
-        let currency_diff = self.get_destination_delta();
+        let collateral_spent = self.get_source_delta()?;
+        let currency_diff = self.get_destination_delta()?;
         let interest = self.close_position_request.interest;
 
         if self.pool.is_long_pool && collateral_spent < self.position.collateral_amount {
