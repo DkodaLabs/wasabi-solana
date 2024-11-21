@@ -58,7 +58,7 @@ pub struct InitShortPool<'info> {
 impl<'info> InitShortPool<'info> {
     pub fn validate(ctx: &Context<InitShortPool>) -> Result<()> {
         require!(
-            ctx.accounts.permission.can_init_vault(),
+            ctx.accounts.permission.can_init_pool(),
             ErrorCode::InvalidPermissions
         );
         Ok(())
