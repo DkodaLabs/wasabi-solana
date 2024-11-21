@@ -1,7 +1,7 @@
 use {
     crate::{
         error::ErrorCode,
-        events::{PositionClosed, PositionLiquidated},
+        events::{PositionClosed, PositionClosedWithOrder, PositionLiquidated},
         long_pool_signer_seeds, short_pool_signer_seeds,
         utils::validate_difference,
         BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
@@ -11,6 +11,12 @@ use {
         self, Mint, Revoke, TokenAccount, TokenInterface, TransferChecked,
     },
 };
+
+pub enum CloseAction {
+    User,
+    Liquidation,
+    ExitOrder(u8),
+}
 
 #[derive(Accounts)]
 pub struct ClosePositionCleanup<'info> {
@@ -295,7 +301,7 @@ impl<'info> ClosePositionCleanup<'info> {
         }
     }
 
-    pub fn close_position_cleanup(&mut self, is_liquidation: bool) -> Result<CloseAmounts> {
+    pub fn close_position_cleanup(&mut self, close_action: CloseAction) -> Result<CloseAmounts> {
         self.validate()?;
         let mut close_amounts = CloseAmounts::default();
 
@@ -337,6 +343,17 @@ impl<'info> ClosePositionCleanup<'info> {
             let (payout, principal_repaid) =
                 crate::utils::deduct(currency_diff, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
+
+            // Revert if the close order is not a liquidation and is causing bad debt
+            match close_action {
+                CloseAction::User | CloseAction::ExitOrder(_) => {
+                    require!(
+                        self.position.principal > (principal_repaid + interest),
+                        ErrorCode::BadDebt
+                    );
+                }
+                _ => (),
+            }
 
             // Deduct interest
             let (payout, interest_paid) = crate::utils::deduct(payout, interest);
@@ -385,6 +402,12 @@ impl<'info> ClosePositionCleanup<'info> {
                 .ok_or(ErrorCode::ArithmeticOverflow)?,
         )?;
 
+        // Increment total assets of the LP vault
+        self.lp_vault
+            .total_assets
+            .checked_add(interest)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
         // Pay fees
         self.transfer_fees(close_fee)?;
 
@@ -392,18 +415,29 @@ impl<'info> ClosePositionCleanup<'info> {
         self.transfer_payout_from_pool_to_user(close_amounts.payout)?;
 
         // Emit close event
-        if is_liquidation {
-            emit!(PositionLiquidated::new(
-                &self.position,
-                &close_amounts,
-                self.pool.is_long_pool
-            ))
-        } else {
-            emit!(PositionClosed::new(
-                &self.position,
-                &close_amounts,
-                self.pool.is_long_pool
-            ))
+        match close_action {
+            CloseAction::User => {
+                emit!(PositionClosed::new(
+                    &self.position,
+                    &close_amounts,
+                    self.pool.is_long_pool
+                ))
+            }
+            CloseAction::Liquidation => {
+                emit!(PositionLiquidated::new(
+                    &self.position,
+                    &close_amounts,
+                    self.pool.is_long_pool
+                ))
+            }
+            CloseAction::ExitOrder(order_type) => {
+                emit!(PositionClosedWithOrder::new(
+                    &self.position,
+                    &close_amounts,
+                    self.pool.is_long_pool,
+                    order_type
+                ))
+            }
         }
 
         Ok(close_amounts)

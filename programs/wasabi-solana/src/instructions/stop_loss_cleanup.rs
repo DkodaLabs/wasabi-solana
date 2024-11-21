@@ -24,7 +24,9 @@ impl<'info> StopLossCleanup<'info> {
     }
 
     pub fn stop_loss_cleanup(&mut self) -> Result<()> {
-        let close_amounts = self.close_position_cleanup.close_position_cleanup(false)?;
+        let close_amounts = self
+            .close_position_cleanup
+            .close_position_cleanup(CloseAction::ExitOrder(1))?;
 
         if self.close_position_cleanup.pool.is_long_pool {
             // Handle additional checks for a Stop Loss Order of a long pool

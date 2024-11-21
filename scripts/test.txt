@@ -1,19 +1,8 @@
-Initializing vault...
-Init Vault: 4pU9T9kjQ99ZVoiBNTV3fRddAy7znVd9r9MBQ3qqjxNaj6icSzMi2gW8QXiQkM6NaL7SPrvrbrU1gubo1z4E2q6M
-Init Vault: iWh3ps6pvvffsXRUucMK8F9Ep4DXroNnY3qyLCbPcsWyuFjBaDrr3nK8jFyoFnasjVz1cuEbA9RhwhS82iLax81
-LP Vault: 6dSTFD1iwriyeswDwZDgCKT6nQ5JZ4Go35BNUJRfDCdV
-Asset Mint: 8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X
-Calculated Shares Mint: 4tKDjs2ko5YunjxGZdjoityNVWvdQ6iuNmorJfauEQY2
-Share TX
-Deposit: 45EVqhUN2Xgv2LMECkZ47GDF28xZTBbxSkFfNiMSgs82wQR85xFQAMnYwnrMtYF87QF6bnY9fdrwqHjBk4BmaRB2
-Deposit: 4QuKPEt2tdhPDNxBuYV15B29o7P9YDVdHYVhWEQzYqwpc82Y5mijdHqKizrtGfJNYjdEJbAwy4SpshsyDT6wCd6Z
-Withdraw: 5VDg9ToouXhyQ2rU9e7YVwuU6ByU8KQrqYKn2wDhwwTyV6Dy1J7Pm6dZuThQeQZUNPiBiFWsh1PrWUyAvwW1pjjk
-Withdraw: 5zCmbBkkFuUnZjSCuo9aJAyESP5Zmo7EDXyCqz4FEecTagnEdLjsMwtMR63vVp1BFZizhqJn7JaXxm3Ax7Cu6iQk
-8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X
-D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF
-4tKDjs2ko5YunjxGZdjoityNVWvdQ6iuNmorJfauEQY2
-3ZisF3cx5Zav6aw6mpubYSQrk5LGahxQwNeW1e6GCdiX
-Vault initialized successfully!
+USD: 8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X
+SOL: D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF
+WIF: ADVu91DTK3wzgwNdazM2SWf25cmroNnStb9Jm3UmR65y
+BONK: Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC
+
 
  marketId: "4dCdw8Am7FW5JsKyS3iBex7v2cMYiPodxZyJ2CFVq5fn",
   requestQueue: "HQWh85Gpg5w6siriKNviC3BsECbam1NkHZU3uFJUVVHw",
@@ -46,4 +35,67 @@ amm pool created! txId:  57QXHTyA3aRozZ8Fc789YwMQvoyeVAjuRgCy3HKzsBZeCLxakLLxH4J
 Lookup Table: FzQXfR2NFCdMuxbKypXJgqyeSXHJK6S2ivPYofJiDGkx
 Addresses added: [AuyBUFFouCTco47DiVXBTbibGCYM2waFAA5Qw7FMdNwR, 3DT18LNRjPoVGBjKLfXaVEQGbFTC16Eqv2puHhvz9sNa, DvjjAnVtmasLF2vPKmbQiWN8rs7RCQW8fGWWvKvGSdhF, TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb, ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL, 11111111111111111111111111111111, Sysvar1nstructions1111111111111111111111111]
 Transaction Signature: 4SBefZSFUeQvKvRYiALn4CmXEyQhVHQa6arYBEojf4Fx34scTW6S1Uy9QTv9ahy1CXVmAerjGbcNo7whLqHno1t1
+
+
+BONK-USD:
+  marketId: "BiCpzjkH97YrMP29dPyM1gTK5zDBDEYMisNdWNzwvKsi",
+  requestQueue: "4uCLrhEMumEhvracniNujHQdNLNLabt4hCv2eDJABMka",
+  eventQueue: "7APJcHm4eo44D7Wt3NBmYXbYeec4WZ4RietcMYjWpZBn",
+  bids: "22DBJB593HskP9kc2uwa7vv9222ywFBDg1VXTiFXW4Zn",
+  asks: "F3t6ESqBx5dx2vRHjjxHG2VfiFGxoyZrg7UfUQMNrmmv",
+  baseVault: "7SoF7juFEy8hFrdBn3fVHLhVpiDkd8Yi8uDAHMquRJJ",
+  quoteVault: "C4t22xMoXjQPMToMV5qRwZvMiWEN3sQwXcDEHYvKtbWD",
+  baseMint: "Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC",
+  quoteMin: "8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X",
+}
+
+amm pool created! txId:  R19FFKRbzerepgL14m45ErFJAiMi8tiD8sNRrUsa2anyTgvJA76JiT24hFHMWcqfcRdosVpaYSR6jDC6ZE4yced , poolKeys: {
+  programId: "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8",
+  ammId: "q3wJcUUr2XiyG9KTeHJgPAcSKGgFdS1wajwRWwS9uZM",
+  ammAuthority: "DbQqP6ehDYmeYjcBaMRuA8tAJY1EjDUz9DpwSLjaQqfC",
+  ammOpenOrders: "5D3Lk71BMNnmD13Q2Cb5gnPgVrKkScJjgjAHx9Bgw2A9",
+  lpMint: "DbCGSENWSSdjrrxZTUkifCzgzG8ia3u1yz7b3LR6bYVR",
+  coinMint: "Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC",
+  pcMint: "8kEYsPTovQ4R5S5asTp18XZkSCgTsPnVZgVxrctA5p3X",
+  coinVault: "AuT32w9iUvtAPHqjere2kEnBuYzRfVP38wqvuMe1t7Qd",
+  pcVault: "GSAMGV2GTgv8JMmEbBTdAfeFvV9jYKvTUQCgkCVZjsqE",
+  withdrawQueue: "7tAbpsXrgxaR3Efh43Qmcy73Wbnje9qqG9vNcVJT85CS",
+  ammTargetOrders: "6csCB7e9jk64sCJTPw1MDnxkZDvU2y6M2Zeq931v2vFy",
+  poolTempLp: "FN3UXop1SArGdko7hRAbEJSD4juLGVoe4rW3orp8e81r",
+  marketProgramId: "EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj",
+  marketId: "BiCpzjkH97YrMP29dPyM1gTK5zDBDEYMisNdWNzwvKsi",
+  ammConfigId: "8QN9yfKqWDoKjvZmqFsgCzAqwZBQuzVVnC388dN5RCPo",
+  feeDestinationId: "3XMrhbv989VxAMi3DErLV9eJht1pHppW5LbKxe9fkEFR",
+
+BONK-SOL
+create market total 2 txs, market info:  {
+  marketId: "Go6KiigWzdoCbFS4eDCED4fZw9nMXqMqF3dR6e4h3j3b",
+  requestQueue: "EBxUWUGbqZDdGfmc4QGHntQGpqrkUj3qADfHpW4Tb8fU",
+  eventQueue: "GMB6gihj9QAYG8f8H2pj4uFsXSjB5jxM23FzT9opENU8",
+  bids: "DAFSRjwvUaZ1Aozkvc6BCamFmb6ryuLzPzd4RY4XG2TL",
+  asks: "8v9LiN6QLkdbQJ5D9B5Jncje9zubrEPQ6RHCv8EV9RJB",
+  baseVault: "7dzsd6CyaJRwaAamc5nAPLgn1YU26NDW23Bdy742pBdr",
+  quoteVault: "HDiFLkVn3bpNus4qUi9Ai8SECCJA7eMq62KgLHF2wbuG",
+  baseMint: "Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC",
+  quoteMin: "D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF",
+}
+
+amm pool created! txId:  2FqdXyjb53NdgkN298J9G47n4pjHS6skCnGnoSPvffwtekMwDkn6KEaja2pa8kc5DUpmm2hGzmtsVnn6w1ksFXMY , poolKeys: {
+  programId: "HWy1jotHpo6UqeQxx49dpYYdQB8wj9Qk9MdxwjLvDHB8",
+  ammId: "4x9DhqS7QihXhZV2J3D5EhH7QwgDZpjs7BoJ9eqfjXyw",
+  ammAuthority: "DbQqP6ehDYmeYjcBaMRuA8tAJY1EjDUz9DpwSLjaQqfC",
+  ammOpenOrders: "4xW4VrjkBbBGNBzdUSDZnQuSumdsF2YxH7AShYF3Dsse",
+  lpMint: "9kYEQrjM5m3YiVtx3TUF5awh6JCJHhRFMkFr9thyRxxM",
+  coinMint: "Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC",
+  pcMint: "D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF",
+  coinVault: "G3XgiftnVnd4k6eBQBi9bapxb33rjRa8JcHCdpRcE8fV",
+  pcVault: "5HxQ4kBzkwV6FZkjgoXkxTHPiMnQ8SE12L9MPiN1UPoH",
+  withdrawQueue: "8To5HympK935z37zZp7LSAvTmwHo7hYNN2iHwaAADLon",
+  ammTargetOrders: "2DSSMeoA89CNdz3pkweRxnvD4kk8LJtEwZd3oVjfzFEe",
+  poolTempLp: "7mbDfGUBbnSKURWbcWhTLXVCj2Eb4xMr2Rbgd25At5LY",
+  marketProgramId: "EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj",
+  marketId: "Go6KiigWzdoCbFS4eDCED4fZw9nMXqMqF3dR6e4h3j3b",
+  ammConfigId: "8QN9yfKqWDoKjvZmqFsgCzAqwZBQuzVVnC388dN5RCPo",
+  feeDestinationId: "3XMrhbv989VxAMi3DErLV9eJht1pHppW5LbKxe9fkEFR",
+
 

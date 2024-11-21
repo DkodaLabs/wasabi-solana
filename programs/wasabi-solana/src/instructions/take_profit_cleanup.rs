@@ -24,7 +24,9 @@ impl<'info> TakeProfitCleanup<'info> {
     }
 
     pub fn take_profit_cleanup(&mut self) -> Result<()> {
-        let close_amounts = self.close_position_cleanup.close_position_cleanup(false)?;
+        let close_amounts = self
+            .close_position_cleanup
+            .close_position_cleanup(CloseAction::ExitOrder(0))?;
         if self.close_position_cleanup.pool.is_long_pool {
             // Handle additional checks for a Take Profit Order of a long pool
 
@@ -74,4 +76,3 @@ impl<'info> TakeProfitCleanup<'info> {
         Ok(())
     }
 }
-

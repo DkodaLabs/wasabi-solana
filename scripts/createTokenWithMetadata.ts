@@ -39,7 +39,7 @@ async function createTokenWithMetadata() {
             keypair,
             keypair.publicKey,
             keypair.publicKey,
-            6,
+            9,
         );
         console.log("Mint created:", mint.toString())
 
@@ -63,9 +63,9 @@ async function createTokenWithMetadata() {
 
         const metadataTx = await createV1(umi, {
             mint: publicKey(mint),
-            name: "spicy USD",
-            symbol: "sUSD",
-            uri: "https://wasabi-public.s3.amazonaws.com/tokens/usdc.png",
+            name: "test POPCAT",
+            symbol: "tPOPCAT",
+            uri: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr",
             sellerFeeBasisPoints: percentAmount(0),
             tokenStandard: TokenStandard.Fungible,
             creators: null,

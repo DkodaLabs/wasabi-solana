@@ -14,7 +14,9 @@ impl<'info> LiquidatePositionCleanup<'info> {
     }
 
     pub fn liquidate_position_cleanup(&mut self) -> Result<()> {
-        self.close_position_cleanup.close_position_cleanup(true)?;
+        self.close_position_cleanup
+            .close_position_cleanup(CloseAction::Liquidation)?;
         Ok(())
     }
 }
+

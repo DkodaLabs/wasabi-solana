@@ -12,7 +12,7 @@ import BN from 'bn.js'
 
 export const createAmmPool = async () => {
     const raydium = await initSdk();
-    const marketId = new PublicKey(`4dCdw8Am7FW5JsKyS3iBex7v2cMYiPodxZyJ2CFVq5fn`);
+    const marketId = new PublicKey(`Go6KiigWzdoCbFS4eDCED4fZw9nMXqMqF3dR6e4h3j3b`);
 
     const marketBufferInfo = await raydium.connection.getAccountInfo(new PublicKey(marketId))
     const { baseMint, quoteMint } = MARKET_STATE_LAYOUT_V3.decode(marketBufferInfo!.data)
@@ -45,8 +45,8 @@ export const createAmmPool = async () => {
             mint: quoteMint,
             decimals: quoteMintInfo.decimals,
         },
-        baseAmount: new BN(100_000),
-        quoteAmount: new BN(18_000_000),
+        baseAmount: new BN(2000000000),
+        quoteAmount: new BN(620),
 
         startTime: new BN(0), // unit in seconds
         ownerInfo: {

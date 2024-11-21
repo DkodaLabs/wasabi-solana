@@ -137,6 +137,29 @@ pub struct PositionClosedWithOrder {
     pub interest_paid: u64,
     pub fee_amount: u64,
 }
+impl PositionClosedWithOrder {
+    pub fn new(
+        position: &Account<'_, Position>,
+        close_amounts: &CloseAmounts,
+        side: bool,
+        order_type: u8,
+    ) -> Self {
+        Self {
+            side: if side {
+                LONG.to_string()
+            } else {
+                SHORT.to_string()
+            },
+            id: position.key(),
+            trader: position.trader,
+            order_type,
+            payout: close_amounts.payout,
+            principal_repaid: close_amounts.principal_repaid,
+            interest_paid: close_amounts.interest_paid,
+            fee_amount: close_amounts.close_fee,
+        }
+    }
+}
 
 #[event]
 pub struct PositionLiquidated {
