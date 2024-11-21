@@ -32,7 +32,7 @@ pub struct InitShortPool<'info> {
     pub pool: Account<'info, BasePool>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = collateral,
         associated_token::authority = pool,
@@ -41,7 +41,7 @@ pub struct InitShortPool<'info> {
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = currency,
         associated_token::authority = pool,

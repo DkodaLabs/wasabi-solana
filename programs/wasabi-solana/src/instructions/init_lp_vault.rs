@@ -37,7 +37,7 @@ pub struct InitLpVault<'info> {
     pub asset_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = asset_mint,
         associated_token::authority = lp_vault,
@@ -46,7 +46,7 @@ pub struct InitLpVault<'info> {
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         seeds = [lp_vault.key().as_ref(), asset_mint.key().as_ref()],
         bump,
