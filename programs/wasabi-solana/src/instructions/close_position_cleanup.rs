@@ -337,23 +337,41 @@ impl<'info> ClosePositionCleanup<'info> {
             interest
         };
 
+        // Revert if the close order is not a liquidation and is causing bad debt
+        match close_action {
+            CloseAction::User | CloseAction::ExitOrder(_) => {
+                if self.pool.is_long_pool {
+                    require_gte!(
+                        currency_diff,
+                        self.position
+                            .principal
+                            .checked_add(interest)
+                            .ok_or(ErrorCode::ArithmeticOverflow)?,
+                        ErrorCode::BadDebt
+                    );
+                } else {
+                    require_gte!(
+                        self.position
+                            .collateral_amount
+                            .checked_sub(collateral_spent)
+                            .ok_or(ErrorCode::ArithmeticUnderflow)?,
+                        self.position
+                            .principal
+                            .checked_add(interest)
+                            .ok_or(ErrorCode::ArithmeticOverflow)?,
+                        ErrorCode::BadDebt
+                    );
+                }
+            }
+            _ => (),
+        }
+
         // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
         close_amounts.payout = if self.pool.is_long_pool {
             // Deduct principal
             let (payout, principal_repaid) =
                 crate::utils::deduct(currency_diff, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
-
-            // Revert if the close order is not a liquidation and is causing bad debt
-            match close_action {
-                CloseAction::User | CloseAction::ExitOrder(_) => {
-                    require!(
-                        self.position.principal > (principal_repaid + interest),
-                        ErrorCode::BadDebt
-                    );
-                }
-                _ => (),
-            }
 
             // Deduct interest
             let (payout, interest_paid) = crate::utils::deduct(payout, interest);

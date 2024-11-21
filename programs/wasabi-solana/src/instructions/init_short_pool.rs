@@ -23,13 +23,13 @@ pub struct InitShortPool<'info> {
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
-      init,
-      payer = payer,
-      seeds = [b"short_pool", collateral.key().as_ref(), currency.key().as_ref()],
-      bump,
-      space = 8 + std::mem::size_of::<BasePool>(),
+        init,
+        payer = payer,
+        seeds = [b"short_pool", collateral.key().as_ref(), currency.key().as_ref()],
+        bump,
+        space = 8 + std::mem::size_of::<BasePool>(),
     )]
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
 
     #[account(
         init_if_needed,

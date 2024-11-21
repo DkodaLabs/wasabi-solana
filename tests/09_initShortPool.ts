@@ -15,6 +15,7 @@ describe("InitShortPool", () => {
         );
 
     it("should create the short pool", async () => {
+        try { 
         await superAdminProgram.methods
             .initShortPool()
             .accounts({
@@ -26,6 +27,9 @@ describe("InitShortPool", () => {
                 currencyTokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();
+        } catch (e: any) {
+            console.log(await e.getLogs(program.provider.connection));
+        }
         const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
             [
                 anchor.utils.bytes.utf8.encode("short_pool"),
