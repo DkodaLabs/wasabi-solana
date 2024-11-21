@@ -2,8 +2,15 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct SwapCache {
-    pub source_bal_before: u64,
-    pub destination_bal_before: u64,
+    // Maker is the tokens that's sold:
+    // principal from opening,
+    // collateral for closing
+    pub maker_bal_before: u64,
+
+    // Taker is the tokens that's bought:
+    // collateral from opening,
+    // principal for closing
+    pub taker_bal_before: u64,
 }
 
 /// An account that is used to cache data between the open position setup and cleanup instructions.

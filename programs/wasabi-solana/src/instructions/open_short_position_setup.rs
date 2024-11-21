@@ -222,8 +222,8 @@ impl<'info> OpenShortPositionSetup<'info> {
             max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
             // collateral_amount - set to the `args.principal`
             swap_cache: SwapCache {
-                destination_bal_before: self.collateral_vault.amount,
-                source_bal_before: self.currency_vault.amount,
+                taker_bal_before: self.collateral_vault.amount,
+                maker_bal_before: self.currency_vault.amount,
             }
         });
 

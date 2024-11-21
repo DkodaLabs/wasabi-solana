@@ -13,7 +13,7 @@ use {
 };
 
 pub enum CloseAction {
-    User,
+    Market,
     Liquidation,
     ExitOrder(u8),
 }
@@ -81,6 +81,7 @@ pub struct ClosePositionCleanup<'info> {
     pub authority: Signer<'info>,
 
     #[account(
+        mut,
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
@@ -108,46 +109,25 @@ pub struct ClosePositionCleanup<'info> {
 }
 
 impl<'info> ClosePositionCleanup<'info> {
-    fn get_destination_delta(&self) -> Result<u64> {
-        if self.pool.is_long_pool {
-            Ok(self
-                .currency_vault
-                .amount
-                .checked_sub(
-                    self.close_position_request
-                        .swap_cache
-                        .destination_bal_before,
-                )
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-        } else {
-            Ok(self
-                .currency_vault
-                .amount
-                .checked_sub(
-                    self.close_position_request
-                        .swap_cache
-                        .destination_bal_before,
-                )
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-        }
+    fn get_principal_delta(&self) -> Result<u64> {
+        Ok(self
+            .currency_vault
+            .amount
+            .checked_sub(
+                self.close_position_request
+                    .swap_cache
+                    .taker_bal_before,
+            )
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    fn get_source_delta(&self) -> Result<u64> {
-        if self.pool.is_long_pool {
-            Ok(self
-                .close_position_request
-                .swap_cache
-                .source_bal_before
-                .checked_sub(self.collateral_vault.amount)
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-        } else {
-            Ok(self
-                .close_position_request
-                .swap_cache
-                .source_bal_before
-                .checked_sub(self.collateral_vault.amount)
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-        }
+    fn get_collateral_delta(&self) -> Result<u64> {
+        Ok(self
+            .close_position_request
+            .swap_cache
+            .maker_bal_before
+            .checked_sub(self.collateral_vault.amount)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn validate(&self) -> Result<()> {
@@ -165,17 +145,13 @@ impl<'info> ClosePositionCleanup<'info> {
             ErrorCode::InvalidPool
         );
 
-        // Validate owner receives at least the minimum amount of token being swapped to.
-        //if self.get_destination_delta() < self.close_position_request.min_target_amount {
-        //    return Err(ErrorCode::MinTokensNotMet.into());
-        //}
         require_gte!(
-            self.get_destination_delta()?,
+            self.get_principal_delta()?,
             self.close_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
 
-        require_gt!(self.get_source_delta()?, 0, ErrorCode::MaxSwapExceeded);
+        require_gt!(self.get_collateral_delta()?, 0, ErrorCode::MaxSwapExceeded);
 
         // NOTE: DISABLED FOR TESTING
         //require_keys_eq!(
@@ -301,7 +277,47 @@ impl<'info> ClosePositionCleanup<'info> {
         }
     }
 
-    pub fn close_position_cleanup(&mut self, close_action: CloseAction) -> Result<CloseAmounts> {
+    #[inline]
+    fn update_total_assets(
+        &mut self,
+        close_action: &CloseAction,
+        close_amounts: &CloseAmounts,
+    ) -> Result<()> {
+        if close_amounts.principal_repaid < self.position.principal {
+            // Revert if the close order is not a liquidation and is causing bad debt
+            match close_action {
+                CloseAction::Market | CloseAction::ExitOrder(_) => {
+                    return Err(ErrorCode::BadDebt.into())
+                }
+                _ => (),
+            }
+
+            // Deduct principal repaid from principal
+            let loss = self
+                .position
+                .principal
+                .checked_sub(close_amounts.principal_repaid)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+            // Deduct loss from total assets
+            self.lp_vault.total_assets = self
+                .lp_vault
+                .total_assets
+                .checked_sub(loss)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            Ok(())
+        } else {
+            // Increment total assets of the LP vault
+            self.lp_vault.total_assets = self
+                .lp_vault
+                .total_assets
+                .checked_add(close_amounts.interest_paid)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+            Ok(())
+        }
+    }
+
+    pub fn close_position_cleanup(&mut self, close_action: &CloseAction) -> Result<CloseAmounts> {
         self.validate()?;
         let mut close_amounts = CloseAmounts::default();
 
@@ -312,8 +328,8 @@ impl<'info> ClosePositionCleanup<'info> {
         }
 
         let close_position_req = &self.close_position_request;
-        let collateral_spent = self.get_source_delta()?;
-        let currency_diff = self.get_destination_delta()?;
+        let collateral_spent = self.get_collateral_delta()?;
+        let principal_payout = self.get_principal_delta()?;
         let interest = self.close_position_request.interest;
 
         if self.pool.is_long_pool && collateral_spent < self.position.collateral_amount {
@@ -337,61 +353,26 @@ impl<'info> ClosePositionCleanup<'info> {
             interest
         };
 
-        // Revert if the close order is not a liquidation and is causing bad debt
-        match close_action {
-            CloseAction::User | CloseAction::ExitOrder(_) => {
-                if self.pool.is_long_pool {
-                    require_gte!(
-                        currency_diff,
-                        self.position
-                            .principal
-                            .checked_add(interest)
-                            .ok_or(ErrorCode::ArithmeticOverflow)?,
-                        ErrorCode::BadDebt
-                    );
-                } else {
-                    require_gte!(
-                        self.position
-                            .collateral_amount
-                            .checked_sub(collateral_spent)
-                            .ok_or(ErrorCode::ArithmeticUnderflow)?,
-                        self.position
-                            .principal
-                            .checked_add(interest)
-                            .ok_or(ErrorCode::ArithmeticOverflow)?,
-                        ErrorCode::BadDebt
-                    );
-                }
-            }
-            _ => (),
-        }
-
-        // Calc fees https://github.com/DkodaLabs/wasabi_perps/blob/4f597e6293e0de00c6133af7cffd3a680f463d6c/contracts/PerpUtils.sol#L28-L37
         close_amounts.payout = if self.pool.is_long_pool {
             // Deduct principal
-            let (payout, principal_repaid) =
-                crate::utils::deduct(currency_diff, self.position.principal);
+            let (principal_payout, principal_repaid) =
+                crate::utils::deduct(principal_payout, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
 
             // Deduct interest
-            let (payout, interest_paid) = crate::utils::deduct(payout, interest);
+            let (principal_payout, interest_paid) =
+                crate::utils::deduct(principal_payout, interest);
             close_amounts.interest_paid = interest_paid;
 
-            payout
+            principal_payout
         } else {
-            close_amounts.principal_repaid = currency_diff;
-
-            let (remaining_after_interest, interest_paid) =
-                crate::utils::deduct(currency_diff, interest);
-            close_amounts.interest_paid = interest_paid;
-
-            let (_payout, principal_repaid) =
-                crate::utils::deduct(remaining_after_interest, self.position.principal);
+            // Deduct principal
+            let (principal_payout, principal_repaid) =
+                crate::utils::deduct(principal_payout, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
 
-            // Deduct interest
-            //(close_amounts.interest_paid, close_amounts.principal_repaid) =
-            //    crate::utils::deduct(close_amounts.principal_repaid, self.position.principal);
+            // The remaining amount is principal
+            close_amounts.interest_paid = principal_payout;
 
             if close_amounts.interest_paid > 0 {
                 validate_difference(interest, close_amounts.interest_paid, 5)?;
@@ -411,20 +392,16 @@ impl<'info> ClosePositionCleanup<'info> {
         close_amounts.collateral_spent = collateral_spent;
         close_amounts.past_fees = self.position.fees_to_be_paid;
 
-        // Records the payment ([evm src](https://github.com/DkodaLabs/wasabi_perps/blob/8ba417b4755afafed703ab5d3eaa7070ad551709/contracts/BaseWasabiPool.sol#L133))
+        // Update the value of `lp_vault.total_assets` based on `close_action`
+        self.update_total_assets(&close_action, &close_amounts)?;
+
         // Transfer the principal and interest amount to the LP Vault.
         self.transfer_from_pool_to_vault(
-            self.position
-                .principal
-                .checked_add(interest)
+            close_amounts
+                .principal_repaid
+                .checked_add(close_amounts.interest_paid)
                 .ok_or(ErrorCode::ArithmeticOverflow)?,
         )?;
-
-        // Increment total assets of the LP vault
-        self.lp_vault
-            .total_assets
-            .checked_add(interest)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         // Pay fees
         self.transfer_fees(close_fee)?;
@@ -434,7 +411,7 @@ impl<'info> ClosePositionCleanup<'info> {
 
         // Emit close event
         match close_action {
-            CloseAction::User => {
+            CloseAction::Market => {
                 emit!(PositionClosed::new(
                     &self.position,
                     &close_amounts,
@@ -453,7 +430,7 @@ impl<'info> ClosePositionCleanup<'info> {
                     &self.position,
                     &close_amounts,
                     self.pool.is_long_pool,
-                    order_type
+                    *order_type
                 ))
             }
         }

@@ -71,17 +71,17 @@ impl<'info> OpenShortPositionCleanup<'info> {
         get_function_hash("global", "open_short_position_cleanup")
     }
 
-    fn get_destination_delta(&self) -> Result<u64> {
+    fn get_collateral_delta(&self) -> Result<u64> {
         Ok(self.collateral_vault
             .amount
-            .checked_sub(self.open_position_request.swap_cache.destination_bal_before)
+            .checked_sub(self.open_position_request.swap_cache.taker_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    fn get_source_delta(&self) -> Result<u64> {
+    fn get_principal_delta(&self) -> Result<u64> {
         Ok(self.open_position_request
             .swap_cache
-            .source_bal_before
+            .maker_bal_before
             .checked_sub(self.currency_vault.amount)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
@@ -102,7 +102,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
 
         // Validate owner receives at least the minimum amount of token being swapped to.
         require_gte!(
-            self.get_destination_delta()?,
+            self.get_collateral_delta()?,
             self.open_position_request.min_target_amount,
             ErrorCode::MinTokensNotMet
         );
@@ -146,8 +146,8 @@ impl<'info> OpenShortPositionCleanup<'info> {
         // Revoke owner's ability to transfer on behalf of the `currency_vault`
         self.revoke_owner_delegation()?;
 
-        let collateral_received = self.get_destination_delta()?;
-        let principal_used = self.get_source_delta()?;
+        let collateral_received = self.get_collateral_delta()?;
+        let principal_used = self.get_principal_delta()?;
 
         require_gt!(
             self.position

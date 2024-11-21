@@ -224,8 +224,8 @@ impl<'info> OpenLongPositionSetup<'info> {
             pool_key: self.pool.key(),
             position: self.position.key(),
             swap_cache: SwapCache {
-                source_bal_before: self.currency_vault.amount,
-                destination_bal_before: self.collateral_vault.amount,
+                maker_bal_before: self.currency_vault.amount,
+                taker_bal_before: self.collateral_vault.amount,
             },
         });
         self.position.set_inner(Position {

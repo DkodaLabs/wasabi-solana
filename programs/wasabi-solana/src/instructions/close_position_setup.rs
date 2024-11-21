@@ -103,8 +103,8 @@ impl<'info> ClosePositionSetup<'info> {
         // Create a close position request
         self.close_position_request.set_inner(ClosePositionRequest {
             swap_cache: SwapCache {
-                source_bal_before: self.collateral_vault.amount,
-                destination_bal_before: self.currency_vault.amount,
+                maker_bal_before: self.collateral_vault.amount,
+                taker_bal_before: self.currency_vault.amount,
             },
             interest,
             max_amount_in: self.position.collateral_amount, // Check

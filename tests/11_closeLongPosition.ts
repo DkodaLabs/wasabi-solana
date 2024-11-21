@@ -4,6 +4,8 @@ import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
+    createTransferInstruction,
+    createMintToInstruction,
 } from "@solana/spl-token";
 import {
     abSwapKey,
@@ -395,6 +397,83 @@ describe("CloseLongPosition", () => {
         });
 
         // TODO should fail if swap uses less/more than position collateral
+        describe("user tries to close a position with bad debt", () => {
+            it("should fail", async () => {
+                const interestOwed = new anchor.BN(10);
+
+                const mintToIx = createMintToInstruction(
+                    tokenMintA,  // mint
+                    longPoolBCurrencyVaultKey,  // destination
+                    program.provider.publicKey,  // authority
+                    1900
+                );
+
+                const mintToIx2 = createMintToInstruction(
+                    tokenMintB,  // mint
+                    longPoolBVaultKey,
+                    program.provider.publicKey,  // authority
+                    1900
+                );
+
+                const setupIx = await program.methods
+                    .closeLongPositionSetup(
+                        new anchor.BN(0),
+                        interestOwed,
+                        new anchor.BN(11),
+                        closeRequestExpiration,
+                    )
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        closePositionSetup: {
+                            pool: longPoolBKey,
+                            owner: program.provider.publicKey,
+                            collateral: tokenMintB,
+                            position: positionKey,
+                            permission: coSignerPermission,
+                            //@ts-ignore
+                            authority: SWAP_AUTHORITY.publicKey,
+                            tokenProgram: TOKEN_PROGRAM_ID,
+                        },
+                    })
+                    .instruction();
+
+                try {
+                    await program.methods
+                        .closeLongPositionCleanup()
+                        .accounts({
+                            owner: program.provider.publicKey,
+                            closePositionCleanup: {
+                                owner: program.provider.publicKey,
+                                pool: longPoolBKey,
+                                position: positionKey,
+                                currency: tokenMintA,
+                                collateral: tokenMintB,
+                                authority: SWAP_AUTHORITY.publicKey,
+                                feeWallet: feeWalletA,
+                                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                            },
+                        })
+                        .preInstructions([setupIx, mintToIx, mintToIx2])
+                        .signers([SWAP_AUTHORITY])
+                        .rpc();
+
+                    const postMintBalance = await program.provider.connection
+                        .getTokenAccountBalance(longPoolBCurrencyVaultKey);
+                    console.log("Post-mint vault balance:", postMintBalance.value.amount);
+
+                    assert.fail("Should have failed with bad debt");
+                } catch (err) {
+                    if (err instanceof anchor.AnchorError) {
+                        assert.equal(err.error.errorCode.number, 6011);
+                    } else {
+                        console.log("Unexpected error:");
+                        console.log(err);
+                        assert.fail("Wrong error");
+                    }
+                }
+            });
+        });
 
         describe("correct setup", () => {
             it("should close the position and return funds", async () => {
@@ -408,12 +487,15 @@ describe("CloseLongPosition", () => {
                     lpVaultKey,
                     true
                 );
-                const [vaultBefore, ownerABefore, feeBalanceBefore] =
-                    await getMultipleTokenAccounts(program.provider.connection, [
-                        vaultKey,
-                        ownerTokenA,
-                        feeWalletA,
-                    ], TOKEN_PROGRAM_ID);
+                const [lpVaultBefore, [vaultBefore, ownerABefore, feeBalanceBefore]] =
+                    await Promise.all([
+                        program.account.lpVault.fetchNullable(lpVaultKey),
+                        getMultipleTokenAccounts(program.provider.connection, [
+                            vaultKey,
+                            ownerTokenA,
+                            feeWalletA,
+                        ], TOKEN_PROGRAM_ID)
+                    ]);
                 const args = {
                     minTargetAmount: new anchor.BN(0),
                     interest: interestOwed,
@@ -485,8 +567,9 @@ describe("CloseLongPosition", () => {
                     .signers([SWAP_AUTHORITY])
                     .rpc({ skipPreflight: true });
 
-                const [positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
+                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
                     await Promise.all([
+                        program.account.lpVault.fetchNullable(lpVaultKey),
                         program.account.position.fetchNullable(positionKey),
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
@@ -501,12 +584,16 @@ describe("CloseLongPosition", () => {
                 const vaultDiff = vaultAfter.amount - vaultBefore.amount;
                 assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
 
+
                 // Validate the user got the rest
                 const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
                 assert.equal(ownerADiff.toString(), "948");
 
                 const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
                 assert.equal(feeBalanceDiff.toString(), closeFee.toString());
+
+                // we expect the totalAssets of the lpVault to be incremented by the interestOwed
+                assert.equal(lpVaultAfter.totalAssets.sub(lpVaultBefore.totalAssets).toString(), interestOwed.toString());
             });
         });
     });

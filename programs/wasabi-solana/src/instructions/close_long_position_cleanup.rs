@@ -19,7 +19,7 @@ impl<'info> CloseLongPositionCleanup<'info> {
 
     pub fn close_long_position_cleanup(&mut self) -> Result<()> {
         self.close_position_cleanup
-            .close_position_cleanup(CloseAction::User)?;
+            .close_position_cleanup(&CloseAction::Market)?;
         Ok(())
     }
 }
