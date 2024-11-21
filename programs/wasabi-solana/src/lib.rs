@@ -189,7 +189,7 @@ pub mod wasabi_solana {
         ctx.accounts.close_long_position_cleanup()
     }
 
-    #[access_control(OpenShortPositionSetup::validate(&ctx))]
+    #[access_control(OpenShortPositionSetup::validate(&ctx, expiration))]
     pub fn open_short_position_setup(
         ctx: Context<OpenShortPositionSetup>,
         nonce: u16,

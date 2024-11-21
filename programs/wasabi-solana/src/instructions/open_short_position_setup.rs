@@ -111,7 +111,11 @@ pub struct OpenShortPositionSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 impl<'info> OpenShortPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, expiration: i64) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+
+        require_gt!(expiration, now, ErrorCode::PositionReqExpired);
+
         require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
         require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
 
