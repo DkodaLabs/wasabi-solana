@@ -131,6 +131,7 @@ pub mod wasabi_solana {
         ctx.accounts.withdraw(amount)
     }
 
+    #[access_control(DepositOrWithdraw::validate(&ctx))]
     pub fn mint(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
         ctx.accounts.mint(shares_amount)
     }
