@@ -54,4 +54,6 @@ pub enum ErrorCode {
     U64Overflow, // 6024
     #[msg("Division by zero")]
     ZeroDivision, // 6025
+    #[msg("Liquidation threshold not reached")]
+    LiquidationThresholdNotReached, // 6026
 }

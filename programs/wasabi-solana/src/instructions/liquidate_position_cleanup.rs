@@ -1,5 +1,5 @@
 use {
-    crate::{instructions::close_position_cleanup::*, utils::get_function_hash},
+    crate::{error::ErrorCode, instructions::close_position_cleanup::*, utils::get_function_hash},
     anchor_lang::prelude::*,
 };
 
@@ -13,10 +13,46 @@ impl<'info> LiquidatePositionCleanup<'info> {
         get_function_hash("global", "liquidate_position_cleanup")
     }
 
+    fn validate_liquidation_threshold(&self, close_amounts: &CloseAmounts) -> Result<()> {
+        if self.close_position_cleanup.pool.is_long_pool {
+            require_gt!(
+                close_amounts
+                    .payout
+                    .checked_add(close_amounts.close_fee)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                self.close_position_cleanup
+                    .position
+                    .principal
+                    .checked_mul(5)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(100)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                ErrorCode::LiquidationThresholdNotReached,
+            );
+        } else {
+            require_gt!(
+                close_amounts
+                    .payout
+                    .checked_add(close_amounts.close_fee)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                self.close_position_cleanup
+                    .position
+                    .collateral_amount
+                    .checked_mul(5)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(100)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                ErrorCode::LiquidationThresholdNotReached,
+            );
+        }
+        Ok(())
+    }
+
     pub fn liquidate_position_cleanup(&mut self) -> Result<()> {
-        self.close_position_cleanup
+        let close_amounts = self
+            .close_position_cleanup
             .close_position_cleanup(&CloseAction::Liquidation)?;
+        self.validate_liquidation_threshold(&close_amounts)?;
         Ok(())
     }
 }
-

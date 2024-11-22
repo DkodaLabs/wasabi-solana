@@ -6,6 +6,7 @@ import {
     TOKEN_PROGRAM_ID,
     createTransferInstruction,
     createMintToInstruction,
+    mintToChecked,
 } from "@solana/spl-token";
 import {
     abSwapKey,
@@ -398,29 +399,14 @@ describe("CloseLongPosition", () => {
 
         // TODO should fail if swap uses less/more than position collateral
         describe("user tries to close a position with bad debt", () => {
-            it("should fail", async () => {
-                const interestOwed = new anchor.BN(10);
-
-                const mintToIx = createMintToInstruction(
-                    tokenMintA,  // mint
-                    longPoolBCurrencyVaultKey,  // destination
-                    program.provider.publicKey,  // authority
-                    1900
-                );
-
-                const mintToIx2 = createMintToInstruction(
-                    tokenMintB,  // mint
-                    longPoolBVaultKey,
-                    program.provider.publicKey,  // authority
-                    1900
-                );
-
+            it("should fail with BadDebt error", async () => {
+                // Setup: (currency vault is empty, collateral has balance from open position)
                 const setupIx = await program.methods
                     .closeLongPositionSetup(
                         new anchor.BN(0),
-                        interestOwed,
-                        new anchor.BN(11),
-                        closeRequestExpiration,
+                        new anchor.BN(10), // interest
+                        new anchor.BN(11), // execution fee
+                        new anchor.BN(Math.floor(Date.now() / 1000) + 3600)
                     )
                     .accounts({
                         owner: program.provider.publicKey,
@@ -436,6 +422,26 @@ describe("CloseLongPosition", () => {
                         },
                     })
                     .instruction();
+
+                // After setup: drain collateral and mint small amount to currency
+                const drainCollateralIx = createTransferInstruction(
+                    longPoolBVaultKey,
+                    ownerTokenB,
+                    SWAP_AUTHORITY.publicKey,
+                    1800, // Leave small amount from the ~1900 we got from opening
+                    [SWAP_AUTHORITY],
+                    TOKEN_PROGRAM_ID
+                );
+
+                // Mint small amount to currency to ensure positive delta but not enough for principal (1000)
+                const mintCurrencyIx = createMintToInstruction(
+                    tokenMintA,
+                    longPoolBCurrencyVaultKey,
+                    program.provider.publicKey,
+                    500, // Not enough to cover principal of 1000
+                    undefined,
+                    TOKEN_PROGRAM_ID
+                );
 
                 try {
                     await program.methods
@@ -454,23 +460,18 @@ describe("CloseLongPosition", () => {
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
-                        .preInstructions([setupIx, mintToIx, mintToIx2])
+                        .preInstructions([
+                            setupIx,
+                            drainCollateralIx,
+                            mintCurrencyIx,
+                        ])
                         .signers([SWAP_AUTHORITY])
-                        .rpc();
+                        .rpc({ skipPreflight: true });
 
-                    const postMintBalance = await program.provider.connection
-                        .getTokenAccountBalance(longPoolBCurrencyVaultKey);
-                    console.log("Post-mint vault balance:", postMintBalance.value.amount);
-
-                    assert.fail("Should have failed with bad debt");
-                } catch (err) {
-                    if (err instanceof anchor.AnchorError) {
-                        assert.equal(err.error.errorCode.number, 6011);
-                    } else {
-                        console.log("Unexpected error:");
-                        console.log(err);
-                        assert.fail("Wrong error");
-                    }
+                    assert.fail("Expected transaction to fail with BadDebt error");
+                } catch (error) {
+                    assert.equal(error.code, 6011);
+                    assert.equal(error.msg, "Cannot close bad debt");
                 }
             });
         });
@@ -530,11 +531,11 @@ describe("CloseLongPosition", () => {
                 const swapIx = TokenSwap.swapInstruction(
                     abSwapKey.publicKey,
                     swapAuthority,
-                    SWAP_AUTHORITY.publicKey, //userTransferAuthority
-                    longPoolBVaultKey, // userSource
-                    swapTokenAccountB, // poolSource
-                    swapTokenAccountA, // poolDestination
-                    longPoolBCurrencyVaultKey, // userDestination
+                    SWAP_AUTHORITY.publicKey,
+                    longPoolBVaultKey,
+                    swapTokenAccountB,
+                    swapTokenAccountA,
+                    longPoolBCurrencyVaultKey,
                     poolMint,
                     poolFeeAccount,
                     null,

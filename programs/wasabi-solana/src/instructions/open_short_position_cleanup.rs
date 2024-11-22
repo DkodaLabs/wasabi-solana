@@ -1,5 +1,6 @@
 use {
     crate::{
+        debt_controller::LEVERAGE_DENOMINATOR,
         error::ErrorCode, events::PositionOpened, short_pool_signer_seeds,
         utils::get_function_hash, BasePool, DebtController, LpVault, OpenPositionRequest, Position,
     },
@@ -153,6 +154,8 @@ impl<'info> OpenShortPositionCleanup<'info> {
             self.position
                 .down_payment
                 .checked_mul(self.debt_controller.max_leverage)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_div(LEVERAGE_DENOMINATOR)
                 .ok_or(ErrorCode::ArithmeticOverflow)?,
             collateral_received,
             ErrorCode::PrincipalTooHigh

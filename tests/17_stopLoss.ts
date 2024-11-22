@@ -490,6 +490,7 @@ describe("stopLoss", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6017);
                 } else {
+                    console.error(err);
                     assert.ok(false);
                 }
             }
