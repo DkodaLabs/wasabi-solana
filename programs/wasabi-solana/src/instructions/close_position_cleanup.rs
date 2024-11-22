@@ -375,7 +375,7 @@ impl<'info> ClosePositionCleanup<'info> {
             close_amounts.interest_paid = principal_payout;
 
             if close_amounts.interest_paid > 0 {
-                validate_difference(interest, close_amounts.interest_paid, 5)?;
+                validate_difference(interest, close_amounts.interest_paid, 3)?;
             }
 
             // Payout and fees are paid in collateral
