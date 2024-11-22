@@ -131,6 +131,7 @@ pub mod wasabi_solana {
         ctx.accounts.withdraw(amount)
     }
 
+    #[access_control(DepositOrWithdraw::validate(&ctx))]
     pub fn mint(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
         ctx.accounts.mint(shares_amount)
     }
@@ -188,7 +189,7 @@ pub mod wasabi_solana {
         ctx.accounts.close_long_position_cleanup()
     }
 
-    #[access_control(OpenShortPositionSetup::validate(&ctx))]
+    #[access_control(OpenShortPositionSetup::validate(&ctx, expiration))]
     pub fn open_short_position_setup(
         ctx: Context<OpenShortPositionSetup>,
         nonce: u16,

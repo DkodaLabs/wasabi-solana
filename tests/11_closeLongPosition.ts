@@ -4,6 +4,9 @@ import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
+    createTransferInstruction,
+    createMintToInstruction,
+    mintToChecked,
 } from "@solana/spl-token";
 import {
     abSwapKey,
@@ -395,6 +398,83 @@ describe("CloseLongPosition", () => {
         });
 
         // TODO should fail if swap uses less/more than position collateral
+        describe("user tries to close a position with bad debt", () => {
+            it("should fail with BadDebt error", async () => {
+                // Setup: (currency vault is empty, collateral has balance from open position)
+                const setupIx = await program.methods
+                    .closeLongPositionSetup(
+                        new anchor.BN(0),
+                        new anchor.BN(10), // interest
+                        new anchor.BN(11), // execution fee
+                        new anchor.BN(Math.floor(Date.now() / 1000) + 3600)
+                    )
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        closePositionSetup: {
+                            pool: longPoolBKey,
+                            owner: program.provider.publicKey,
+                            collateral: tokenMintB,
+                            position: positionKey,
+                            permission: coSignerPermission,
+                            //@ts-ignore
+                            authority: SWAP_AUTHORITY.publicKey,
+                            tokenProgram: TOKEN_PROGRAM_ID,
+                        },
+                    })
+                    .instruction();
+
+                // After setup: drain collateral and mint small amount to currency
+                const drainCollateralIx = createTransferInstruction(
+                    longPoolBVaultKey,
+                    ownerTokenB,
+                    SWAP_AUTHORITY.publicKey,
+                    1800, // Leave small amount from the ~1900 we got from opening
+                    [SWAP_AUTHORITY],
+                    TOKEN_PROGRAM_ID
+                );
+
+                // Mint small amount to currency to ensure positive delta but not enough for principal (1000)
+                const mintCurrencyIx = createMintToInstruction(
+                    tokenMintA,
+                    longPoolBCurrencyVaultKey,
+                    program.provider.publicKey,
+                    500, // Not enough to cover principal of 1000
+                    undefined,
+                    TOKEN_PROGRAM_ID
+                );
+
+                try {
+                    await program.methods
+                        .closeLongPositionCleanup()
+                        .accounts({
+                            owner: program.provider.publicKey,
+                            closePositionCleanup: {
+                                owner: program.provider.publicKey,
+                                pool: longPoolBKey,
+                                position: positionKey,
+                                currency: tokenMintA,
+                                collateral: tokenMintB,
+                                authority: SWAP_AUTHORITY.publicKey,
+                                feeWallet: feeWalletA,
+                                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                            },
+                        })
+                        .preInstructions([
+                            setupIx,
+                            drainCollateralIx,
+                            mintCurrencyIx,
+                        ])
+                        .signers([SWAP_AUTHORITY])
+                        .rpc({ skipPreflight: true });
+
+                    assert.fail("Expected transaction to fail with BadDebt error");
+                } catch (error) {
+                    assert.equal(error.code, 6011);
+                    assert.equal(error.msg, "Cannot close bad debt");
+                }
+            });
+        });
 
         describe("correct setup", () => {
             it("should close the position and return funds", async () => {
@@ -408,12 +488,15 @@ describe("CloseLongPosition", () => {
                     lpVaultKey,
                     true
                 );
-                const [vaultBefore, ownerABefore, feeBalanceBefore] =
-                    await getMultipleTokenAccounts(program.provider.connection, [
-                        vaultKey,
-                        ownerTokenA,
-                        feeWalletA,
-                    ], TOKEN_PROGRAM_ID);
+                const [lpVaultBefore, [vaultBefore, ownerABefore, feeBalanceBefore]] =
+                    await Promise.all([
+                        program.account.lpVault.fetchNullable(lpVaultKey),
+                        getMultipleTokenAccounts(program.provider.connection, [
+                            vaultKey,
+                            ownerTokenA,
+                            feeWalletA,
+                        ], TOKEN_PROGRAM_ID)
+                    ]);
                 const args = {
                     minTargetAmount: new anchor.BN(0),
                     interest: interestOwed,
@@ -448,11 +531,11 @@ describe("CloseLongPosition", () => {
                 const swapIx = TokenSwap.swapInstruction(
                     abSwapKey.publicKey,
                     swapAuthority,
-                    SWAP_AUTHORITY.publicKey, //userTransferAuthority
-                    longPoolBVaultKey, // userSource
-                    swapTokenAccountB, // poolSource
-                    swapTokenAccountA, // poolDestination
-                    longPoolBCurrencyVaultKey, // userDestination
+                    SWAP_AUTHORITY.publicKey,
+                    longPoolBVaultKey,
+                    swapTokenAccountB,
+                    swapTokenAccountA,
+                    longPoolBCurrencyVaultKey,
                     poolMint,
                     poolFeeAccount,
                     null,
@@ -485,8 +568,9 @@ describe("CloseLongPosition", () => {
                     .signers([SWAP_AUTHORITY])
                     .rpc({ skipPreflight: true });
 
-                const [positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
+                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
                     await Promise.all([
+                        program.account.lpVault.fetchNullable(lpVaultKey),
                         program.account.position.fetchNullable(positionKey),
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
@@ -501,12 +585,16 @@ describe("CloseLongPosition", () => {
                 const vaultDiff = vaultAfter.amount - vaultBefore.amount;
                 assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
 
+
                 // Validate the user got the rest
                 const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
                 assert.equal(ownerADiff.toString(), "948");
 
                 const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
                 assert.equal(feeBalanceDiff.toString(), closeFee.toString());
+
+                // we expect the totalAssets of the lpVault to be incremented by the interestOwed
+                assert.equal(lpVaultAfter.totalAssets.sub(lpVaultBefore.totalAssets).toString(), interestOwed.toString());
             });
         });
     });

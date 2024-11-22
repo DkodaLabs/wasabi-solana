@@ -23,16 +23,16 @@ pub struct InitShortPool<'info> {
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
-      init,
-      payer = payer,
-      seeds = [b"short_pool", collateral.key().as_ref(), currency.key().as_ref()],
-      bump,
-      space = 8 + std::mem::size_of::<BasePool>(),
+        init,
+        payer = payer,
+        seeds = [b"short_pool", collateral.key().as_ref(), currency.key().as_ref()],
+        bump,
+        space = 8 + std::mem::size_of::<BasePool>(),
     )]
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = collateral,
         associated_token::authority = pool,
@@ -41,7 +41,7 @@ pub struct InitShortPool<'info> {
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = currency,
         associated_token::authority = pool,
@@ -58,7 +58,7 @@ pub struct InitShortPool<'info> {
 impl<'info> InitShortPool<'info> {
     pub fn validate(ctx: &Context<InitShortPool>) -> Result<()> {
         require!(
-            ctx.accounts.permission.can_init_vault(),
+            ctx.accounts.permission.can_init_pool(),
             ErrorCode::InvalidPermissions
         );
         Ok(())

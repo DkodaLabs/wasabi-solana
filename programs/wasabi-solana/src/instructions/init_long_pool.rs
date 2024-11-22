@@ -32,7 +32,7 @@ pub struct InitLongPool<'info> {
     pub pool: Box<Account<'info, BasePool>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = collateral,
         associated_token::authority = pool,
@@ -41,7 +41,7 @@ pub struct InitLongPool<'info> {
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         associated_token::mint = currency,
         associated_token::authority = pool,
@@ -58,7 +58,7 @@ pub struct InitLongPool<'info> {
 impl<'info> InitLongPool<'info> {
     pub fn validate(ctx: &Context<InitLongPool>) -> Result<()> {
         require!(
-            ctx.accounts.permission.can_init_vault(),
+            ctx.accounts.permission.can_init_pool(),
             ErrorCode::InvalidPermissions
         );
         Ok(())

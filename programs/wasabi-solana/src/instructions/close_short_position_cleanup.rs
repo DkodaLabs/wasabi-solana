@@ -56,7 +56,8 @@ impl<'info> CloseShortPositionCleanup<'info> {
     }
 
     pub fn close_short_position_cleanup(&mut self) -> Result<()> {
-        self.close_position_cleanup.close_position_cleanup(false)?;
+        self.close_position_cleanup
+            .close_position_cleanup(&CloseAction::Market)?;
         Ok(())
     }
 }

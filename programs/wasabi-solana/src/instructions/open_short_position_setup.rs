@@ -111,7 +111,11 @@ pub struct OpenShortPositionSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 impl<'info> OpenShortPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, expiration: i64) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+
+        require_gt!(expiration, now, ErrorCode::PositionReqExpired);
+
         require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
         require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
 
@@ -218,8 +222,8 @@ impl<'info> OpenShortPositionSetup<'info> {
             max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
             // collateral_amount - set to the `args.principal`
             swap_cache: SwapCache {
-                destination_bal_before: self.collateral_vault.amount,
-                source_bal_before: self.currency_vault.amount,
+                taker_bal_before: self.collateral_vault.amount,
+                maker_bal_before: self.currency_vault.amount,
             }
         });
 
