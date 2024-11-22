@@ -113,11 +113,7 @@ impl<'info> ClosePositionCleanup<'info> {
         Ok(self
             .currency_vault
             .amount
-            .checked_sub(
-                self.close_position_request
-                    .swap_cache
-                    .taker_bal_before,
-            )
+            .checked_sub(self.close_position_request.swap_cache.taker_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
@@ -151,7 +147,11 @@ impl<'info> ClosePositionCleanup<'info> {
             ErrorCode::MinTokensNotMet
         );
 
-        require_gt!(self.get_collateral_delta()?, 0, ErrorCode::MaxSwapExceeded);
+        require_gte!(
+            self.position.collateral_amount,
+            self.get_collateral_delta()?,
+            ErrorCode::MaxSwapExceeded
+        );
 
         // NOTE: DISABLED FOR TESTING
         //require_keys_eq!(
