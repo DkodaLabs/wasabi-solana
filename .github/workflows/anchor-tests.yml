@@ -29,7 +29,28 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache Node Modules
+        id: cache-node-modules
+        uses: actions/cache@v4
+        with:
+          path: "node_modules"
+          key: node_modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Cache Rust Dependencies
+        id: cache-rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-rust-${{ env.RUST_TOOLCHAIN }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-rust-${{ env.RUST_TOOLCHAIN }}-
+
       - name: Install Rust
+        if: steps.cache-rust.outputs.cache-hit != 'true'
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
@@ -37,19 +58,6 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
           targets: wasm32-unknown-unknown
-
-      - name: Debug Rust Post-Install
-        run: |
-          echo "Rust version:"
-          rustc --version
-          echo "Rustup version:"
-          rustup --version
-          echo "Current toolchain:"
-          rustup show active-toolchain
-          echo "All toolchains:"
-          rustup toolchain list
-          echo "Default toolchain:"
-          rustup default
 
       - name: Set Rust Default Version
         run: |
@@ -59,31 +67,46 @@ jobs:
           rustc --version
           rustup show active-toolchain
 
-      - name: Cache dependencies
+      - name: Cache Solana
+        id: cache-solana
         uses: actions/cache@v4
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+            ~/.local/share/solana/install/
+            ~/.config/solana/
+          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
 
       - name: Install Solana
+        if: steps.cache-solana.outputs.cache-hit != 'true'
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
           echo "${{ env.SOLANA_BIN_PATH }}" >> $GITHUB_PATH
           export PATH="${{ env.SOLANA_BIN_PATH }}:$PATH"
           solana --version
+
+      - name: Setup Solana Path
+        run: |
+          echo "${{ env.SOLANA_BIN_PATH }}" >> $GITHUB_PATH
           solana-keygen new --no-bip39-passphrase
 
+      - name: Cache Anchor
+        id: cache-anchor
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/anchor
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-anchor-${{ env.ANCHOR_VERSION }}
+
       - name: Install Anchor CLI
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
         run: |
           cargo install --git https://github.com/coral-xyz/anchor --tag v${{ env.ANCHOR_VERSION }} anchor-cli --locked
           
       - name: Install node dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
         run: yarn install
 
       - name: Run tests

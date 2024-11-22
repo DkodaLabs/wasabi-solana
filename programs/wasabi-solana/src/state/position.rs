@@ -24,4 +24,3 @@ pub struct Position {
     // Link to the LP Vault that the Position borrowed from.
     pub lp_vault: Pubkey,
 }
-
