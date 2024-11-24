@@ -16,16 +16,7 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
     pub owner: Signer<'info>,
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = owner,
-        associated_token::token_program = currency_token_program,
-    )]
-    /// The account that holds the owner's base currency
-    pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    // TODO: Check
     #[account(
         mut,
         associated_token::mint = collateral,
