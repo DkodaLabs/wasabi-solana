@@ -11,9 +11,9 @@ pub struct TakeProfitCleanup<'info> {
     pub close_position_cleanup: ClosePositionCleanup<'info>,
 
     #[account(
-      mut,
-      seeds = [b"take_profit_order", close_position_cleanup.position.key().as_ref()],
-      bump,
+        mut,
+        seeds = [b"take_profit_order", close_position_cleanup.position.key().as_ref()],
+        bump,
     )]
     pub take_profit_order: Account<'info, TakeProfitOrder>,
 }
