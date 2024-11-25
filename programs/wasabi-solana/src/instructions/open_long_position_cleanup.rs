@@ -73,7 +73,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
         );
 
         // Validate owner does not spend more tokens than requested.
-        let source_balance_delta = self
+        let principal_balance_delta = self
             .open_position_request
             .swap_cache
             .maker_bal_before
@@ -82,7 +82,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
         require_gte!(
             self.open_position_request.max_amount_in,
-            source_balance_delta,
+            principal_balance_delta,
             ErrorCode::SwapAmountExceeded
         );
 

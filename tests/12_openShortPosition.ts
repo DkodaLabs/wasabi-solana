@@ -40,10 +40,6 @@ describe("OpenShortPosition", () => {
             [anchor.utils.bytes.utf8.encode("super_admin")],
             program.programId,
         );
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId,
-    );
     // Collateral currency is tokenMintA (short_pool)
     // Borrowed currency is tokenMintB (lp_vault)
     // Downpayment currency is tokenMintA
