@@ -194,7 +194,7 @@ impl<'info> OpenShortPositionSetup<'info> {
         // made.
         self.collateral_vault.reload()?;
 
-        require_gt!(self.vault.amount, principal, ErrorCode::InsufficientAvailablePrincipal);
+        require_gte!(self.vault.amount, principal, ErrorCode::InsufficientAvailablePrincipal);
 
         // Transfer the borrowed amount to the `currency_vault` to be used in a swap.
         self.transfer_from_lp_vault_to_currency_vault(principal)?;

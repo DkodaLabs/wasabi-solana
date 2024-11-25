@@ -23,11 +23,6 @@ pub struct Permission {
 }
 
 impl Permission {
-    /// True if the authority can grant permissions to other keys
-    pub fn can_create_permission(&self) -> bool {
-        self.is_super_authority
-    }
-
     /// True if the authority has permission to initialize vaults
     pub fn can_init_vault(&self) -> bool {
         self.permissions_map & INIT_VAULT_PERMISSION == INIT_VAULT_PERMISSION

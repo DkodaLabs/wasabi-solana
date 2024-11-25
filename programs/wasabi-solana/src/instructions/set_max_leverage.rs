@@ -26,7 +26,7 @@ pub struct SetMaxLeverage<'info> {
 impl<'info> SetMaxLeverage<'info> {
     fn validate(&self, max_leverage: u64) -> Result<()> {
         require_neq!(max_leverage, 0, ErrorCode::InvalidValue);
-        require_gt!(
+        require_gte!(
             100 * LEVERAGE_DENOMINATOR,
             max_leverage,
             ErrorCode::InvalidValue

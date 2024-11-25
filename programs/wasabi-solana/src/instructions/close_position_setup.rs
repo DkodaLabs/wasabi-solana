@@ -88,7 +88,7 @@ impl<'info> ClosePositionSetup<'info> {
 
         let now = Clock::get()?.unix_timestamp;
 
-        require_gt!(expiration, now, ErrorCode::PositionReqExpired);
+        require_gte!(expiration, now, ErrorCode::PositionReqExpired);
 
         Ok(())
     }

@@ -42,13 +42,7 @@ impl<'info> StopLossCleanup<'info> {
                 .checked_add(close_amounts.principal_repaid)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-            msg!(
-                "TAKER AMOUNTS {:?} {:?}",
-                actual_taker_amount,
-                self.stop_loss_order.taker_amount
-            );
-
-            require_gt!(
+            require_gte!(
                 self.stop_loss_order.taker_amount,
                 actual_taker_amount,
                 ErrorCode::PriceTargetNotReached
@@ -77,7 +71,7 @@ impl<'info> StopLossCleanup<'info> {
                 .maker_amount
                 .checked_mul(actual_taker_amount)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
-            require_gt!(lhs, rhs, ErrorCode::PriceTargetNotReached);
+            require_gte!(lhs, rhs, ErrorCode::PriceTargetNotReached);
         }
 
         self.stop_loss_order

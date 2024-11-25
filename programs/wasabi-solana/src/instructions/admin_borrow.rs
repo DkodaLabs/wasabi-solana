@@ -46,7 +46,7 @@ impl<'info> AdminBorrow<'info> {
             ErrorCode::InvalidPermissions
         );
 
-        require_gt!(
+        require_gte!(
             ctx.accounts.lp_vault.max_borrow,
             ctx.accounts
                 .lp_vault
