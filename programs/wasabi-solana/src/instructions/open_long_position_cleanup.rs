@@ -44,7 +44,8 @@ impl<'info> OpenLongPositionCleanup<'info> {
     }
 
     fn get_collateral_delta(&self) -> Result<u64> {
-        Ok(self.collateral_vault
+        Ok(self
+            .collateral_vault
             .amount
             .checked_sub(self.open_position_request.swap_cache.taker_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
