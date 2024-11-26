@@ -4,10 +4,14 @@ use {
         error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
         utils::position_setup_transaction_introspecation_validation, BasePool, DebtController,
         GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
+        ProtocolWallet,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{
+    anchor_spl::{
+        token_interface::{
         self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
+        },
+        associated_token::AssociatedToken,
     },
 };
 
@@ -32,7 +36,7 @@ pub struct OpenLongPositionSetup<'info> {
     #[account(
         has_one = vault
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
 
     /// The LP Vault's token account.
     #[account(mut)]
@@ -43,7 +47,7 @@ pub struct OpenLongPositionSetup<'info> {
         has_one = collateral_vault,
         has_one = currency_vault,
     )]
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
 
     /// The collateral account that is the destination of the swap
     #[account(mut)]
@@ -63,7 +67,7 @@ pub struct OpenLongPositionSetup<'info> {
         bump,
         space = 8 + std::mem::size_of::<OpenPositionRequest>(),
     )]
-    pub open_position_request: Account<'info, OpenPositionRequest>,
+    pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(
         init,
@@ -89,14 +93,31 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    #[account(mut)]
-    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        owner = crate::ID,
+        seeds = [
+            b"protocol_wallet",
+            global_settings.key().as_ref(),
+            &ProtocolWallet::FEE.to_le_bytes(),
+            &fee_wallet.nonce.to_le_bytes(),
+        ],
+        bump = fee_wallet.bump,
+    )]
+    pub fee_wallet: Account<'info, ProtocolWallet>,
+
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = fee_wallet,
+        associated_token::token_program = token_program,
+    )]
+    pub fee_wallet_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
         bump,
     )]
-    pub debt_controller: Account<'info, DebtController>,
+    pub debt_controller: Box<Account<'info, DebtController>>,
 
     #[account(
         seeds = [b"global_settings"],
@@ -105,6 +126,7 @@ pub struct OpenLongPositionSetup<'info> {
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     #[account(
         address = sysvar::instructions::ID
@@ -163,7 +185,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
-            to: self.fee_wallet.to_account_info(),
+            to: self.fee_wallet_ata.to_account_info(),
             authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);

@@ -4,10 +4,13 @@ use {
         SwapCache,
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
         utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings,
-        LpVault, OpenPositionRequest, Permission, Position,
+        LpVault, OpenPositionRequest, Permission, Position, ProtocolWallet,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenInterface, TokenAccount, TransferChecked, Mint},
+    anchor_spl::{
+        token_interface::{self, Approve, TokenInterface, TokenAccount, TransferChecked, Mint},
+        associated_token::AssociatedToken,
+    },
 };
 
 #[derive(Accounts)]
@@ -30,7 +33,7 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(
         has_one = vault,
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
     #[account(mut)]
     /// The LP Vault's token account.
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -40,7 +43,7 @@ pub struct OpenShortPositionSetup<'info> {
         has_one = currency_vault,
     )]
     /// The ShortPool that owns the Position
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
     #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -49,8 +52,8 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: InterfaceAccount<'info, Mint>,
-    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -76,6 +79,7 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
+    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
@@ -83,8 +87,25 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    #[account(mut)]
-    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        owner = crate::ID,
+        seeds = [
+            b"protocol_wallet",
+            global_settings.key().as_ref(),
+            &ProtocolWallet::FEE.to_le_bytes(),
+            &fee_wallet.nonce.to_le_bytes(),
+        ],
+        bump,
+        constraint = fee_wallet.wallet_type == ProtocolWallet::FEE,
+    )]
+    pub fee_wallet: Account<'info, ProtocolWallet>,
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = authority,
+        associated_token::token_program = collateral_token_program,
+    )]
+    pub fee_wallet_ata: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"global_settings"],
@@ -94,6 +115,7 @@ pub struct OpenShortPositionSetup<'info> {
 
     pub currency_token_program: Interface<'info, TokenInterface>,
     pub collateral_token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     #[account(
       address = sysvar::instructions::ID

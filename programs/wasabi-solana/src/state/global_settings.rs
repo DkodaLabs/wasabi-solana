@@ -7,7 +7,6 @@ const LPING_ENABLED: u16 = 0b0000000000000010;
 pub struct GlobalSettings {
     /// Bit mapping of enabled features. Status allow disabling trading, lping, etc.
     pub statuses: u16,
-    pub protocol_fee_wallet: Pubkey,
 }
 
 impl GlobalSettings {

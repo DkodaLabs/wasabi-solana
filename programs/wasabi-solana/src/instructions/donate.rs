@@ -1,5 +1,10 @@
 use {
-    crate::{events::NativeYieldClaimed, LpVault, error::ErrorCode, state::GlobalSettings},
+    crate::{
+        error::ErrorCode,
+        events::NativeYieldClaimed,
+        state::{GlobalSettings, Permission},
+        LpVault,
+    },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
@@ -30,6 +35,8 @@ pub struct Donate<'info> {
 
     pub currency: InterfaceAccount<'info, Mint>,
 
+    pub permission: Account<'info, Permission>,
+
     #[account(
         seeds = [b"global_settings"],
         bump,
@@ -40,7 +47,16 @@ pub struct Donate<'info> {
 
 impl<'info> Donate<'info> {
     pub fn validate(ctx: &Context<Donate>) -> Result<()> {
-        require!(ctx.accounts.global_settings.can_lp(), ErrorCode::UnpermittedIx);
+        require!(
+            ctx.accounts.global_settings.can_lp(),
+            ErrorCode::UnpermittedIx
+        );
+
+        require_keys_eq!(
+            ctx.accounts.owner.key(),
+            ctx.accounts.permission.authority,
+            ErrorCode::InvalidPermissions
+        );
 
         Ok(())
     }

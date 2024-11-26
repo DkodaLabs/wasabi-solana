@@ -15,10 +15,12 @@ describe("initDebtController", () => {
             let args = {
                 maxApy: new anchor.BN(100),
                 maxLeverage: new anchor.BN(100),
+                liquidationFee: 5,
             }
             await program.methods.initDebtController(
                 args.maxApy,
                 args.maxLeverage,
+                args.liquidationFee,
             ).accounts({
                 superAdmin: program.provider.publicKey,
             }).rpc();
@@ -26,7 +28,6 @@ describe("initDebtController", () => {
         } catch (err) {
             if (err.message.includes("Expected error")) {
                 assert.fail("Expected error");
-                return;
             }
             assert.ok(true);
         }
@@ -36,6 +37,7 @@ describe("initDebtController", () => {
         await superAdminProgram.methods.initDebtController(
             new anchor.BN(100),
             new anchor.BN(100),
+            5,
         ).accounts({
             superAdmin: superAdminProgram.provider.publicKey,
         }).rpc();

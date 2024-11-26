@@ -18,11 +18,11 @@ pub struct OpenLongPositionCleanup<'info> {
         has_one = currency_vault,
     )]
     /// The LongPool that owns the Position
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
     /// The collateral account that is the destination of the swap
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    pub currency_vault: InterfaceAccount<'info, TokenAccount>,
+    pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,

@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
-import { feeWalletKeyPair, superAdminProgram, SWAP_AUTHORITY } from "./rootHooks";
+import { superAdminProgram, SWAP_AUTHORITY } from "./rootHooks";
 
 describe("wasabi-solana", () => {
     // Configure the client to use the local cluster.
@@ -18,6 +18,7 @@ describe("wasabi-solana", () => {
                 canLiquidate: false,
                 canBorrowFromVaults: true,
                 canInitPools: true,
+                canManageWallets: true,
                 status: { active: {} },
             })
             .accounts({
@@ -39,7 +40,6 @@ describe("wasabi-solana", () => {
         const tx = await program.methods
             .initGlobalSettings({
                 superAdmin: superAdminProgram.provider.publicKey,
-                feeWallet: feeWalletKeyPair.publicKey,
                 statuses: 3,
             })
             .accounts({
@@ -48,10 +48,6 @@ describe("wasabi-solana", () => {
             .rpc();
         const globalSettingsAfter = await program.account.globalSettings.fetch(
             globalSettingsKey,
-        );
-        assert.equal(
-            globalSettingsAfter.protocolFeeWallet.toString(),
-            feeWalletKeyPair.publicKey.toString(),
         );
         assert.equal(globalSettingsAfter.statuses, 3);
 

@@ -2,7 +2,7 @@ use {
     super::close_position_cleanup::CloseAmounts,
     crate::{
         error::ErrorCode, events::PositionClaimed, long_pool_signer_seeds, short_pool_signer_seeds,
-        BasePool, DebtController, GlobalSettings, LpVault, Position,
+        BasePool, DebtController, GlobalSettings, LpVault, Position, ProtocolWallet,
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
@@ -56,8 +56,34 @@ pub struct ClaimPosition<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
-    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        mut,
+        owner = crate::ID,
+        seeds = [
+            b"protocol_wallet",
+            global_settings.key().as_ref(),
+            &ProtocolWallet::FEE.to_le_bytes(),
+            &fee_wallet.nonce.to_le_bytes(),
+        ],
+        bump = fee_wallet.bump,
+    )]
+    pub fee_wallet: Account<'info, ProtocolWallet>,
+
+    #[account(
+        mut,
+        associated_token::authority = fee_wallet,
+        associated_token::mint = currency,
+        associated_token::token_program = currency_token_program
+    )]
+    pub fee_wallet_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::authority = fee_wallet,
+        associated_token::mint = collateral,
+        associated_token::token_program = collateral_token_program,
+    )]
+    pub fee_wallet_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
@@ -75,15 +101,6 @@ pub struct ClaimPosition<'info> {
     pub currency_token_program: Interface<'info, TokenInterface>,
 }
 impl<'info> ClaimPosition<'info> {
-    pub fn validate(&self) -> Result<()> {
-        require_keys_eq!(
-            self.fee_wallet.owner,
-            self.global_settings.protocol_fee_wallet,
-            ErrorCode::IncorrectFeeWallet
-        );
-        Ok(())
-    }
-
     pub fn transfer_from_trader_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.trader_currency_account.to_account_info(),
@@ -120,7 +137,7 @@ impl<'info> ClaimPosition<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.trader_currency_account.to_account_info(),
                 mint: self.currency.to_account_info(),
-                to: self.fee_wallet.to_account_info(),
+                to: self.fee_wallet_currency_account.to_account_info(),
                 authority: self.trader.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -134,7 +151,7 @@ impl<'info> ClaimPosition<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
-                to: self.fee_wallet.to_account_info(),
+                to: self.fee_wallet_collateral_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -148,7 +165,6 @@ impl<'info> ClaimPosition<'info> {
     }
 
     pub fn claim_position(&mut self) -> Result<()> {
-        self.validate()?;
         let now = Clock::get()?.unix_timestamp;
 
         let interest_paid = self.debt_controller.compute_max_interest(
@@ -180,6 +196,7 @@ impl<'info> ClaimPosition<'info> {
                 principal_repaid: self.position.principal,
                 past_fees: self.position.fees_to_be_paid,
                 close_fee,
+                liquidation_fee: 0,
             };
 
             self.transfer_fees(
@@ -202,6 +219,7 @@ impl<'info> ClaimPosition<'info> {
                 principal_repaid: self.position.principal,
                 past_fees: self.position.fees_to_be_paid,
                 close_fee,
+                liquidation_fee: 0,
             };
             // pay out the collateral (claim_amount)
             self.transfer_from_collateral_vault_to_trader(

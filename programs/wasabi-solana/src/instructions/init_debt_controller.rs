@@ -28,7 +28,7 @@ pub struct InitDebtController<'info> {
 }
 
 impl<'info> InitDebtController<'info> {
-    fn validate(&self, max_apy: u64, max_leverage: u64) -> Result<()> {
+    fn validate(&self, max_apy: u64, max_leverage: u64, liquidation_fee: u8) -> Result<()> {
         require_neq!(max_apy, 0, ErrorCode::InvalidValue);
         require_gt!(
             1000 * APY_DENOMINATOR,
@@ -43,14 +43,17 @@ impl<'info> InitDebtController<'info> {
             ErrorCode::InvalidValue
         );
 
+        require_neq!(liquidation_fee, 0, ErrorCode::InvalidValue);
+
         Ok(())
     }
 
-    pub fn init_debt_controller(&mut self, max_apy: u64, max_leverage: u64) -> Result<()> {
-        self.validate(max_apy, max_leverage)?;
+    pub fn init_debt_controller(&mut self, max_apy: u64, max_leverage: u64, liquidation_fee: u8) -> Result<()> {
+        self.validate(max_apy, max_leverage, liquidation_fee)?;
         self.debt_controller.set_inner(DebtController {
             max_apy,
             max_leverage,
+            liquidation_fee,
         });
 
         Ok(())

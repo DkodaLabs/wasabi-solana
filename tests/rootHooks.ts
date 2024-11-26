@@ -23,6 +23,7 @@ import {
     getAssociatedTokenAddress,
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 
@@ -48,8 +49,6 @@ export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 
 export const feeWalletKeyPair = web3.Keypair.generate();
-export let feeWalletA: web3.PublicKey;
-export let feeWalletB: web3.PublicKey;
 
 export let openPosLut: web3.PublicKey;
 
@@ -58,18 +57,6 @@ export let globalSettingsKey: web3.PublicKey;
 export const mochaHooks = {
     beforeAll: async () => {
         const program = workspace.WasabiSolana as Program<WasabiSolana>;
-        feeWalletA = getAssociatedTokenAddressSync(
-            tokenMintA,
-            feeWalletKeyPair.publicKey,
-            false,
-            TOKEN_PROGRAM_ID,
-        );
-        feeWalletB = getAssociatedTokenAddressSync(
-            tokenMintB,
-            feeWalletKeyPair.publicKey,
-            false,
-            TOKEN_PROGRAM_ID,
-        );
         const lamportsForTokenAccount =
             await program.provider.connection.getMinimumBalanceForRentExemption(
                 AccountLayout.span
@@ -123,22 +110,6 @@ export const mochaHooks = {
             tokenBKeypair
         );
         tx.add(...uIxes, ...qIxes);
-        const createFeeWalletAtaAIx = createAssociatedTokenAccountInstruction(
-            program.provider.publicKey,
-            feeWalletA,
-            feeWalletKeyPair.publicKey,
-            tokenMintA,
-            TOKEN_PROGRAM_ID,
-        );
-        tx.add(createFeeWalletAtaAIx);
-        const createFeeWalletAtaBIx = createAssociatedTokenAccountInstruction(
-            program.provider.publicKey,
-            feeWalletB,
-            feeWalletKeyPair.publicKey,
-            tokenMintB,
-            TOKEN_PROGRAM_ID,
-        );
-        tx.add(createFeeWalletAtaBIx);
         await program.provider.sendAndConfirm(tx, [uMint, qMint]);
 
         // Mint underlying & Quote to the provider wallet
@@ -396,6 +367,87 @@ export const mochaHooks = {
             superAdminProgram.programId,
         );
 
+        const [debtControllerKey] = web3.PublicKey.findProgramAddressSync(
+            [utils.bytes.utf8.encode("debt_controller")],
+            superAdminProgram.programId,
+        );
+
+        const [feeWalletKey] = web3.PublicKey.findProgramAddressSync(
+            [
+                utils.bytes.utf8.encode("protocol_wallet"),
+                globalSettingsKey.toBuffer(),
+                Buffer.from([0]),
+                Buffer.from([1]),
+            ],
+            superAdminProgram.programId,
+        );
+
+        const feeWalletTokenAccountA = getAssociatedTokenAddressSync(tokenMintA, feeWalletKey, true, TOKEN_PROGRAM_ID);
+        const feeWalletTokenAccountB = getAssociatedTokenAddressSync(tokenMintB, feeWalletKey, true, TOKEN_PROGRAM_ID);
+
+        const [liquidationWalletKey] = web3.PublicKey.findProgramAddressSync(
+            [
+                utils.bytes.utf8.encode("protocol_wallet"),
+                globalSettingsKey.toBuffer(),
+                Buffer.from([1]),
+                Buffer.from([1]),
+            ],
+            superAdminProgram.programId,
+        );
+
+        const liquidationWalletAccountA = getAssociatedTokenAddressSync(
+            tokenMintA,
+            liquidationWalletKey,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const liquidationWalletAccountB = getAssociatedTokenAddressSync(
+            tokenMintB,
+            liquidationWalletKey,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const protocolWalletsTx = new web3.Transaction();
+
+        const createFeeWalletAtaA = createAssociatedTokenAccountInstruction(
+            program.provider.publicKey,
+            feeWalletTokenAccountA,
+            feeWalletKey,
+            tokenMintA,
+            TOKEN_PROGRAM_ID,
+        );
+        protocolWalletsTx.add(createFeeWalletAtaA);
+
+        const createFeeWalletAtaB = createAssociatedTokenAccountInstruction(
+            program.provider.publicKey,
+            feeWalletTokenAccountB,
+            feeWalletKey,
+            tokenMintB,
+            TOKEN_PROGRAM_ID,
+        );
+        protocolWalletsTx.add(createFeeWalletAtaB);
+
+        const createLiqWalletAtaA = createAssociatedTokenAccountInstruction(
+            program.provider.publicKey,
+            liquidationWalletAccountA,
+            liquidationWalletKey,
+            tokenMintA,
+            TOKEN_PROGRAM_ID,
+        );
+        protocolWalletsTx.add(createLiqWalletAtaA);
+
+        const createLiqWalletAtaB = createAssociatedTokenAccountInstruction(
+            program.provider.publicKey,
+            liquidationWalletAccountB,
+            liquidationWalletKey,
+            tokenMintB,
+            TOKEN_PROGRAM_ID,
+        );
+        protocolWalletsTx.add(createLiqWalletAtaB);
+        let txn = await program.provider.sendAndConfirm(protocolWalletsTx);
+
         const extendLookupTableIx =
             web3.AddressLookupTableProgram.extendLookupTable({
                 authority: provider.publicKey,
@@ -403,13 +455,26 @@ export const mochaHooks = {
                 lookupTable: lookupTableAddress,
                 addresses: [
                     // General keys
+                    debtControllerKey,
                     globalSettingsKey,
-                    feeWalletA,
-                    feeWalletB,
+                    feeWalletKey,
+                    liquidationWalletKey,
                     lpVaultAKey,
                     lpVaultBKey,
+                    feeWalletTokenAccountA,
+                    feeWalletTokenAccountB,
+                    liquidationWalletAccountA,
+                    liquidationWalletAccountB,
+                    tokenMintA,
+                    tokenMintB,
+                    swapTokenAccountA,
+                    swapTokenAccountB,
+                    SWAP_AUTHORITY.publicKey,
+                    NON_SWAP_AUTHORITY.publicKey,
                     TOKEN_PROGRAM_ID,
                     SYSTEM_PROGRAM_ID,
+                    TOKEN_SWAP_PROGRAM_ID,
+                    ASSOCIATED_TOKEN_PROGRAM_ID,
                     web3.SYSVAR_INSTRUCTIONS_PUBKEY,
                 ],
             });

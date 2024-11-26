@@ -12,6 +12,7 @@ pub const LIQUIDATE_PERMISSION: u8 = 0b00000010;
 pub const COSIGN_PERMISSION: u8 = 0b00000100;
 pub const VAULT_BORROW_PERMISSION: u8 = 0b00001000;
 pub const INIT_POOL_PERMISSION: u8 = 0b00010000;
+pub const WALLET_PERMISSION: u8 = 0b00100000;
 
 #[account]
 pub struct Permission {
@@ -50,5 +51,8 @@ impl Permission {
         self.permissions_map & INIT_POOL_PERMISSION == INIT_POOL_PERMISSION
             || self.is_super_authority
     }
-}
 
+    pub fn can_manage_wallets(&self) -> bool {
+        self.permissions_map & WALLET_PERMISSION == WALLET_PERMISSION || self.is_super_authority
+    }
+}

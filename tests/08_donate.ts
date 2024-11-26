@@ -2,12 +2,19 @@ import * as anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
-import { tokenMintA } from "./rootHooks";
+import { tokenMintA, NON_SWAP_AUTHORITY } from "./rootHooks";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 
 describe("Donate", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
+    const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("admin"),
+            NON_SWAP_AUTHORITY.publicKey.toBuffer(),
+        ],
+        program.programId
+    );
     const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
         program.programId
@@ -42,6 +49,7 @@ describe("Donate", () => {
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,
                 currency: tokenMintA,
+                permission: coSignerPermission,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();

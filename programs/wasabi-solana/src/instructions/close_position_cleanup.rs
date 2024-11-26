@@ -5,10 +5,12 @@ use {
         long_pool_signer_seeds, short_pool_signer_seeds,
         utils::validate_difference,
         BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
+        ProtocolWallet,
     },
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{
-        self, Mint, Revoke, TokenAccount, TokenInterface, TransferChecked,
+    anchor_spl::{
+        associated_token::AssociatedToken,
+        token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface, TransferChecked},
     },
 };
 
@@ -49,7 +51,7 @@ pub struct ClosePositionCleanup<'info> {
         has_one = currency_vault,
         has_one = collateral_vault,
     )]
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
 
     /// The collateral account that is the source of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -58,8 +60,8 @@ pub struct ClosePositionCleanup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: InterfaceAccount<'info, Mint>,
-    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -84,28 +86,84 @@ pub struct ClosePositionCleanup<'info> {
         mut,
         has_one = vault,
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
     /// The LP Vault's token account.
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
-    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(
+        owner = crate::ID,
+        seeds = [
+            b"protocol_wallet",
+            global_settings.key().as_ref(),
+            &ProtocolWallet::FEE.to_le_bytes(),
+            &liquidation_wallet.nonce.to_le_bytes(),
+        ],
+        bump = liquidation_wallet.bump,
+        constraint = liquidation_wallet.wallet_type == ProtocolWallet::FEE,
+    )]
+    pub fee_wallet: Account<'info, ProtocolWallet>,
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = fee_wallet,
+        associated_token::token_program = currency_token_program,
+    )]
+    pub fee_wallet_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = fee_wallet,
+        associated_token::token_program = collateral_token_program,
+    )]
+    pub fee_wallet_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        owner = crate::ID,
+        seeds = [
+            b"protocol_wallet",
+            global_settings.key().as_ref(),
+            &ProtocolWallet::LIQUIDATION.to_le_bytes(),
+            &liquidation_wallet.nonce.to_le_bytes(),
+        ],
+        bump = liquidation_wallet.bump,
+        constraint = liquidation_wallet.wallet_type == ProtocolWallet::LIQUIDATION,
+    )]
+    pub liquidation_wallet: Account<'info, ProtocolWallet>,
+    #[account(
+        mut,
+        associated_token::mint = currency,
+        associated_token::authority = liquidation_wallet,
+        associated_token::token_program = currency_token_program,
+    )]
+    pub liquidation_wallet_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        associated_token::mint = collateral,
+        associated_token::authority = liquidation_wallet,
+        associated_token::token_program = collateral_token_program,
+    )]
+    pub liquidation_wallet_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
         bump,
     )]
-    pub debt_controller: Account<'info, DebtController>,
+    pub debt_controller: Box<Account<'info, DebtController>>,
 
     #[account(
         seeds = [b"global_settings"],
         bump,
     )]
-    pub global_settings: Account<'info, GlobalSettings>,
+    pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub currency_token_program: Interface<'info, TokenInterface>,
     pub collateral_token_program: Interface<'info, TokenInterface>,
+
+    pub system_program: Program<'info, System>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 impl<'info> ClosePositionCleanup<'info> {
@@ -152,13 +210,6 @@ impl<'info> ClosePositionCleanup<'info> {
             self.get_collateral_delta()?,
             ErrorCode::MaxSwapExceeded
         );
-
-        // NOTE: DISABLED FOR TESTING
-        //require_keys_eq!(
-        //    self.fee_wallet.owner,
-        //    self.global_settings.protocol_fee_wallet,
-        //    ErrorCode::IncorrectFeeWallet
-        //);
 
         Ok(())
     }
@@ -216,7 +267,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
                 mint: self.currency.to_account_info(),
-                to: self.fee_wallet.to_account_info(),
+                to: self.fee_wallet_currency_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -231,7 +282,41 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
-                to: self.fee_wallet.to_account_info(),
+                to: self.fee_wallet_collateral_account.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.collateral_token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[short_pool_signer_seeds!(self.pool)],
+            };
+            token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
+        }
+    }
+
+    fn transfer_liquidation_fee(&self, amount: u64) -> Result<()> {
+        if self.pool.is_long_pool {
+            // Fees for long are paid in Currency token (typically SOL)
+            let cpi_accounts = TransferChecked {
+                from: self.currency_vault.to_account_info(),
+                mint: self.currency.to_account_info(),
+                to: self.liquidation_wallet_currency_account.to_account_info(),
+                authority: self.pool.to_account_info(),
+            };
+            let cpi_ctx = CpiContext {
+                program: self.currency_token_program.to_account_info(),
+                accounts: cpi_accounts,
+                remaining_accounts: Vec::new(),
+                signer_seeds: &[long_pool_signer_seeds!(self.pool)],
+            };
+            token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
+        } else {
+            // Fees for shorts are paid in collateral token (typically SOL)
+            let cpi_accounts = TransferChecked {
+                from: self.collateral_vault.to_account_info(),
+                mint: self.collateral.to_account_info(),
+                to: self.liquidation_wallet_collateral_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -385,10 +470,38 @@ impl<'info> ClosePositionCleanup<'info> {
         };
 
         // Deduct fees
-        let (payout, close_fee) =
+        let (mut payout, close_fee) =
             crate::utils::deduct(close_amounts.payout, close_position_req.execution_fee);
-        close_amounts.payout = payout;
+
+        // Update close fee before calculating liquidation fee
         close_amounts.close_fee = close_fee;
+
+        match close_action {
+            CloseAction::Liquidation => {
+                // Liquidation fee is % of down_payment
+                let liquidation_fee = self
+                    .position
+                    .down_payment
+                    .checked_mul(self.debt_controller.liquidation_fee as u64)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(100)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+                // Deduct from the payout
+                let (liquidation_payout, actual_liquidation_fee) =
+                    crate::utils::deduct(payout, liquidation_fee);
+
+                // Transfer liquidation fee
+                self.transfer_liquidation_fee(actual_liquidation_fee)?;
+
+                // Payout is now decremented by `liquidation_fee`
+                payout = liquidation_payout;
+                close_amounts.liquidation_fee = actual_liquidation_fee;
+            }
+            _ => (),
+        }
+
+        close_amounts.payout = payout;
         close_amounts.collateral_spent = collateral_spent;
         close_amounts.past_fees = self.position.fees_to_be_paid;
 
@@ -447,4 +560,5 @@ pub struct CloseAmounts {
     pub principal_repaid: u64,
     pub past_fees: u64,
     pub close_fee: u64,
+    pub liquidation_fee: u64,
 }

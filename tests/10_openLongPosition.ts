@@ -8,7 +8,6 @@ import {
 } from "@solana/spl-token";
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
@@ -30,6 +29,22 @@ describe("OpenLongPosition", () => {
         [
             anchor.utils.bytes.utf8.encode("admin"),
             SWAP_AUTHORITY.publicKey.toBuffer(),
+        ],
+        program.programId,
+    );
+
+    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("global_settings")],
+        program.programId,
+
+    );
+
+    const [feeWalletKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("protocol_wallet"),
+            globalSettingsKey.toBuffer(),
+            Buffer.from([0]),
+            Buffer.from([1]),
         ],
         program.programId,
     );
@@ -130,7 +145,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
@@ -189,7 +204,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .signers([SWAP_AUTHORITY])
@@ -251,7 +266,7 @@ describe("OpenLongPosition", () => {
                     currency: tokenMintA,
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet: feeWalletKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
@@ -395,7 +410,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
@@ -474,7 +489,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
@@ -592,7 +607,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
@@ -706,7 +721,7 @@ describe("OpenLongPosition", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet: feeWalletKey,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
@@ -735,7 +750,7 @@ describe("OpenLongPosition", () => {
                     BigInt(downPayment.add(principal).toString()),
                     BigInt(minimumAmountOut.toString()),
                 );
-                await program.methods
+                const _tx = await program.methods
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
@@ -744,10 +759,27 @@ describe("OpenLongPosition", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .transaction()
+
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: false,
+                });
+
                 assert.ok(false);
+
             } catch (err) {
+                console.log(err);
                 if (err instanceof anchor.AnchorError) {
                     assert.equal(err.error.errorCode.number, 6007);
                 } else if (err instanceof anchor.ProgramError) {
@@ -815,7 +847,7 @@ describe("OpenLongPosition", () => {
                     currency: tokenMintA,
                     authority: NON_SWAP_AUTHORITY.publicKey,
                     permission: badCoSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet: feeWalletKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();

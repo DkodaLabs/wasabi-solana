@@ -29,8 +29,10 @@ pub mod wasabi_solana {
         ctx: Context<InitDebtController>,
         max_apy: u64,
         max_leverage: u64,
+        liquidation_fee: u8,
     ) -> Result<()> {
-        ctx.accounts.init_debt_controller(max_apy, max_leverage)
+        ctx.accounts
+            .init_debt_controller(max_apy, max_leverage, liquidation_fee)
     }
 
     #[access_control(SetSuperAdmin::validate(&ctx))]
@@ -38,12 +40,10 @@ pub mod wasabi_solana {
         ctx.accounts.set_super_admin(new_super_admin)
     }
 
-    #[access_control(TradingState::validate(&ctx))]
     pub fn set_trading_state(ctx: Context<TradingState>, allow_trading: bool) -> Result<()> {
         ctx.accounts.set_trading_state(allow_trading)
     }
 
-    #[access_control(LpState::validate(&ctx))]
     pub fn set_lp_state(ctx: Context<LpState>, allow_lp: bool) -> Result<()> {
         ctx.accounts.set_lp_state(allow_lp)
     }
@@ -56,11 +56,35 @@ pub mod wasabi_solana {
         ctx.accounts.set_max_leverage(max_leverage)
     }
 
+    pub fn set_liquidation_fee(ctx: Context<SetLiqudationFee>, liquidation_fee: u8) -> Result<()> {
+        ctx.accounts.set_liquidation_fee(liquidation_fee)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
     ) -> Result<()> {
         ctx.accounts.init_or_update_permission(&args)
+    }
+
+    pub fn remove_permission(ctx: Context<RemovePermission>) -> Result<()> {
+        ctx.accounts.remove_permission()
+    }
+
+    #[access_control(GenerateWallet::validate(&ctx))]
+    pub fn generate_wallet(ctx: Context<GenerateWallet>, wallet_type: u8, nonce: u8) -> Result<()> {
+        ctx.accounts.generate_wallet(wallet_type, nonce, &ctx.bumps)
+    }
+
+    /// WARNING: Do not call unless you are sure the wallet's ATAs are closed
+    #[access_control(CloseWallet::validate(&ctx))]
+    pub fn close_wallet(ctx: Context<CloseWallet>) -> Result<()> {
+        ctx.accounts.close_wallet()
+    }
+
+    #[access_control(CollectFees::validate(&ctx))]
+    pub fn collect_fees(ctx: Context<CollectFees>) -> Result<()> {
+        ctx.accounts.collect_fees()
     }
 
     #[access_control(InitLpVault::validate(&ctx))]
@@ -129,11 +153,6 @@ pub mod wasabi_solana {
 
     pub fn withdraw(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
         ctx.accounts.withdraw(amount)
-    }
-
-    #[access_control(DepositOrWithdraw::validate(&ctx))]
-    pub fn mint(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
-        ctx.accounts.mint(shares_amount)
     }
 
     pub fn redeem(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {

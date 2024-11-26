@@ -25,15 +25,6 @@ pub struct LpState<'info> {
 }
 
 impl<'info> LpState<'info> {
-    pub fn validate(ctx: &Context<LpState>) -> Result<()> {
-        require_keys_eq!(
-            ctx.accounts.super_admin.authority,
-            ctx.accounts.authority.key(),
-            ErrorCode::InvalidPermissions
-        );
-        Ok(())
-    }
-
     pub fn set_lp_state(&mut self, allow_lp: bool) -> Result<()> {
         match allow_lp {
             true => self.global_settings.enable_lping(),
