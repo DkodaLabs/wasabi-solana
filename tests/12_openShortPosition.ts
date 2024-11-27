@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
@@ -40,6 +39,21 @@ describe("OpenShortPosition", () => {
             [anchor.utils.bytes.utf8.encode("super_admin")],
             program.programId,
         );
+
+    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("global_settings")],
+        program.programId
+    );
+
+    const [feeWallet] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("protocol_wallet"),
+            globalSettingsKey.toBuffer(),
+            Buffer.from([0]),
+            Buffer.from([1]),
+        ],
+        program.programId,
+    );
     // Collateral currency is tokenMintA (short_pool)
     // Borrowed currency is tokenMintB (lp_vault)
     // Downpayment currency is tokenMintA
@@ -161,13 +175,13 @@ describe("OpenShortPosition", () => {
                         currency: tokenMintB,
                         authority: SWAP_AUTHORITY.publicKey,
                         permission: coSignerPermission,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .instruction();
 
-                await program.methods
+                const _tx = await program.methods
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
@@ -181,8 +195,22 @@ describe("OpenShortPosition", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, setupIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc();
+                    .transaction();
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: false,
+                });
                 assert.ok(false);
             } catch (err) {
                 const regex = /already in use/;
@@ -227,7 +255,7 @@ describe("OpenShortPosition", () => {
                         collateral: tokenMintA,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -298,7 +326,7 @@ describe("OpenShortPosition", () => {
                     currency: tokenMintB,
                     authority: NON_SWAP_AUTHORITY.publicKey,
                     permission: badCoSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet,
                     currencyTokenProgram: TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID,
                 })
@@ -394,7 +422,7 @@ describe("OpenShortPosition", () => {
                         //@ts-ignore
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -437,7 +465,7 @@ describe("OpenShortPosition", () => {
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({skipPreflight: true});
+                    .rpc({ skipPreflight: true });
 
             } catch (err) {
                 console.log(err);
@@ -568,7 +596,7 @@ describe("OpenShortPosition", () => {
                         currency: tokenMintB,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -653,7 +681,7 @@ describe("OpenShortPosition", () => {
                         currency: tokenMintB,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -771,7 +799,7 @@ describe("OpenShortPosition", () => {
                         collateral: tokenMintA,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -886,7 +914,7 @@ describe("OpenShortPosition", () => {
                         collateral: tokenMintA,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })
@@ -994,7 +1022,7 @@ describe("OpenShortPosition", () => {
                         collateral: tokenMintA,
                         permission: coSignerPermission,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     })

@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { web3 } from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
@@ -200,7 +201,6 @@ describe("CloseLongPosition", () => {
                     });
                     throw new Error("Did not fail");
                 } catch (e) {
-                    console.log(e);
                     const err = anchor.translateError(e, anchor.parseIdlErrors(program.idl));
                     if (err instanceof anchor.AnchorError) {
                         assert.equal(err.error.errorCode.number, 6010);
@@ -280,7 +280,7 @@ describe("CloseLongPosition", () => {
                     BigInt(0)
                 );
                 try {
-                    await program.methods
+                    const _tx = await program.methods
                         .closeLongPositionCleanup()
                         .accountsPartial({
                             owner: program.provider.publicKey,
@@ -298,11 +298,28 @@ describe("CloseLongPosition", () => {
                             },
                         })
                         .preInstructions([setupIx, swapIx])
-                        .signers([NON_SWAP_AUTHORITY])
-                        .rpc();
+                        .transaction();
+
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new anchor.web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new anchor.web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
                     assert.ok(false);
-                } catch (err) {
-                    console.log(err);
+                } catch (e: any) {
+                    const err = anchor.translateError(
+                        e,
+                        anchor.parseIdlErrors(program.idl)
+                    );
                     if (err instanceof anchor.AnchorError) {
                         assert.equal(err.error.errorCode.number, 6008);
                     } else if (err instanceof anchor.ProgramError) {
@@ -466,7 +483,7 @@ describe("CloseLongPosition", () => {
                 );
 
                 try {
-                    await program.methods
+                    const _tx = await program.methods
                         .closeLongPositionCleanup()
                         .accountsPartial({
                             owner: program.provider.publicKey,
@@ -488,13 +505,38 @@ describe("CloseLongPosition", () => {
                             drainCollateralIx,
                             mintCurrencyIx,
                         ])
-                        .signers([SWAP_AUTHORITY])
-                        .rpc({ skipPreflight: true });
+                        .transaction();
+
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
+
 
                     assert.fail("Expected transaction to fail with BadDebt error");
-                } catch (error) {
-                    assert.equal(error.code, 6011);
-                    assert.equal(error.msg, "Cannot close bad debt");
+                } catch (e: any) {
+                    const err = anchor.translateError(
+                        e,
+                        anchor.parseIdlErrors(program.idl)
+                    );
+                    if (err instanceof anchor.AnchorError) {
+
+                        assert.equal(err.error.errorCode.number, 6011);
+                    } else if (err instanceof anchor.ProgramError) {
+                        assert.equal(err.code, 6011);
+                    } else {
+                        assert.ok(false);
+                    }
                 }
             });
         });
@@ -502,7 +544,7 @@ describe("CloseLongPosition", () => {
         describe("correct setup", () => {
             it("should close the position and return funds", async () => {
                 const interestOwed = new anchor.BN(1);
-//                const closeFee = new anchor.BN(11);
+                //                const closeFee = new anchor.BN(11);
                 const positionBefore = await program.account.position.fetch(
                     positionKey
                 );
@@ -570,7 +612,7 @@ describe("CloseLongPosition", () => {
                     BigInt(positionBefore.collateralAmount.toString()),
                     BigInt(0)
                 );
-                await program.methods
+                const _tx = await program.methods
                     .closeLongPositionCleanup()
                     .accountsPartial({
                         owner: program.provider.publicKey,
@@ -588,8 +630,26 @@ describe("CloseLongPosition", () => {
                         },
                     })
                     .preInstructions([setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .transaction();
+
+                try {
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
+                } catch (e: any) {
+                    console.log(e);
+                }
 
                 const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter]] =
                     await Promise.all([

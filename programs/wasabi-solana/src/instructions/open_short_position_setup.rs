@@ -68,10 +68,10 @@ pub struct OpenShortPositionSetup<'info> {
         init,
         payer = owner,
         seeds = [
-            b"position", 
-            owner.key().as_ref(), 
-            pool.key().as_ref(), 
-            lp_vault.key().as_ref(), 
+            b"position",
+            owner.key().as_ref(),
+            pool.key().as_ref(),
+            lp_vault.key().as_ref(),
             &nonce.to_le_bytes()
         ],
         bump,
@@ -102,7 +102,7 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(
         mut,
         associated_token::mint = collateral,
-        associated_token::authority = authority,
+        associated_token::authority = fee_wallet,
         associated_token::token_program = collateral_token_program,
     )]
     pub fee_wallet_ata: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -156,7 +156,7 @@ impl<'info> OpenShortPositionSetup<'info> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
             mint: self.collateral.to_account_info(),
-            to: self.fee_wallet.to_account_info(),
+            to: self.fee_wallet_ata.to_account_info(),
             authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.collateral_token_program.to_account_info(), cpi_accounts);

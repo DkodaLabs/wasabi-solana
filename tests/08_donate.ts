@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
-import { tokenMintA, NON_SWAP_AUTHORITY } from "./rootHooks";
+import { tokenMintA, NON_SWAP_AUTHORITY, superAdminProgram } from "./rootHooks";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
 
@@ -23,9 +23,30 @@ describe("Donate", () => {
 
     before(async () => {
         lpVault = await program.account.lpVault.fetch(lpVaultKey);
+        await superAdminProgram.methods.initOrUpdatePermission({
+                canCosignSwaps: true, // 4
+                canInitVaults: true, // 1
+                canLiquidate: true, // 2
+                canBorrowFromVaults: true, // 8
+                canInitPools: true, // 16
+                canManageWallets: true, // 32
+                status: { active: {} }
+        })
+        .accounts({
+                payer: superAdminProgram.provider.publicKey,
+                newAuthority: program.provider.publicKey,
+        })
+        .rpc();
     });
 
     it("Should allow donation of assets", async () => {
+        const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
+            [
+                anchor.utils.bytes.utf8.encode("admin"),
+                program.provider.publicKey.toBuffer(),
+            ],
+            program.programId,
+        );
         const tokenAmount = new anchor.BN(1_000_000);
         const tokenAAta = getAssociatedTokenAddressSync(
             tokenMintA,
@@ -49,7 +70,7 @@ describe("Donate", () => {
                 owner: program.provider.publicKey,
                 lpVault: lpVaultKey,
                 currency: tokenMintA,
-                permission: coSignerPermission,
+                permission,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
             .rpc();

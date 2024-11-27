@@ -97,10 +97,10 @@ pub struct ClosePositionCleanup<'info> {
             b"protocol_wallet",
             global_settings.key().as_ref(),
             &ProtocolWallet::FEE.to_le_bytes(),
-            &liquidation_wallet.nonce.to_le_bytes(),
+            &fee_wallet.nonce.to_le_bytes(),
         ],
-        bump = liquidation_wallet.bump,
-        constraint = liquidation_wallet.wallet_type == ProtocolWallet::FEE,
+        bump = fee_wallet.bump,
+        constraint = fee_wallet.wallet_type == ProtocolWallet::FEE,
     )]
     pub fee_wallet: Account<'info, ProtocolWallet>,
     #[account(
@@ -161,9 +161,6 @@ pub struct ClosePositionCleanup<'info> {
 
     pub currency_token_program: Interface<'info, TokenInterface>,
     pub collateral_token_program: Interface<'info, TokenInterface>,
-
-    pub system_program: Program<'info, System>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 impl<'info> ClosePositionCleanup<'info> {

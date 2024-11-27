@@ -56,20 +56,4 @@ pub enum ErrorCode {
     ZeroDivision, // 6025
     #[msg("Liquidation threshold not reached")]
     LiquidationThresholdNotReached, // 6026
-    #[msg("Required time to update root has not elapsed")]
-    TimeConstraint, // 6027
-    #[msg("Wrong liquidation wallet")]
-    IncorrectLiquidationWallet, // 6028
-    #[msg("Wallet not found")]
-    WalletNotFound, // 6029
-    #[msg("Wallet already exists")]
-    WalletAlreadyExists, // 6030
-    #[msg("No available slots for new wallet")]
-    NoAvailableSlots, // 6031
-    #[msg("Max wallets reached please reallocate")]
-    MaxWalletsReached, // 6032
-    #[msg("Invalid wallet type")]
-    InvalidWalletType, // 6033
-    #[msg("Invalid capacity")]
-    InvalidCapacity, // 6034
 }

@@ -100,16 +100,6 @@ pub mod wasabi_solana {
         ctx.accounts.update_lp_vault_max_borrow(max_borrow)
     }
 
-    #[access_control(AdminBorrow::validate(&ctx, amount))]
-    pub fn admin_borrow(ctx: Context<AdminBorrow>, amount: u64) -> Result<()> {
-        ctx.accounts.admin_borrow(amount)
-    }
-
-    #[access_control(Repay::validate(&ctx, amount))]
-    pub fn repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
-        ctx.accounts.repay(amount)
-    }
-
     #[access_control(InitLongPool::validate(&ctx))]
     pub fn init_long_pool(ctx: Context<InitLongPool>) -> Result<()> {
         ctx.accounts.init_long_pool(&ctx.bumps)

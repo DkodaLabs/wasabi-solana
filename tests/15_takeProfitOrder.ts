@@ -56,6 +56,16 @@ describe("takeProfitOrder", () => {
         program.programId,
     );
 
+    const [liquidationWalletKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("protocol_wallet"),
+            globalSettingsKey.toBuffer(),
+            Buffer.from([1]),
+            Buffer.from([1]),
+        ],
+        program.programId,
+    );
+
     const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
         program.programId
@@ -142,8 +152,7 @@ describe("takeProfitOrder", () => {
             program.programId
         );
 
-
-
+    const feeWalletA = getAssociatedTokenAddressSync(tokenMintA, feeWalletKey, true, TOKEN_PROGRAM_ID);
 
     describe("Long", () => {
         before(async () => {
@@ -450,6 +459,7 @@ describe("takeProfitOrder", () => {
                             authority: NON_SWAP_AUTHORITY.publicKey,
                             lpVault: lpVaultTokenAKey,
                             feeWallet: feeWalletKey,
+                            liquidationWallet: liquidationWalletKey,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -472,7 +482,7 @@ describe("takeProfitOrder", () => {
                     skipPreflight: true,
                 });
                 throw new Error("Failed to error");
-            } catch (e) {
+            } catch (e: any) {
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -486,14 +496,13 @@ describe("takeProfitOrder", () => {
                 }
             }
 
-            // must close the TP order so new ones can be created on the existing position
             await program.methods
                 .closeTakeProfitOrder()
                 .accounts({
                     closer: user2.publicKey,
                     //@ts-ignore
                     trader: user2.publicKey,
-                    permission: NON_SWAP_AUTHORITY.publicKey,
+                    permission: coSignerPermission,
                     position: longPositionKey,
                 })
                 .signers([user2])
@@ -585,6 +594,7 @@ describe("takeProfitOrder", () => {
                             authority: SWAP_AUTHORITY.publicKey,
                             lpVault: lpVaultTokenAKey,
                             feeWallet: feeWalletKey,
+                            liquidationWallet: liquidationWalletKey,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -607,7 +617,7 @@ describe("takeProfitOrder", () => {
                     skipPreflight: true,
                 });
                 throw new Error("Failed to error");
-            } catch (e) {
+            } catch (e: any) {
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -628,7 +638,7 @@ describe("takeProfitOrder", () => {
                     closer: user2.publicKey,
                     //@ts-ignore
                     trader: user2.publicKey,
-                    permission: NON_SWAP_AUTHORITY.publicKey,
+                    permission: coSignerPermission,
                     position: longPositionKey,
                 })
                 .signers([user2])
@@ -653,7 +663,7 @@ describe("takeProfitOrder", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletKey,
+                    feeWalletA,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -729,6 +739,7 @@ describe("takeProfitOrder", () => {
                         collateral: tokenMintB,
                         authority: SWAP_AUTHORITY.publicKey,
                         feeWallet: feeWalletKey,
+                        liquidationWallet: liquidationWalletKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -736,6 +747,7 @@ describe("takeProfitOrder", () => {
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
+
             const connection = program.provider.connection;
             const lookupAccount = await connection
                 .getAddressLookupTable(openPosLut)
@@ -761,7 +773,7 @@ describe("takeProfitOrder", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletKey,
+                    feeWalletA,
                 ], TOKEN_PROGRAM_ID),
             ]);
             // Position should be cleaned up
@@ -964,6 +976,7 @@ describe("takeProfitOrder", () => {
                             collateral: tokenMintA,
                             //@ts-ignore
                             feeWallet: feeWalletKey,
+                            liquidationWallet: liquidationWalletKey,
                             authority: SWAP_AUTHORITY.publicKey,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
@@ -1035,7 +1048,7 @@ describe("takeProfitOrder", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletKey,
+                    feeWalletA,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -1112,6 +1125,7 @@ describe("takeProfitOrder", () => {
                         authority: SWAP_AUTHORITY.publicKey,
                         //@ts-ignore
                         feeWallet: feeWalletKey,
+                        liquidationWallet: liquidationWalletKey,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -1145,7 +1159,7 @@ describe("takeProfitOrder", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletKey,
+                    feeWalletA,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
