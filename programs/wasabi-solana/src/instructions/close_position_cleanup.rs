@@ -8,9 +8,8 @@ use {
         ProtocolWallet,
     },
     anchor_lang::prelude::*,
-    anchor_spl::{
-        associated_token::AssociatedToken,
-        token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface, TransferChecked},
+    anchor_spl::token_interface::{
+        self, Mint, Revoke, TokenAccount, TokenInterface, TransferChecked,
     },
 };
 

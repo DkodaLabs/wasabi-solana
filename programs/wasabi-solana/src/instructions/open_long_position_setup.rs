@@ -7,11 +7,9 @@ use {
         ProtocolWallet,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::{
+    anchor_spl::
         token_interface::{
         self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
-        },
-        associated_token::AssociatedToken,
     },
 };
 
@@ -126,7 +124,6 @@ pub struct OpenLongPositionSetup<'info> {
     pub global_settings: Box<Account<'info, GlobalSettings>>,
 
     pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
     #[account(
         address = sysvar::instructions::ID
