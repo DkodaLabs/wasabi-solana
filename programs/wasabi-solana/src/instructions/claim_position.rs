@@ -49,6 +49,7 @@ pub struct ClaimPosition<'info> {
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
+        mut,
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
@@ -180,6 +181,12 @@ impl<'info> ClaimPosition<'info> {
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.transfer_from_trader_to_vault(amount_owed)?;
+
+        self.lp_vault.total_assets = self
+            .lp_vault
+            .total_assets
+            .checked_add(interest_paid)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         let close_fee = self.position.fees_to_be_paid;
 
