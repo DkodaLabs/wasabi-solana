@@ -34,8 +34,6 @@ pub struct CloseWallet<'info> {
         bump,
     )]
     pub global_settings: Account<'info, GlobalSettings>,
-
-    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CloseWallet<'info> {
