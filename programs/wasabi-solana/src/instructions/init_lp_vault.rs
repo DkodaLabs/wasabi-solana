@@ -1,15 +1,14 @@
 use {
     crate::{error::ErrorCode, events::NewVault, LpVault, Permission},
-    anchor_lang::{
-        prelude::*,
-        solana_program::{program::invoke, system_instruction::transfer},
-    },
+    anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::AssociatedToken,
-        token_interface::{
-            token_metadata_initialize, Mint, Token2022, TokenAccount, TokenInterface,
-            TokenMetadataInitialize,
-        },
+        metadata::Metadata,
+        token_interface::{Mint, Token2022, TokenAccount, TokenInterface},
+    },
+    mpl_token_metadata::{
+        instructions::CreateCpiBuilder,
+        types::{CreateArgs, TokenStandard},
     },
 };
 
@@ -23,7 +22,7 @@ pub struct InitLpVault<'info> {
     #[account(
         has_one = authority,
     )]
-    pub permission: Account<'info, Permission>,
+    pub permission: Box<Account<'info, Permission>>,
 
     #[account(
         init,
@@ -34,11 +33,10 @@ pub struct InitLpVault<'info> {
     )]
     pub lp_vault: Box<Account<'info, LpVault>>,
 
-    pub asset_mint: InterfaceAccount<'info, Mint>,
+    pub asset_mint: Box<InterfaceAccount<'info, Mint>>,
 
+    // Due to stack frame limit we should init the `lp_vault`'s ata beforehand
     #[account(
-        init_if_needed,
-        payer = payer,
         associated_token::mint = asset_mint,
         associated_token::authority = lp_vault,
         associated_token::token_program = asset_token_program,
@@ -53,16 +51,29 @@ pub struct InitLpVault<'info> {
         mint::authority = lp_vault,
         mint::decimals = asset_mint.decimals,
         mint::token_program = shares_token_program,
-        extensions::metadata_pointer::authority = lp_vault,
-        extensions::metadata_pointer::metadata_address = shares_mint,
     )]
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    pub asset_token_program: Interface<'info, TokenInterface>,
+    /// CHECK
+    #[account(
+        mut,
+        seeds = [
+            b"metadata",
+            token_metadata_program.key().as_ref(),
+            shares_mint.key().as_ref(),
+        ],
+        bump,
+        seeds::program = token_metadata_program.key(),
+    )]
+    pub shares_metadata: AccountInfo<'info>,
 
+    pub asset_token_program: Interface<'info, TokenInterface>,
     pub shares_token_program: Program<'info, Token2022>,
+    pub token_metadata_program: Program<'info, Metadata>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+    /// CHECK: required by metadata program
+    pub sysvar_instructions: AccountInfo<'info>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -86,28 +97,38 @@ impl<'info> InitLpVault<'info> {
         args: &InitLpVaultArgs,
         bumps: &InitLpVaultBumps,
     ) -> Result<()> {
-        let cpi_accounts = TokenMetadataInitialize {
-            token_program_id: self.shares_token_program.to_account_info(),
-            mint: self.shares_mint.to_account_info(),
-            metadata: self.shares_mint.to_account_info(),
-            mint_authority: self.lp_vault.to_account_info(),
-            update_authority: self.authority.to_account_info(),
+        let args = CreateArgs::V1 {
+            name: args.name.clone(),
+            symbol: args.symbol.clone(),
+            uri: args.uri.clone(),
+            seller_fee_basis_points: 0,
+            creators: None,
+            collection: None,
+            uses: None,
+            primary_sale_happened: false,
+            is_mutable: true,
+            token_standard: TokenStandard::Fungible,
+            collection_details: None,
+            rule_set: None,
+            decimals: Some(6),
+            print_supply: None,
         };
 
-        token_metadata_initialize(
-            CpiContext::new_with_signer(
-                self.shares_token_program.to_account_info(),
-                cpi_accounts,
-                &[&[
-                    b"lp_vault",
-                    self.asset_mint.key().as_ref(),
-                    &[bumps.lp_vault],
-                ]],
-            ),
-            args.name.clone(),
-            args.symbol.clone(),
-            args.uri.clone(),
-        )?;
+        CreateCpiBuilder::new(&self.token_metadata_program.to_account_info())
+            .metadata(&self.shares_metadata.to_account_info())
+            .mint(&self.shares_mint.to_account_info(), false)
+            .authority(&self.lp_vault.to_account_info())
+            .payer(&self.payer.to_account_info())
+            .update_authority(&self.authority.to_account_info(), true)
+            .system_program(&self.system_program)
+            .sysvar_instructions(&self.sysvar_instructions.to_account_info())
+            .spl_token_program(Some(&self.shares_token_program.to_account_info()))
+            .create_args(args)
+            .invoke_signed(&[&[
+                b"lp_vault",
+                self.asset_mint.key().as_ref(),
+                &[bumps.lp_vault],
+            ]])?;
 
         Ok(())
     }
@@ -118,12 +139,6 @@ impl<'info> InitLpVault<'info> {
         bumps: &InitLpVaultBumps,
     ) -> Result<()> {
         self.initialize_token_metadata(&args, bumps)?;
-
-        update_account_lamports_to_minimum_balance(
-            self.shares_mint.to_account_info(),
-            self.payer.to_account_info(),
-            self.system_program.to_account_info(),
-        )?;
 
         self.lp_vault.set_inner(LpVault {
             bump: bumps.lp_vault,
@@ -139,18 +154,4 @@ impl<'info> InitLpVault<'info> {
 
         Ok(())
     }
-}
-pub fn update_account_lamports_to_minimum_balance<'info>(
-    account: AccountInfo<'info>,
-    payer: AccountInfo<'info>,
-    system_program: AccountInfo<'info>,
-) -> Result<()> {
-    let extra_lamports = Rent::get()?.minimum_balance(account.data_len()) - account.get_lamports();
-    if extra_lamports > 0 {
-        invoke(
-            &transfer(payer.key, account.key, extra_lamports),
-            &[payer, account, system_program],
-        )?;
-    }
-    Ok(())
 }
