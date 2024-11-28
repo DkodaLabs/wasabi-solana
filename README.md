@@ -28,8 +28,6 @@ cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 - Install Anchor CLI
 ```bash
 avm install latest
-```
-```bash
 avm use@latest # Should use 0.30.1
 ```
 - Install Wasabi Solana CLI
@@ -51,7 +49,12 @@ export PATH=$PATH:$AVM_HOME:$AGAVE:$SOLANA_SDK_PATH:$SOLANA_BIN_PATH
 rustup default 1.79.0
 rustup override set 1.79.0
 ```
-4. Create the deployment and upgrade keypair and fund it with ~8 SOL.
+4. Create the deployment/upgrade keypair and fund it with ~8 SOL. Also create the fee wallet and liquidation wallet keypairs
+```bash
+solana-keygen new --outfile deployer_keypair.json --no-bip39-passphrase
+solana-keygen new --outfile fee_wallet_keypair.json --no-bip39-passphrase
+solana-keygen new --outfile liquidation_wallet_keypair.json --no-bip39-passphrase
+```
 5. Edit `deploy.sh`
     - Change `DEPLOYMENT_WALLET_PATH` to point to the keypair 
     - Change `CLUSTER` to `mainnet-beta`
