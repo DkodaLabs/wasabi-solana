@@ -77,13 +77,13 @@ Options are:
 - `-k/--keypair`: The keypair that pays for the transaction and which the program will default to if no authority is provided with the command
 - `-h/--help`: Self explanatory
 
-1. Initialise fee & liquidation wallet associated token accounts
+### Initialise fee & liquidation wallet associated token accounts
 ```bash
 wsb init-ata <WALLET> <ASSET_MINT> <NUMBER_OF_WALLETS_TO_INIT>
 ```
 Copy the output into the respective array in the `solana_coder/src/services/solana/transaction.ts` and repeat for each wallet and each asset mint
 
-2. Initialise permissions
+### Initialise permissions
 ```bash
 wsb -k [SUPER_ADMIN] admin <NEW_ADMIN> [FLAGS]
 ```
@@ -103,13 +103,31 @@ Example for market opening permissions (init vault & init pool):
 wsb -k keypair.json admin <PUBKEY> -pv
 ```
 
-## Change Super Admin
+### Change Super Admin
 To change the super admin run the following with the super admin keypair:
 ```bash
 wsb set-super-admin [OPTIONS] <NEW_SUPER_ADMIN_PUBKEY>
 ```
 NOTE: the super admin keypair can be passed in with `-k/--keypair` before the command or `-a/--authority` as an option. 
 If both are present, the value passed to `-k/--keypair` will be the payer for the transaction and `-a/--authority` will be the super admin. If neither are present program defaults to client keypair in the solana config found at `$XDG_CONFIG_HOME/solana/id.json`.
+
+### Change Max APY
+```bash
+wsb set-max-apy <APY>
+```
+NOTE: Requires super admin permissions
+
+### Change Max Leverage
+```bash
+wsb set-max-leverage <LEVERAGE>
+```
+NOTE: Requires super admin permissions
+
+### Change Liquidation Fee
+```bash
+wsb set-liquidation-fee <LIQUIDATION_FEE>
+```
+NOTE: Requires super admin permissions
 
 ## Create Vaults
 1. Create the LP Token metadata, this should have the following format:
@@ -121,7 +139,7 @@ If both are present, the value passed to `-k/--keypair` will be the payer for th
   "image": "https://arweave.net/[METADATA_HASH]",
   "creators": {
     "name": "Wasabi Protcol",
-    "site": "https://wasabi.xyz"
+    "site": "https://perps.wasabi.xyz"
   }
 }
 ```
