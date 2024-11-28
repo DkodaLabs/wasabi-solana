@@ -5,7 +5,7 @@
 # PROGRAM CONFIGURATION
 PROGRAM_NAME="wasabi_solana"
 PROGRAM_KEYPAIR_PATH="spicyfuhLBKM2ebrUF7jf59WDNgF7xXeLq62GyKnKrB.json"
-DEPLOYMENT_WALLET_PATH="keypair.json" # REPLACE WITH THE PATH OF THE KEYPAIR THAT WILL DEPLOY THE PROGRAM AND BE THE PROGRAM'S UPDATE AUTHORITY
+DEPLOYMENT_KEYPAIR_PATH="keypair.json" # REPLACE WITH THE PATH OF THE KEYPAIR THAT WILL DEPLOY THE PROGRAM AND BE THE PROGRAM'S UPDATE AUTHORITY
 CLUSTER="devnet"
 
 # PROGRAM PARAMETERS
@@ -67,8 +67,8 @@ check_files() {
         exit 1
     fi
 
-    if [ ! -f "$DEPLOYMENT_WALLET_PATH" ]; then
-        print_error "Deployment wallet not found at $DEPLOYMENT_WALLET_PATH"
+    if [ ! -f "$DEPLOYMENT_KEYPAIR_PATH" ]; then
+        print_error "Deployment wallet not found at $DEPLOYMENT_KEYPAIR_PATH"
         exit 1
     fi
 }
@@ -89,7 +89,7 @@ deploy_program() {
         --program-name "$PROGRAM_NAME" \
         --program-keypair "$PROGRAM_KEYPAIR_PATH" \
         --provider.cluster "$CLUSTER" \
-        --provider.wallet "$DEPLOYMENT_WALLET_PATH"; then
+        --provider.wallet "$DEPLOYMENT_KEYPAIR_PATH"; then
         print_error "Failed to deploy program"
         exit 1
     fi
@@ -99,7 +99,7 @@ deploy_program() {
 
 set_program_config() {
     print_step "Initializing global settings..."
-    if ! wsb -k "$DEPLOYMENT_WALLET_PATH" \
+    if ! wsb -k "$DEPLOYMENT_KEYPAIR_PATH" \
         init-global-settings "$SUPER_ADMIN"; then
         print_error "Failed to initialize global settings"
         exit 1

@@ -8,7 +8,6 @@ pub mod permission;
 pub mod position;
 pub mod stop_loss_order;
 pub mod take_profit_order;
-pub mod protocol_wallet;
 
 pub use base_pool::*;
 pub use close_position_request::*;
@@ -20,4 +19,3 @@ pub use permission::*;
 pub use position::*;
 pub use stop_loss_order::*;
 pub use take_profit_order::*;
-pub use protocol_wallet::*;

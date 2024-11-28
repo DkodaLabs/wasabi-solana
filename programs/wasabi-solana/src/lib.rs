@@ -71,22 +71,6 @@ pub mod wasabi_solana {
         ctx.accounts.remove_permission()
     }
 
-    #[access_control(GenerateWallet::validate(&ctx))]
-    pub fn generate_wallet(ctx: Context<GenerateWallet>, wallet_type: u8, nonce: u8) -> Result<()> {
-        ctx.accounts.generate_wallet(wallet_type, nonce, &ctx.bumps)
-    }
-
-    /// WARNING: Do not call unless you are sure the wallet's ATAs are closed
-    #[access_control(CloseWallet::validate(&ctx))]
-    pub fn close_wallet(ctx: Context<CloseWallet>) -> Result<()> {
-        ctx.accounts.close_wallet()
-    }
-
-    #[access_control(CollectFees::validate(&ctx))]
-    pub fn collect_fees(ctx: Context<CollectFees>) -> Result<()> {
-        ctx.accounts.collect_fees()
-    }
-
     #[access_control(InitLpVault::validate(&ctx))]
     pub fn init_lp_vault(ctx: Context<InitLpVault>, args: InitLpVaultArgs) -> Result<()> {
         ctx.accounts.init_lp_vault(&args, &ctx.bumps)

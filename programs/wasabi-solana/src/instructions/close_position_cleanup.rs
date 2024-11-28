@@ -5,7 +5,6 @@ use {
         long_pool_signer_seeds, short_pool_signer_seeds,
         utils::validate_difference,
         BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
-        ProtocolWallet,
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{
@@ -91,60 +90,16 @@ pub struct ClosePositionCleanup<'info> {
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
-        owner = crate::ID,
-        seeds = [
-            b"protocol_wallet",
-            global_settings.key().as_ref(),
-            &ProtocolWallet::FEE.to_le_bytes(),
-            &fee_wallet.nonce.to_le_bytes(),
-        ],
-        bump = fee_wallet.bump,
-        constraint = fee_wallet.wallet_type == ProtocolWallet::FEE,
-    )]
-    pub fee_wallet: Account<'info, ProtocolWallet>,
-    #[account(
         mut,
-        associated_token::mint = currency,
-        associated_token::authority = fee_wallet,
-        associated_token::token_program = currency_token_program,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
     )]
-    pub fee_wallet_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
-        associated_token::mint = collateral,
-        associated_token::authority = fee_wallet,
-        associated_token::token_program = collateral_token_program,
+        constraint = liquidation_wallet.owner == global_settings.liquidation_wallet
     )]
-    pub fee_wallet_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        owner = crate::ID,
-        seeds = [
-            b"protocol_wallet",
-            global_settings.key().as_ref(),
-            &ProtocolWallet::LIQUIDATION.to_le_bytes(),
-            &liquidation_wallet.nonce.to_le_bytes(),
-        ],
-        bump = liquidation_wallet.bump,
-        constraint = liquidation_wallet.wallet_type == ProtocolWallet::LIQUIDATION,
-    )]
-    pub liquidation_wallet: Account<'info, ProtocolWallet>,
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = liquidation_wallet,
-        associated_token::token_program = currency_token_program,
-    )]
-    pub liquidation_wallet_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = liquidation_wallet,
-        associated_token::token_program = collateral_token_program,
-    )]
-    pub liquidation_wallet_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub liquidation_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
@@ -263,7 +218,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
                 mint: self.currency.to_account_info(),
-                to: self.fee_wallet_currency_account.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -278,7 +233,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
-                to: self.fee_wallet_collateral_account.to_account_info(),
+                to: self.fee_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -297,7 +252,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
                 mint: self.currency.to_account_info(),
-                to: self.liquidation_wallet_currency_account.to_account_info(),
+                to: self.liquidation_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -312,7 +267,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
-                to: self.liquidation_wallet_collateral_account.to_account_info(),
+                to: self.liquidation_wallet.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {

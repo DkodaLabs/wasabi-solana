@@ -2,9 +2,8 @@ use {
     super::OpenLongPositionCleanup,
     crate::{
         error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
-        utils::position_setup_transaction_introspecation_validation, BasePool, DebtController,
-        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
-        ProtocolWallet,
+        utils::position_setup_transaction_introspection_validation, BasePool, DebtController,
+        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
     anchor_spl::
@@ -92,24 +91,10 @@ pub struct OpenLongPositionSetup<'info> {
     pub permission: Box<Account<'info, Permission>>,
 
     #[account(
-        owner = crate::ID,
-        seeds = [
-            b"protocol_wallet",
-            global_settings.key().as_ref(),
-            &ProtocolWallet::FEE.to_le_bytes(),
-            &fee_wallet.nonce.to_le_bytes(),
-        ],
-        bump = fee_wallet.bump,
-    )]
-    pub fee_wallet: Account<'info, ProtocolWallet>,
-
-    #[account(
         mut,
-        associated_token::mint = currency,
-        associated_token::authority = fee_wallet,
-        associated_token::token_program = token_program,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
     )]
-    pub fee_wallet_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
@@ -142,7 +127,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspecation_validation(
+        position_setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenLongPositionCleanup::get_hash(),
         )?;
@@ -182,7 +167,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
             mint: self.currency.to_account_info(),
-            to: self.fee_wallet_ata.to_account_info(),
+            to: self.fee_wallet.to_account_info(),
             authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), cpi_accounts);

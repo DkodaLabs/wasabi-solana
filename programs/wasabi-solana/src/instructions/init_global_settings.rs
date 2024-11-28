@@ -31,12 +31,16 @@ pub struct InitGlobalSettings<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitGlobalSettingsArgs {
     pub super_admin: Pubkey,
+    pub fee_wallet: Pubkey,
+    pub liquidation_wallet: Pubkey,
     pub statuses: u16,
 }
 
 impl<'info> InitGlobalSettings<'info> {
     pub fn init_global_settings(&mut self, args: &InitGlobalSettingsArgs) -> Result<()> {
         self.global_settings.set_inner(GlobalSettings {
+            fee_wallet: args.fee_wallet,
+            liquidation_wallet: args.liquidation_wallet,
             statuses: args.statuses,
         });
 

@@ -2,8 +2,8 @@ use {
     super::OpenShortPositionCleanup,
     crate::{
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings,
-        LpVault, OpenPositionRequest, Permission, Position, ProtocolWallet, SwapCache,
+        utils::position_setup_transaction_introspection_validation, BasePool, GlobalSettings,
+        LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
     anchor_spl::token_interface::{
@@ -86,24 +86,10 @@ pub struct OpenShortPositionSetup<'info> {
     pub permission: Box<Account<'info, Permission>>,
 
     #[account(
-        owner = crate::ID,
-        seeds = [
-            b"protocol_wallet",
-            global_settings.key().as_ref(),
-            &ProtocolWallet::FEE.to_le_bytes(),
-            &fee_wallet.nonce.to_le_bytes(),
-        ],
-        bump,
-        constraint = fee_wallet.wallet_type == ProtocolWallet::FEE,
-    )]
-    pub fee_wallet: Account<'info, ProtocolWallet>,
-    #[account(
         mut,
-        associated_token::mint = collateral,
-        associated_token::authority = fee_wallet,
-        associated_token::token_program = collateral_token_program,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
     )]
-    pub fee_wallet_ata: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"global_settings"],
@@ -115,7 +101,7 @@ pub struct OpenShortPositionSetup<'info> {
     pub collateral_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     #[account(
-      address = sysvar::instructions::ID
+        address = sysvar::instructions::ID
     )]
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,
@@ -136,7 +122,7 @@ impl<'info> OpenShortPositionSetup<'info> {
         );
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspecation_validation(
+        position_setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenShortPositionCleanup::get_hash(),
         )?;
@@ -162,7 +148,7 @@ impl<'info> OpenShortPositionSetup<'info> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
             mint: self.collateral.to_account_info(),
-            to: self.fee_wallet_ata.to_account_info(),
+            to: self.fee_wallet.to_account_info(),
             authority: self.owner.to_account_info(),
         };
         let cpi_ctx = CpiContext::new(

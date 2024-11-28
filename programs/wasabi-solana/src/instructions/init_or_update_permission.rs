@@ -1,7 +1,7 @@
 use {
     crate::{
         AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_POOL_PERMISSION,
-        INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION, WALLET_PERMISSION,
+        INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION,
     },
     anchor_lang::prelude::*,
 };
@@ -66,9 +66,6 @@ impl InitOrUpdatePermissionArgs {
         }
         if self.can_init_pools {
             res += INIT_POOL_PERMISSION
-        }
-        if self.can_manage_wallets {
-            res += WALLET_PERMISSION
         }
         res
     }

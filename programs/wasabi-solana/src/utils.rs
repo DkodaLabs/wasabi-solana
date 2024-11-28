@@ -12,7 +12,7 @@ pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
-pub fn position_setup_transaction_introspecation_validation(
+pub fn position_setup_transaction_introspection_validation(
     sysvar_info: &AccountInfo,
     clean_up_ix_hash: [u8; 8],
 ) -> Result<()> {

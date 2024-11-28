@@ -1,5 +1,9 @@
 use {
-    crate::{{state::DebtController, Permission}, error::ErrorCode, LEVERAGE_DENOMINATOR, APY_DENOMINATOR},
+    crate::{
+        error::ErrorCode,
+        APY_DENOMINATOR, LEVERAGE_DENOMINATOR,
+        {state::DebtController, Permission},
+    },
     anchor_lang::prelude::*,
 };
 
@@ -16,10 +20,10 @@ pub struct InitDebtController<'info> {
     pub super_admin_permission: Account<'info, Permission>,
 
     #[account(
-        init,  
-        payer = authority, 
-        seeds = [b"debt_controller"], 
-        bump, 
+        init_if_needed,
+        payer = authority,
+        seeds = [b"debt_controller"],
+        bump,
         space = 8 + std::mem::size_of::<DebtController>()
     )]
     pub debt_controller: Account<'info, DebtController>,
@@ -30,11 +34,7 @@ pub struct InitDebtController<'info> {
 impl<'info> InitDebtController<'info> {
     fn validate(&self, max_apy: u64, max_leverage: u64, liquidation_fee: u8) -> Result<()> {
         require_neq!(max_apy, 0, ErrorCode::InvalidValue);
-        require_gt!(
-            1000 * APY_DENOMINATOR,
-            max_apy,
-            ErrorCode::InvalidValue
-        );
+        require_gt!(1000 * APY_DENOMINATOR, max_apy, ErrorCode::InvalidValue);
 
         require_neq!(max_leverage, 0, ErrorCode::InvalidValue);
         require_gte!(
@@ -48,7 +48,12 @@ impl<'info> InitDebtController<'info> {
         Ok(())
     }
 
-    pub fn init_debt_controller(&mut self, max_apy: u64, max_leverage: u64, liquidation_fee: u8) -> Result<()> {
+    pub fn init_debt_controller(
+        &mut self,
+        max_apy: u64,
+        max_leverage: u64,
+        liquidation_fee: u8,
+    ) -> Result<()> {
         self.validate(max_apy, max_leverage, liquidation_fee)?;
         self.debt_controller.set_inner(DebtController {
             max_apy,
