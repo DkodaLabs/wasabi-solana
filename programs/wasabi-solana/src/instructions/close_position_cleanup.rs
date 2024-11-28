@@ -363,7 +363,6 @@ impl<'info> ClosePositionCleanup<'info> {
             self.revoke_owner_delegation(&[short_pool_signer_seeds!(self.pool)])?;
         }
 
-        let close_position_req = &self.close_position_request;
         let collateral_spent = self.get_collateral_delta()?;
         let principal_payout = self.get_principal_delta()?;
         let interest = self.close_position_request.interest;
@@ -420,9 +419,11 @@ impl<'info> ClosePositionCleanup<'info> {
             payout
         };
 
+        let close_fee = self.position.compute_close_fee(close_amounts.payout, self.pool.is_long_pool)?;
+
         // Deduct fees
         let (mut payout, close_fee) =
-            crate::utils::deduct(close_amounts.payout, close_position_req.execution_fee);
+            crate::utils::deduct(close_amounts.payout, close_fee);
 
         // Update close fee before calculating liquidation fee
         close_amounts.close_fee = close_fee;

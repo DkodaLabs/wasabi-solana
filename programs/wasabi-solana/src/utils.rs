@@ -21,7 +21,13 @@ pub fn position_setup_transaction_introspection_validation(
     // Validate there are no previous setup instructions
     for ixn_idx in 0..current_index {
         let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
+
         if crate::ID == ixn.program_id {
+            if ixn.data[0..8] == get_function_hash("global", "close_take_profit_order")
+                || ixn.data[0..8] == get_function_hash("global", "close_stop_loss_order")
+            {
+                continue;
+            }
             return Err(ErrorCode::UnpermittedIx.into());
         }
     }
