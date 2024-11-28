@@ -14,13 +14,21 @@
 ## Mainnet Deployment
 1. Install dependencies
 - Install Rust
-- Install Cargo
+```bash
+curl https://sh.rustup.rs -sSf | sh
+```
 - Install Solana
 ```bash
 sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)"`
 ```
 - Install Anchor Version Manager
+```bash
+cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+```
 - Install Anchor CLI
+```bash
+avm install latest
+```
 ```bash
 avm use@latest # Should use 0.30.1
 ```
@@ -30,7 +38,7 @@ git clone git@github.com:DkodaLabs/wasabi-solana-cli.git
 cd wasabi-solana-cli
 cargo build --release && cargo install --path .
 ```
-2. Ensure Solana and Anchor environment variables are set properly, `$XDG_DATA_HOME` on macOS refer to either `~/.local/share` or `~/Library/Application Support`
+2. Ensure Solana and Anchor environment variables are set properly, `$XDG_DATA_HOME` on macOS refers to either `~/.local/share` or `~/Library/Application Support`
 ```bash
 export AVM_HOME="$XDG_DATA_HOME/avm"
 export AGAVE="$XDG_DATA_HOME/agave/target/debug"
