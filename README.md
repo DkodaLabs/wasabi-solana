@@ -35,17 +35,30 @@
 6. Run `deploy.sh`
 
 ## Program Configuration
+All invocations follow the format:
+```bash
+wsb [OPTIONS] <COMMAND>
+```
+Options are:
+- `-u/--url`: Target cluster
+- `-k/--keypair`: The keypair that pays for the transaction and which the program will default to if no authority is provied with the command
+- `-h/--help`: Self explanatory
+
 1. Initialise fee & liquidation wallet associated token accounts
-    - `wsb init-ata <WALLET> <ASSET_MINT> <NUMBER_OF_WALLETS_TO_INIT>`
-    - Copy the output into the respective array in the `solana_coder/src/services/solana/transaction.ts`
-    - Repeat for each wallet and each asset mint
+```bash
+wsb init-ata <WALLET> <ASSET_MINT> <NUMBER_OF_WALLETS_TO_INIT>
+```
+Copy the output into the respective array in the `solana_coder/src/services/solana/transaction.ts` and repeat for each wallet and each asset mint
+
 2. Initialise permissions
-    - `wsb -k [SUPER_ADMIN] admin <NEW_ADMIN> [FLAGS]
-        - 'v': grant vault initialisation permission
-        - 'l': grant liquidation permission
-        - 'c': grant swap co-sign permission
-        - 'b': grant borrow permission (will deprecate)
-        - 'p': grant pool initialisation permission
+```bash
+wsb -k [SUPER_ADMIN] admin <NEW_ADMIN> [FLAGS]
+```
+- 'v': grant vault initialisation permission
+- 'l': grant liquidation permission
+- 'c': grant swap co-sign permission
+- 'b': grant borrow permission (will deprecate)
+- 'p': grant pool initialisation permission
 
 Example for coder transaction permission (liquidation and swap co-sign):
 ```bash
@@ -63,7 +76,7 @@ To change the super admin run the following with the super admin keypair:
 wsb set-super-admin [OPTIONS] <NEW_SUPER_ADMIN_PUBKEY>
 ```
 NOTE: the super admin keypair can be passed in with `-k/--keypair` before the command or `-a/--authority` as an option. 
-If both are present, the value passed to `-k/--keypair` will be the payer for the transaction and `-a/--authority` will be the super admin. If neither are present program defaults to client keypair in the solana config.
+If both are present, the value passed to `-k/--keypair` will be the payer for the transaction and `-a/--authority` will be the super admin. If neither are present program defaults to client keypair in the solana config found at `$XDG_CONFIG_HOME/solana/id.json`.
 
 ## Create Vaults
 1. Create the LP Token metadata, this should have the following format:
