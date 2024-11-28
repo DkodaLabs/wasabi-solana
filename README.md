@@ -95,16 +95,19 @@ If both are present, the value passed to `-k/--keypair` will be the payer for th
 2. Upload this metadata and its image
 3. Run:
 ```bash
-wsb -k keypair.json init-vault -n <NAME> -s <SYMBOL> -u <URI> <ASSET_MINT_PUBKEY>
+wsb init-vault [OPTIONS] -n <NAME> -s <SYMBOL> -u <URI> <ASSET_MINT_PUBKEY>
 ```
 Example:
 ```bash
-wsb -k keypair.json init-vault -n "Spicy SOL" -s "sSOL" -u "https://arweave.net/some_hash" So11111111111111111111111111111111111111111
+wsb init-vault [OPTIONS] -n "Spicy SOL" -s "sSOL" -u "https://arweave.net/some_hash" So11111111111111111111111111111111111111111
 ```
 The CLI will output any relevant addresses, these values may also be retrieved at any time using:
 ```bash
 wsb vault asset So11111111111111111111111111111111111111111
-wsb vault vault <VAULT_ADDRESS>
+```
+or
+```bash
+wsb vault address <VAULT_ADDRESS>
 ```
 NOTE: the keypair passed to -k or -a must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
 
@@ -112,11 +115,21 @@ NOTE: the keypair passed to -k or -a must have the permission to init vaults. If
 To create a market run:
 1. Long
 ```bash
-wsb -k keypair init-pool [OPTIONS] long <CURRENCY> <COLLATERAL>
+wsb init-pool [OPTIONS] long <CURRENCY> <COLLATERAL>
 ```
 
 2. Short
 ```bash
-wsb -k keypair init-pool [OPTIONS] short <CURRENCY> <COLLATERAL>
+wsb init-pool [OPTIONS] short <CURRENCY> <COLLATERAL>
 ```
+The CLI will output any relevant addresses, these values may also be retrieved at any time using:
+```bash
+wsb pool address <POOL_ADDRESS>
+```
+or
+```bash
+wsb pool mints <SIDE> <CURRENCY> <COLLATERAL>
+```
+The values for `<SIDE>` are `long` and `short`
+
 NOTE: the keypair passed to -k or -a must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
