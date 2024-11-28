@@ -32,7 +32,7 @@
     - Change `MAX_APY` to the desired maximum apy for the platform - this can be changed later
     - Change `MAX_LEVERAGE` to the desired maximum leverage for the platform - this can be changed later
     - Change `LIQUIDATION_FEE` to the desired percentage of the down payment to be charged for liquidations
-6. Run `deploy.sh`
+6. Run `deploy.sh` at the project root
 
 ## Program Configuration
 All invocations follow the format:
@@ -54,11 +54,11 @@ Copy the output into the respective array in the `solana_coder/src/services/sola
 ```bash
 wsb -k [SUPER_ADMIN] admin <NEW_ADMIN> [FLAGS]
 ```
-- 'v': grant vault initialisation permission
-- 'l': grant liquidation permission
-- 'c': grant swap co-sign permission
-- 'b': grant borrow permission (will deprecate)
-- 'p': grant pool initialisation permission
+- `v`: grant vault initialisation permission
+- `l`: grant liquidation permission
+- `c`: grant swap co-sign permission
+- `b`: grant borrow permission (will deprecate)
+- `p`: grant pool initialisation permission
 
 Example for coder transaction permission (liquidation and swap co-sign):
 ```bash
@@ -99,7 +99,7 @@ wsb init-vault [OPTIONS] -n <NAME> -s <SYMBOL> -u <URI> <ASSET_MINT_PUBKEY>
 ```
 Example:
 ```bash
-wsb init-vault [OPTIONS] -n "Spicy SOL" -s "sSOL" -u "https://arweave.net/some_hash" So11111111111111111111111111111111111111111
+wsb init-vault -a init_pool_keypair.json -n "Spicy SOL" -s "sSOL" -u "https://arweave.net/some_hash" So11111111111111111111111111111111111111111
 ```
 The CLI will output any relevant addresses, these values may also be retrieved at any time using:
 ```bash
@@ -109,7 +109,7 @@ or
 ```bash
 wsb vault address <VAULT_ADDRESS>
 ```
-NOTE: the keypair passed to -k or -a must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
+NOTE: the keypair passed to `-k/--keypair` or `-a/--authority` must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
 
 ## Create Market
 To create a market run:
@@ -117,10 +117,18 @@ To create a market run:
 ```bash
 wsb init-pool [OPTIONS] long <CURRENCY> <COLLATERAL>
 ```
+Example of a Solana mainnet long WIF/SOL market pool:
+```bash
+wsb init-pool -a pool_init_keypair.json long So11111111111111111111111111111111111111112 DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+```
 
 2. Short
 ```bash
 wsb init-pool [OPTIONS] short <CURRENCY> <COLLATERAL>
+```
+Example of a Solana mainnet short WIF/SOL market pool:
+```bash
+wsb init pool -a pool_init_keypair.json short DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 So11111111111111111111111111111111111111112
 ```
 The CLI will output any relevant addresses, these values may also be retrieved at any time using:
 ```bash
@@ -130,6 +138,8 @@ or
 ```bash
 wsb pool mints <SIDE> <CURRENCY> <COLLATERAL>
 ```
-The values for `<SIDE>` are `long` and `short`
+The values for `<SIDE>` are:
+- `long` 
+- `short`
 
-NOTE: the keypair passed to -k or -a must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
+NOTE: the keypair passed to `-k/--keypair` or `-a/--authority` must have the permission to init vaults. If neither are passed the program will default to the default keypair found at `$XDG_CONFIG_HOME/solana/id.json`
