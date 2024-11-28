@@ -13,14 +13,36 @@
 
 ## Mainnet Deployment
 1. Install dependencies
-    - Install Rust
-    - Install Cargo
-    - Install Solana
-    - Install Anchor Version Manager
-    - Install Anchor CLI
-    - Install Wasabi Solana CLI
-2. Ensure Solana and Anchor environment variables are set properly
+- Install Rust
+- Install Cargo
+- Install Solana
+```bash
+sh -c "$(curl -sSfL https://release.solana.com/v1.18.22/install)"`
+```
+- Install Anchor Version Manager
+- Install Anchor CLI
+```bash
+avm use@latest # Should use 0.30.1
+```
+- Install Wasabi Solana CLI
+```bash
+git clone git@github.com:DkodaLabs/wasabi-solana-cli.git
+cd wasabi-solana-cli
+cargo build --release && cargo install --path .
+```
+2. Ensure Solana and Anchor environment variables are set properly, `$XDG_DATA_HOME` on macOS refer to either `~/.local/share` or `~/Library/Application Support`
+```bash
+export AVM_HOME="$XDG_DATA_HOME/avm"
+export AGAVE="$XDG_DATA_HOME/agave/target/debug"
+export SOLANA_SDK_PATH="$XDG_DATA_HOME/solana/install/active_release/bin/solana/sdk"
+export SOLANA_BIN_PATH="$XDG_DATA_HOME/solana/install/active_release/bin"
+export PATH=$PATH:$AVM_HOME:$AGAVE:$SOLANA_SDK_PATH:$SOLANA_BIN_PATH
+```
 3. Change Rust default toolchain to be compatible with Anchor 
+```bash
+rustup default 1.79.0
+rustup override set 1.79.0
+```
 4. Create the deployment and upgrade keypair and fund it with ~8 SOL.
 5. Edit `deploy.sh`
     - Change `DEPLOYMENT_WALLET_PATH` to point to the keypair 
@@ -41,7 +63,7 @@ wsb [OPTIONS] <COMMAND>
 ```
 Options are:
 - `-u/--url`: Target cluster
-- `-k/--keypair`: The keypair that pays for the transaction and which the program will default to if no authority is provied with the command
+- `-k/--keypair`: The keypair that pays for the transaction and which the program will default to if no authority is provided with the command
 - `-h/--help`: Self explanatory
 
 1. Initialise fee & liquidation wallet associated token accounts
