@@ -11,6 +11,8 @@ CLUSTER="devnet"
 # PROGRAM PARAMETERS
 SUPER_ADMIN="frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z" # PUBKEY OF THE NEW SUPER ADMIN
 SUPER_ADMIN_KEYPAIR_PATH="$HOME/.config/solana/id.json" # REPLACE WITH THE PATH TO THE PATH OF THE KEYPAIR FOR THE SUPER ADMIN
+FEE_WALLET="frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
+LIQUIDATION_WALLET="frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
 MAX_APY=300 #300%
 MAX_LEVERAGE=500 #5x
 LIQUIDATION_FEE=5 #5%
@@ -100,7 +102,7 @@ deploy_program() {
 set_program_config() {
     print_step "Initializing global settings..."
     if ! wsb -k "$DEPLOYMENT_KEYPAIR_PATH" \
-        init-global-settings "$SUPER_ADMIN"; then
+        init-global-settings "$SUPER_ADMIN" "$FEE_WALLET" "$LIQUIDATION_WALLET"; then
         print_error "Failed to initialize global settings"
         exit 1
     fi

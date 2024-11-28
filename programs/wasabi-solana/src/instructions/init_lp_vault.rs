@@ -110,7 +110,7 @@ impl<'info> InitLpVault<'info> {
             token_standard: TokenStandard::Fungible,
             collection_details: None,
             rule_set: None,
-            decimals: Some(6),
+            decimals: Some(self.asset_mint.decimals),
             print_supply: None,
         };
 
