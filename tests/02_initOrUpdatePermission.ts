@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { NON_SWAP_AUTHORITY, superAdminProgram } from "./rootHooks";
+import { NON_SWAP_AUTHORITY, CAN_SWAP_CANT_LIQ_AUTH, superAdminProgram } from "./rootHooks";
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {
@@ -14,8 +14,7 @@ describe("InitOrUpdatePermission", () => {
                 canCosignSwaps: false, // 4
                 canInitVaults: true, // 1
                 canLiquidate: true, // 2
-                canBorrowFromVaults: true, // 8
-                canInitPools: true, // 16
+                canInitPools: true, // 8
                 status: { active: {} }
             })
             .accounts({
@@ -24,10 +23,21 @@ describe("InitOrUpdatePermission", () => {
             })
             .rpc();
 
+        await superAdminProgram.methods.initOrUpdatePermission({
+            canCosignSwaps: true,
+            canInitVaults: false,
+            canLiquidate: false,
+            canInitPools: false,
+            status: { active: {} }
+        }).accounts({
+            payer: superAdminProgram.provider.publicKey,
+            newAuthority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
+        }).rpc();
+
         const permissionAfter = await superAdminProgram.account.permission.fetch(adminKey);
         assert.ok(!permissionAfter.isSuperAuthority);
         assert.equal(permissionAfter.authority.toString(), newAuthority.toString());
         assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({ active: {} }));
-        assert.equal(permissionAfter.permissionsMap, 27);
+        assert.equal(permissionAfter.permissionsMap, 11);
     });
 });

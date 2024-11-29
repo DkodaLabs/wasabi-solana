@@ -3,6 +3,7 @@ import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     abSwapKey,
     NON_SWAP_AUTHORITY,
+    CAN_SWAP_CANT_LIQ_AUTH,
     openPosLut,
     poolFeeAccount,
     poolMint,
@@ -14,9 +15,11 @@ import {
     user2,
     feeWalletKeypair,
     liquidationWalletKeypair,
+    superAdminProgram
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
+    mintTo,
     TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -116,6 +119,11 @@ describe("liquidate", () => {
             new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
         ],
         program.programId
+    );
+
+    const [noLiqPerm] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("admin"), CAN_SWAP_CANT_LIQ_AUTH.publicKey.toBuffer()],
+        program.programId,
     );
 
     describe("Long", () => {
@@ -239,8 +247,8 @@ describe("liquidate", () => {
                         pool: longPoolBKey,
                         collateral: tokenMintB,
                         // @ts-ignore
-                        authority: SWAP_AUTHORITY.publicKey,
-                        permission: coSignerPermission,
+                        authority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
+                        permission: noLiqPerm,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
@@ -252,7 +260,7 @@ describe("liquidate", () => {
             const swapIx = TokenSwap.swapInstruction(
                 abSwapKey.publicKey,
                 swapAuthority,
-                SWAP_AUTHORITY.publicKey,
+                CAN_SWAP_CANT_LIQ_AUTH.publicKey,
                 longPoolBVaultKey,
                 swapTokenAccountB,
                 swapTokenAccountA,
@@ -280,7 +288,7 @@ describe("liquidate", () => {
                             collateral: tokenMintB,
                             currency: tokenMintA,
                             position: longPositionKey,
-                            authority: SWAP_AUTHORITY.publicKey,
+                            authority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
                             //@ts-ignore
                             lpVault: lpVaultTokenAKey,
                             feeWallet,
@@ -302,10 +310,11 @@ describe("liquidate", () => {
                 }).compileToV0Message([lookupAccount.value]);
 
                 const tx = new anchor.web3.VersionedTransaction(message);
-                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                await program.provider.sendAndConfirm(tx, [CAN_SWAP_CANT_LIQ_AUTH], {
                     skipPreflight: true,
                 });
             } catch (e) {
+                console.log(e);
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -447,8 +456,6 @@ describe("liquidate", () => {
                     feeWallet,
                     liquidationWallet,
                 ], TOKEN_PROGRAM_ID);
-            console.log(vaultBefore);
-            console.log(ownerABefore);
 
             const args = {
                 minTargetAmount: new anchor.BN(0),
@@ -456,6 +463,7 @@ describe("liquidate", () => {
                 executionFee: new anchor.BN(11),
                 expiration: closeRequestExpiration,
             };
+
             const setupIx = await program.methods
                 .liquidatePositionSetup(
                     args.minTargetAmount,
@@ -476,10 +484,15 @@ describe("liquidate", () => {
                     },
                 })
                 .instruction();
+
+            // Use a much larger multiplier to ensure liquidation threshold is met
+            const swapAmount = positionBefore.collateralAmount.muln(5);
+
             const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
                 [abSwapKey.publicKey.toBuffer()],
                 TOKEN_SWAP_PROGRAM_ID
             );
+
             const swapIx = TokenSwap.swapInstruction(
                 abSwapKey.publicKey,
                 swapAuthority,
@@ -497,9 +510,10 @@ describe("liquidate", () => {
                 TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
-                BigInt(positionBefore.collateralAmount.addn(10).toString()),
+                BigInt(swapAmount.toString()),
                 BigInt(0)
             );
+
             const _tx = await program.methods
                 .liquidatePositionCleanup()
                 .accounts({
@@ -520,6 +534,7 @@ describe("liquidate", () => {
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
+
             try {
                 const connection = program.provider.connection;
                 const lookupAccount = await connection
@@ -551,6 +566,7 @@ describe("liquidate", () => {
                 ], TOKEN_PROGRAM_ID),
             ]);
             console.log(positionAfter);
+
             // Position should be cleaned up
             assert.isNull(positionAfter);
 
