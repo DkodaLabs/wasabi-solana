@@ -25,7 +25,9 @@ pub mod open_short_position_cleanup;
 pub mod open_short_position_setup;
 pub mod redeem;
 pub mod remove_permission;
+pub mod set_fee_wallet;
 pub mod set_liquidation_fee;
+pub mod set_liquidation_wallet;
 pub mod set_lp_state;
 pub mod set_max_apy;
 pub mod set_max_leverage;
@@ -38,6 +40,8 @@ pub mod take_profit_setup;
 pub mod update_vault_max_borrow;
 pub mod withdraw;
 
+pub use set_fee_wallet::*;
+pub use set_liquidation_wallet::*;
 pub use claim_position::*;
 pub use close_long_position_cleanup::*;
 pub use close_long_position_setup::*;

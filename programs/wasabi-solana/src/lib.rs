@@ -48,6 +48,17 @@ pub mod wasabi_solana {
         ctx.accounts.set_lp_state(allow_lp)
     }
 
+    pub fn set_fee_wallet(ctx: Context<SetFeeWallet>, fee_wallet: Pubkey) -> Result<()> {
+        ctx.accounts.set_fee_wallet(&fee_wallet)
+    }
+
+    pub fn set_liquidation_wallet(
+        ctx: Context<SetLiquidationWallet>,
+        liquidation_wallet: Pubkey,
+    ) -> Result<()> {
+        ctx.accounts.set_liquidation_wallet(&liquidation_wallet)
+    }
+
     pub fn set_max_apy(ctx: Context<SetMaxApy>, max_apy: u64) -> Result<()> {
         ctx.accounts.set_max_apy(max_apy)
     }

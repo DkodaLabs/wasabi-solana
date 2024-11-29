@@ -5,6 +5,7 @@ const LPING_ENABLED: u16 = 0b0000000000000010;
 
 #[account]
 pub struct GlobalSettings {
+    pub super_admin: Pubkey,
     pub fee_wallet: Pubkey,
     pub liquidation_wallet: Pubkey,
     /// Bit mapping of enabled features. Status allow disabling trading, lping, etc.

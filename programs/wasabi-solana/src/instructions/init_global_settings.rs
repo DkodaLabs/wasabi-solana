@@ -39,6 +39,7 @@ pub struct InitGlobalSettingsArgs {
 impl<'info> InitGlobalSettings<'info> {
     pub fn init_global_settings(&mut self, args: &InitGlobalSettingsArgs) -> Result<()> {
         self.global_settings.set_inner(GlobalSettings {
+            super_admin: args.super_admin,
             fee_wallet: args.fee_wallet,
             liquidation_wallet: args.liquidation_wallet,
             statuses: args.statuses,
