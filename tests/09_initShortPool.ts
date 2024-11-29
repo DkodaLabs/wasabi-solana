@@ -14,19 +14,27 @@ describe("InitShortPool", () => {
             program.programId
         );
 
+    const [permissionKey] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("admin"),
+            program.provider.publicKey.toBuffer(),
+        ],
+        program.programId,
+    );
+
     it("should create the short pool", async () => {
-        try { 
-        await superAdminProgram.methods
-            .initShortPool()
-            .accounts({
-                payer: superAdminProgram.provider.publicKey,
-                permission: superAdminPermissionKey,
-                collateral: tokenMintA,
-                currency: tokenMintB,
-                collateralTokenProgram: TOKEN_PROGRAM_ID,
-                currencyTokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .rpc();
+        try {
+            await superAdminProgram.methods
+                .initShortPool()
+                .accounts({
+                    payer: superAdminProgram.provider.publicKey,
+                    permission: superAdminPermissionKey,
+                    collateral: tokenMintA,
+                    currency: tokenMintB,
+                    collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    currencyTokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .rpc();
         } catch (e: any) {
             console.log(await e.getLogs(program.provider.connection));
         }
@@ -72,24 +80,45 @@ describe("InitShortPool", () => {
 
     describe("non permissioned signer", () => {
         it("should fail", async () => {
+            const NO_AUTH = anchor.web3.Keypair.generate();
+            const _noPermissionTxn = await superAdminProgram.methods.initOrUpdatePermission({
+                canCosignSwaps: true,
+                canInitVaults: false,
+                canInitPool: false,
+                canLiquidate: false,
+                canBorrowFromVaults: false,
+                status: { active: {} },
+            }).accounts({
+                payer: superAdminProgram.provider.publicKey,
+                newAuthority: NO_AUTH.publicKey,
+            }).rpc();
+
+            const [noPerm] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("admin"),
+                    NO_AUTH.publicKey.toBuffer(),
+                ],
+                program.programId,
+            );
+
             try {
                 await program.methods
-                    .initLpVault({
-                        name: "PLACEHOLDER",
-                        symbol: "PLC",
-                        uri: "https://placeholder.com",
-                    })
-                    .accounts({
+                    .initShortPool()
+                    .accountsPartial({
                         payer: program.provider.publicKey,
-                        permission: superAdminPermissionKey,
-                        assetMint: tokenMintB,
-                        assetTokenProgram: TOKEN_PROGRAM_ID,
+                        authority: NO_AUTH.publicKey,
+                        permission: noPerm,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
                     })
+                    .signers([NO_AUTH])
                     .rpc();
                 assert.ok(false);
-            } catch (err) {
-                if (err instanceof anchor.AnchorError) {
-                    assert.equal(err.error.errorCode.number, 2001);
+            } catch (e: any) {
+                if (e instanceof anchor.AnchorError) {
+                    assert.equal(e.error.errorCode.number, 6000);
                 } else {
                     assert.ok(false);
                 }

@@ -48,7 +48,8 @@ export const SWAP_AUTHORITY = web3.Keypair.generate();
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 
-export const feeWalletKeyPair = web3.Keypair.generate();
+export const feeWalletKeypair = web3.Keypair.generate();
+export const liquidationWalletKeypair = web3.Keypair.generate();
 
 export let openPosLut: web3.PublicKey;
 
@@ -372,39 +373,30 @@ export const mochaHooks = {
             superAdminProgram.programId,
         );
 
-        const [feeWalletKey] = web3.PublicKey.findProgramAddressSync(
-            [
-                utils.bytes.utf8.encode("protocol_wallet"),
-                globalSettingsKey.toBuffer(),
-                Buffer.from([0]),
-                Buffer.from([1]),
-            ],
-            superAdminProgram.programId,
+        const feeWalletAccountA = getAssociatedTokenAddressSync(
+            tokenMintA,
+            feeWalletKeypair.publicKey,
+            true,
+            TOKEN_PROGRAM_ID
         );
 
-        const feeWalletTokenAccountA = getAssociatedTokenAddressSync(tokenMintA, feeWalletKey, true, TOKEN_PROGRAM_ID);
-        const feeWalletTokenAccountB = getAssociatedTokenAddressSync(tokenMintB, feeWalletKey, true, TOKEN_PROGRAM_ID);
-
-        const [liquidationWalletKey] = web3.PublicKey.findProgramAddressSync(
-            [
-                utils.bytes.utf8.encode("protocol_wallet"),
-                globalSettingsKey.toBuffer(),
-                Buffer.from([1]),
-                Buffer.from([1]),
-            ],
-            superAdminProgram.programId,
+        const feeWalletAccountB = getAssociatedTokenAddressSync(
+            tokenMintB,
+            feeWalletKeypair.publicKey,
+            true,
+            TOKEN_PROGRAM_ID
         );
 
         const liquidationWalletAccountA = getAssociatedTokenAddressSync(
             tokenMintA,
-            liquidationWalletKey,
+            liquidationWalletKeypair.publicKey,
             true,
             TOKEN_PROGRAM_ID
         );
 
         const liquidationWalletAccountB = getAssociatedTokenAddressSync(
             tokenMintB,
-            liquidationWalletKey,
+            liquidationWalletKeypair.publicKey,
             true,
             TOKEN_PROGRAM_ID
         );
@@ -413,8 +405,8 @@ export const mochaHooks = {
 
         const createFeeWalletAtaA = createAssociatedTokenAccountInstruction(
             program.provider.publicKey,
-            feeWalletTokenAccountA,
-            feeWalletKey,
+            feeWalletAccountA,
+            feeWalletKeypair.publicKey,
             tokenMintA,
             TOKEN_PROGRAM_ID,
         );
@@ -422,8 +414,8 @@ export const mochaHooks = {
 
         const createFeeWalletAtaB = createAssociatedTokenAccountInstruction(
             program.provider.publicKey,
-            feeWalletTokenAccountB,
-            feeWalletKey,
+            feeWalletAccountB,
+            feeWalletKeypair.publicKey,
             tokenMintB,
             TOKEN_PROGRAM_ID,
         );
@@ -432,7 +424,7 @@ export const mochaHooks = {
         const createLiqWalletAtaA = createAssociatedTokenAccountInstruction(
             program.provider.publicKey,
             liquidationWalletAccountA,
-            liquidationWalletKey,
+            liquidationWalletKeypair.publicKey,
             tokenMintA,
             TOKEN_PROGRAM_ID,
         );
@@ -441,7 +433,7 @@ export const mochaHooks = {
         const createLiqWalletAtaB = createAssociatedTokenAccountInstruction(
             program.provider.publicKey,
             liquidationWalletAccountB,
-            liquidationWalletKey,
+            liquidationWalletKeypair.publicKey,
             tokenMintB,
             TOKEN_PROGRAM_ID,
         );
@@ -457,12 +449,12 @@ export const mochaHooks = {
                     // General keys
                     debtControllerKey,
                     globalSettingsKey,
-                    feeWalletKey,
-                    liquidationWalletKey,
+                    feeWalletKeypair.publicKey,
+                    liquidationWalletKeypair.publicKey,
                     lpVaultAKey,
                     lpVaultBKey,
-                    feeWalletTokenAccountA,
-                    feeWalletTokenAccountB,
+                    feeWalletAccountA,
+                    feeWalletAccountB,
                     liquidationWalletAccountA,
                     liquidationWalletAccountB,
                     tokenMintA,

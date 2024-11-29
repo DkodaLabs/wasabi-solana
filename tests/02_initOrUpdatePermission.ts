@@ -16,7 +16,6 @@ describe("InitOrUpdatePermission", () => {
                 canLiquidate: true, // 2
                 canBorrowFromVaults: true, // 8
                 canInitPools: true, // 16
-                canManageWallets: true, // 32
                 status: { active: {} }
             })
             .accounts({
@@ -29,6 +28,6 @@ describe("InitOrUpdatePermission", () => {
         assert.ok(!permissionAfter.isSuperAuthority);
         assert.equal(permissionAfter.authority.toString(), newAuthority.toString());
         assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({ active: {} }));
-        assert.equal(permissionAfter.permissionsMap, 59);
+        assert.equal(permissionAfter.permissionsMap, 27);
     });
 });

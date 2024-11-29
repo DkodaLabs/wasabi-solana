@@ -419,11 +419,17 @@ impl<'info> ClosePositionCleanup<'info> {
             payout
         };
 
-        let close_fee = self.position.compute_close_fee(close_amounts.payout, self.pool.is_long_pool)?;
+        let close_fee = self
+            .position
+            .compute_close_fee(close_amounts.payout, self.pool.is_long_pool)?;
 
         // Deduct fees
-        let (mut payout, close_fee) =
-            crate::utils::deduct(close_amounts.payout, close_fee);
+        let (mut payout, close_fee) = crate::utils::deduct(
+            close_amounts.payout,
+            close_fee
+                .checked_add(self.close_position_request.execution_fee)
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
+        );
 
         // Update close fee before calculating liquidation fee
         close_amounts.close_fee = close_fee;

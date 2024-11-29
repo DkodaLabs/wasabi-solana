@@ -95,12 +95,12 @@ wsb -k [SUPER_ADMIN] admin <NEW_ADMIN> [FLAGS]
 
 Example for coder transaction permission (liquidation and swap co-sign):
 ```bash
-wsb -k keypair.json admin <PUBKEY> -lc
+wsb admin <PUBKEY> -lc
 ```
 
 Example for market opening permissions (init vault & init pool):
 ```bash
-wsb -k keypair.json admin <PUBKEY> -pv
+wsb admin <PUBKEY> -pv
 ```
 
 ### Change Super Admin
@@ -143,7 +143,7 @@ NOTE: Requires super admin permissions
   }
 }
 ```
-2. Upload this metadata and its image
+2. Upload this metadata and its image to arweave, ipfs et al.
 3. Run:
 ```bash
 wsb init-vault [OPTIONS] -n <NAME> -s <SYMBOL> -u <URI> <ASSET_MINT_PUBKEY>

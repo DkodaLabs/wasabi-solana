@@ -1,8 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
-import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
-import { getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { superAdminProgram, tokenMintA, tokenMintB, SWAP_AUTHORITY } from "./rootHooks";
+import {
+    getAssociatedTokenAddressSync,
+    createAssociatedTokenAccountIdempotentInstruction
+} from "@solana/spl-token";
+import { SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
+import { MPL_TOKEN_METADATA_PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
 import { WasabiSolana } from "../target/types/wasabi_solana";
 
 describe("InitLpVault", () => {
@@ -15,23 +20,44 @@ describe("InitLpVault", () => {
         );
 
     it("should create the LP Vault", async () => {
+        const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+            [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+            superAdminProgram.programId,
+        );
+
+        const vaultAta = getAssociatedTokenAddressSync(
+            tokenMintA,
+            lpVaultKey,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const vaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+            SWAP_AUTHORITY.publicKey,
+            vaultAta,
+            lpVaultKey,
+            tokenMintA,
+            TOKEN_PROGRAM_ID
+        );
+
         await superAdminProgram.methods
             .initLpVault({
                 name: "PLACEHOLDER",
                 symbol: "PLC",
                 uri: "https://placeholder.com",
             })
-            .accounts({
+            .accountsPartial({
                 payer: superAdminProgram.provider.publicKey,
+                vault: vaultAta,
                 permission: superAdminPermissionKey,
                 assetMint: tokenMintA,
                 assetTokenProgram: TOKEN_PROGRAM_ID,
+                tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
+                sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
             })
+            .preInstructions([vaultAtaIx])
+            .signers([SWAP_AUTHORITY])
             .rpc();
-        const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-            [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-            superAdminProgram.programId,
-        );
         const [sharesMint] = anchor.web3.PublicKey.findProgramAddressSync(
             [lpVaultKey.toBuffer(), tokenMintA.toBuffer()],
             superAdminProgram.programId,
@@ -52,6 +78,25 @@ describe("InitLpVault", () => {
 
     describe("non permissioned signer", () => {
         it("should fail", async () => {
+            const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
+                superAdminProgram.programId,
+            );
+
+            const vaultAta = getAssociatedTokenAddressSync(
+                tokenMintB,
+                lpVaultKey,
+                true,
+                TOKEN_PROGRAM_ID
+            );
+
+            const vaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+                SWAP_AUTHORITY.publicKey,
+                vaultAta,
+                lpVaultKey,
+                tokenMintB,
+                TOKEN_PROGRAM_ID
+            );
             try {
                 await program.methods
                     .initLpVault({
@@ -59,12 +104,17 @@ describe("InitLpVault", () => {
                         symbol: "PLC",
                         uri: "https://placeholder.com",
                     })
-                    .accounts({
+                    .accountsPartial({
                         payer: program.provider.publicKey,
                         permission: superAdminPermissionKey,
+                        vault: vaultAta,
                         assetMint: tokenMintB,
                         assetTokenProgram: TOKEN_PROGRAM_ID,
+                        tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
+                        sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
                     })
+                    .preInstructions([vaultAtaIx])
+                    .signers([SWAP_AUTHORITY])
                     .rpc();
                 assert.ok(false);
             } catch (err) {

@@ -10,6 +10,7 @@ import {
     swapTokenAccountB,
     tokenMintA,
     tokenMintB,
+    feeWalletKeypair,
 } from "./rootHooks";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import {
@@ -28,22 +29,12 @@ describe("ClaimPosition", () => {
         program.programId,
     );
 
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId,
+    const feeWallet = getAssociatedTokenAddressSync(
+        tokenMintA, 
+        feeWalletKeypair.publicKey, 
+        true, 
+        TOKEN_PROGRAM_ID
     );
-
-    const [feeWallet] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            anchor.utils.bytes.utf8.encode("protocol_wallet"),
-            globalSettingsKey.toBuffer(),
-            Buffer.from([0]),
-            Buffer.from([1]),
-        ],
-        program.programId,
-    );
-
-    const feeWalletA = getAssociatedTokenAddressSync(tokenMintA, feeWallet, true, TOKEN_PROGRAM_ID);
 
     const ownerTokenA = getAssociatedTokenAddressSync(
         tokenMintA,
@@ -213,7 +204,7 @@ describe("ClaimPosition", () => {
                     ownerTokenBBefore,
                     lpVaultTokenBBefore,
                     collateralVaultBefore,
-                    feeWalletABefore,
+                    feeWalletBefore,
                 ],
             ] = await Promise.all([
                 program.account.position.fetch(positionKey),
@@ -222,7 +213,7 @@ describe("ClaimPosition", () => {
                     ownerTokenB,
                     lpVaultBVault,
                     shortPoolAVaultKey,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
@@ -251,7 +242,7 @@ describe("ClaimPosition", () => {
                     ownerTokenBAfter,
                     lpVaultTokenBAfter,
                     collateralVaultAfter,
-                    feeWalletAAfter,
+                    feeWalletAfter,
                 ],
             ] = await Promise.all([
                 program.account.position.fetchNullable(positionKey),
@@ -260,7 +251,7 @@ describe("ClaimPosition", () => {
                     ownerTokenB,
                     lpVaultBVault,
                     shortPoolAVaultKey,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
             // validate position was closed
@@ -296,7 +287,7 @@ describe("ClaimPosition", () => {
             );
             // Validate the close_fee was paid out
             const expectedCloseFee = positionBefore.feesToBePaid;
-            const feeWalletDiff = feeWalletAAfter.amount - feeWalletABefore.amount;
+            const feeWalletDiff = feeWalletAfter.amount - feeWalletBefore.amount;
             assert.equal(feeWalletDiff.toString(), expectedCloseFee.toString());
         });
     });
@@ -397,7 +388,7 @@ describe("ClaimPosition", () => {
                     ownerTokenBBefore,
                     lpVaultTokenABefore,
                     collateralVaultBefore,
-                    feeWalletABefore,
+                    feeWalletBefore,
                 ],
             ] = await Promise.all([
                 program.account.position.fetch(positionKey),
@@ -406,7 +397,7 @@ describe("ClaimPosition", () => {
                     ownerTokenB,
                     lpVaultAVault,
                     longPoolBVaultKey,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
@@ -435,7 +426,7 @@ describe("ClaimPosition", () => {
                     ownerTokenBAfter,
                     lpVaultTokenAAfter,
                     collateralVaultAfter,
-                    feeWalletAAfter,
+                    feeWalletAfter,
                 ],
             ] = await Promise.all([
                 program.account.position.fetchNullable(positionKey),
@@ -444,7 +435,7 @@ describe("ClaimPosition", () => {
                     ownerTokenB,
                     lpVaultAVault,
                     longPoolBVaultKey,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
@@ -458,7 +449,7 @@ describe("ClaimPosition", () => {
             assert.equal(ownerADiff.toString(), expectedTokenDeltaA.neg().toString());
             // Validate the close_fee was paid out
             const expectedCloseFee = positionBefore.feesToBePaid;
-            const feeWalletDiff = feeWalletAAfter.amount - feeWalletABefore.amount;
+            const feeWalletDiff = feeWalletAfter.amount - feeWalletBefore.amount;
             assert.equal(feeWalletDiff.toString(), expectedCloseFee.toString());
             // validate the LP Vault received the interest and principal
             const expectedLPVaultDiff = computedMaxInterest.add(

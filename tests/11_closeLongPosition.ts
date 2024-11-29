@@ -14,13 +14,14 @@ import {
     openPosLut,
     poolFeeAccount,
     poolMint,
-    superAdminProgram,
     SWAP_AUTHORITY,
     swapTokenAccountA,
     swapTokenAccountB,
     tokenMintA,
     tokenMintB,
     user2,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -71,6 +72,20 @@ describe("CloseLongPosition", () => {
         tokenMintA,
         longPoolBKey,
         true
+    );
+
+    const feeWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        feeWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
+    );
+
+    const liquidationWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        liquidationWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
     );
 
     const [feeWallet] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -291,8 +306,8 @@ describe("CloseLongPosition", () => {
                                 currency: tokenMintA,
                                 collateral: tokenMintB,
                                 authority: NON_SWAP_AUTHORITY.publicKey,
-                                feeWallet,
-                                liquidationWallet,
+                                feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -372,8 +387,8 @@ describe("CloseLongPosition", () => {
                                 currency: tokenMintA,
                                 collateral: tokenMintB,
                                 authority: SWAP_AUTHORITY.publicKey,
-                                feeWallet,
-                                liquidationWallet,
+                                feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -494,8 +509,8 @@ describe("CloseLongPosition", () => {
                                 currency: tokenMintA,
                                 collateral: tokenMintB,
                                 authority: SWAP_AUTHORITY.publicKey,
-                                feeWallet,
-                                liquidationWallet,
+                                feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -559,6 +574,7 @@ describe("CloseLongPosition", () => {
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
                             ownerTokenA,
+                            feeWalletA
                         ], TOKEN_PROGRAM_ID)
                     ]);
                 const args = {
@@ -623,8 +639,8 @@ describe("CloseLongPosition", () => {
                             currency: tokenMintA,
                             collateral: tokenMintB,
                             authority: SWAP_AUTHORITY.publicKey,
-                            feeWallet,
-                            liquidationWallet,
+                            feeWallet: feeWalletA,
+                            liquidationWallet: liquidationWalletA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -651,13 +667,14 @@ describe("CloseLongPosition", () => {
                     console.log(e);
                 }
 
-                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter]] =
+                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter, feeWalletAAfter]] =
                     await Promise.all([
                         program.account.lpVault.fetchNullable(lpVaultKey),
                         program.account.position.fetchNullable(positionKey),
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
                             ownerTokenA,
+                            feeWalletA
                         ], TOKEN_PROGRAM_ID),
                     ]);
                 assert.isNull(positionAfter);
@@ -670,7 +687,7 @@ describe("CloseLongPosition", () => {
 
                 // Validate the user got the rest
                 const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
-                assert.equal(ownerADiff.toString(), "948");
+                assert.equal(ownerADiff.toString(), "939");
 
 
                 // we expect the totalAssets of the lpVault to be incremented by the interestOwed

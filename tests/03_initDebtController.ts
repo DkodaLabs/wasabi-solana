@@ -15,7 +15,7 @@ describe("initDebtController", () => {
             let args = {
                 maxApy: new anchor.BN(100),
                 maxLeverage: new anchor.BN(100),
-                liquidationFee: 5,
+                liquidationFee: 1,
             }
             await program.methods.initDebtController(
                 args.maxApy,
@@ -37,12 +37,13 @@ describe("initDebtController", () => {
         await superAdminProgram.methods.initDebtController(
             new anchor.BN(100),
             new anchor.BN(100),
-            5,
+            1,
         ).accounts({
             superAdmin: superAdminProgram.provider.publicKey,
         }).rpc();
         const debtControllerAccount = await program.account.debtController.fetch(debtController);
         assert.equal(debtControllerAccount.maxApy.toNumber(), 100);
         assert.equal(debtControllerAccount.maxLeverage.toNumber(), 100);
+        assert.equal(debtControllerAccount.liquidationFee, 1);
     });
 });

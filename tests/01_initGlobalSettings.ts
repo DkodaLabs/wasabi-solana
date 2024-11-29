@@ -2,7 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
-import { superAdminProgram, SWAP_AUTHORITY } from "./rootHooks";
+import { 
+    superAdminProgram, 
+    SWAP_AUTHORITY, 
+    feeWalletKeypair, 
+    liquidationWalletKeypair 
+} from "./rootHooks";
 
 describe("wasabi-solana", () => {
     // Configure the client to use the local cluster.
@@ -15,10 +20,9 @@ describe("wasabi-solana", () => {
             .initOrUpdatePermission({
                 canCosignSwaps: true,
                 canInitVaults: false,
-                canLiquidate: false,
+                canLiquidate: true,
                 canBorrowFromVaults: true,
                 canInitPools: true,
-                canManageWallets: true,
                 status: { active: {} },
             })
             .accounts({
@@ -40,6 +44,8 @@ describe("wasabi-solana", () => {
         const tx = await program.methods
             .initGlobalSettings({
                 superAdmin: superAdminProgram.provider.publicKey,
+                feeWallet: feeWalletKeypair.publicKey,
+                liquidationWallet: liquidationWalletKeypair.publicKey,
                 statuses: 3,
             })
             .accounts({

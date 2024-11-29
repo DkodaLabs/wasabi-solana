@@ -13,6 +13,8 @@ import {
     tokenMintB,
     user2,
     superAdminProgram,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
@@ -24,33 +26,10 @@ import { getMultipleTokenAccounts } from "./utils";
 
 describe("stopLoss", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId,
 
-    );
+    const feeWallet = getAssociatedTokenAddressSync(tokenMintA, feeWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID)
 
-    const [feeWalletKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            anchor.utils.bytes.utf8.encode("protocol_wallet"),
-            globalSettingsKey.toBuffer(),
-            Buffer.from([0]),
-            Buffer.from([1]),
-        ],
-        program.programId,
-    );
-
-    const feeWalletA = getAssociatedTokenAddressSync(tokenMintA, feeWalletKey, true, TOKEN_PROGRAM_ID)
-
-    const [liquidationWalletKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            anchor.utils.bytes.utf8.encode("protocol_wallet"),
-            globalSettingsKey.toBuffer(),
-            Buffer.from([1]),
-            Buffer.from([1]),
-        ],
-        program.programId
-    );
+    const liquidationWallet = getAssociatedTokenAddressSync(tokenMintA, liquidationWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
 
     const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
         [
@@ -189,7 +168,7 @@ describe("stopLoss", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletKey,
+                    feeWallet,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
@@ -439,8 +418,8 @@ describe("stopLoss", () => {
                             authority: NON_SWAP_AUTHORITY.publicKey,
                             //@ts-ignore
                             lpVault: lpVaultTokenAKey,
-                            feeWallet: feeWalletKey,
-                            liquidationWallet: liquidationWalletKey,
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -464,7 +443,6 @@ describe("stopLoss", () => {
                 });
                 throw new Error("Should have failed");
             } catch (e) {
-                console.log(e);
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -563,8 +541,8 @@ describe("stopLoss", () => {
                             collateral: tokenMintB,
                             authority: SWAP_AUTHORITY.publicKey,
                             //@ts-ignore
-                            feeWallet: feeWalletKey,
-                            liquidationWallet: liquidationWalletKey,
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -589,7 +567,6 @@ describe("stopLoss", () => {
                 });
                 throw new Error("Failed to error");
             } catch (e) {
-                console.log(e);
                 if (e.message && e.message.includes('{"Custom":6017}')) {
                     return;
                 }
@@ -602,7 +579,6 @@ describe("stopLoss", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6017);
                 } else {
-                    console.error(err);
                     assert.ok(false);
                 }
             }
@@ -639,7 +615,7 @@ describe("stopLoss", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -716,8 +692,8 @@ describe("stopLoss", () => {
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
                         //@ts-ignore
-                        feeWallet: feeWalletKey,
-                        liquidationWallet: liquidationWalletKey,
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -751,7 +727,7 @@ describe("stopLoss", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
             // Position should be cleaned up
@@ -809,7 +785,7 @@ describe("stopLoss", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletKey,
+                    feeWallet,
                     currencyTokenProgram: TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID
                 })
@@ -954,8 +930,8 @@ describe("stopLoss", () => {
                             collateral: tokenMintA,
                             authority: SWAP_AUTHORITY.publicKey,
                             //@ts-ignore
-                            feeWallet: feeWalletKey,
-                            liquidationWallet: liquidationWalletKey,
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -1029,7 +1005,7 @@ describe("stopLoss", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -1104,8 +1080,8 @@ describe("stopLoss", () => {
                         currency: tokenMintB,
                         collateral: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletKey,
-                        liquidationWallet: liquidationWalletKey,
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -1143,7 +1119,7 @@ describe("stopLoss", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
@@ -1204,7 +1180,7 @@ describe("stopLoss", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletKey,
+                    feeWallet,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();

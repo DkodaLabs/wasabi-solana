@@ -19,6 +19,8 @@ import {
     tokenMintA,
     tokenMintB,
     user2,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -39,24 +41,18 @@ describe("CloseShortPosition", () => {
         program.programId,
     );
 
-    const [feeWallet] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            anchor.utils.bytes.utf8.encode("protocol_wallet"),
-            globalSettingsKey.toBuffer(),
-            Buffer.from([0]),
-            Buffer.from([1]),
-        ],
-        program.programId,
+    const feeWallet = getAssociatedTokenAddressSync(
+        tokenMintA, 
+        feeWalletKeypair.publicKey, 
+        true, 
+        TOKEN_PROGRAM_ID
     );
 
-    const [liquidationWallet] = anchor.web3.PublicKey.findProgramAddressSync(
-        [
-            anchor.utils.bytes.utf8.encode("protocol_wallet"),
-            globalSettingsKey.toBuffer(),
-            Buffer.from([1]),
-            Buffer.from([1]),
-        ],
-        program.programId,
+    const liquidationWallet = getAssociatedTokenAddressSync(
+        tokenMintA,
+        liquidationWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID,
     );
 
     // Collateral currency is tokenMintA (short_pool)
@@ -545,7 +541,7 @@ describe("CloseShortPosition", () => {
                 );
                 const [vaultBefore, ownerTokenABefore, ownerBBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
                     program.provider.connection,
-                    [vaultKey, ownerTokenA, ownerTokenB],
+                    [vaultKey, ownerTokenA, ownerTokenB, feeWallet],
                     TOKEN_PROGRAM_ID,
                 );
                 const args = {
@@ -640,6 +636,7 @@ describe("CloseShortPosition", () => {
                         vaultKey,
                         ownerTokenA,
                         ownerTokenB,
+                        feeWallet,
                     ], TOKEN_PROGRAM_ID),
                 ]);
                 assert.isNull(positionAfter);
@@ -655,7 +652,7 @@ describe("CloseShortPosition", () => {
 
                 // Assert user receives payout in tokenA
                 const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-                assert.equal(ownerADiff, BigInt(968));
+                assert.equal(ownerADiff, BigInt(954));
 
                 //const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
                 //assert.equal(feeBalanceDiff.toString(), closeExecutionFee.toString());

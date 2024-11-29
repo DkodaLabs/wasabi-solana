@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { assert } from "chai";
-import { superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
+import { SWAP_AUTHORITY, superAdminProgram, tokenMintA, tokenMintB } from "./rootHooks";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
@@ -68,24 +68,45 @@ describe("InitLongPool", () => {
 
     describe("non permissioned signer", () => {
         it("should fail", async () => {
+            const NO_AUTH = anchor.web3.Keypair.generate();
+            const _noPermissionTxn = await superAdminProgram.methods.initOrUpdatePermission({
+                canCosignSwaps: true,
+                canInitVaults: false,
+                canInitPool: false,
+                canLiquidate: false,
+                canBorrowFromVaults: false,
+                status: { active: {} },
+            }).accounts({
+                payer: superAdminProgram.provider.publicKey,
+                newAuthority: NO_AUTH.publicKey,
+            }).rpc();
+
+            const [noPerm] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("admin"),
+                    NO_AUTH.publicKey.toBuffer(),
+                ],
+                program.programId,
+            );
+
             try {
                 await program.methods
-                    .initLpVault({
-                        name: "PLACEHOLDER",
-                        symbol: "PLHDR",
-                        uri: "https://placeholder.com",
-                    })
-                    .accounts({
+                    .initLongPool()
+                    .accountsPartial({
                         payer: program.provider.publicKey,
-                        permission: superAdminPermissionKey,
-                        assetMint: tokenMintB,
-                        assetTokenProgram: TOKEN_PROGRAM_ID,
+                        authority: NO_AUTH.publicKey,
+                        permission: noPerm,
+                        collateral: tokenMintB,
+                        currency: tokenMintA,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
                     })
+                    .signers([NO_AUTH])
                     .rpc();
                 assert.ok(false);
-            } catch (err) {
-                if (err instanceof anchor.AnchorError) {
-                    assert.equal(err.error.errorCode.number, 2001);
+            } catch (e: any) {
+                if (e instanceof anchor.AnchorError) {
+                    assert.equal(e.error.errorCode.number, 6000);
                 } else {
                     assert.ok(false);
                 }
