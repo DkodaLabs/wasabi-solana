@@ -2,7 +2,7 @@ use {
     super::close_position_cleanup::CloseAmounts,
     crate::{
         error::ErrorCode, events::PositionClaimed, long_pool_signer_seeds, short_pool_signer_seeds,
-        BasePool, DebtController, GlobalSettings, LpVault, Position,
+        BasePool, DebtController, GlobalSettings, LpVault, Position
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
@@ -49,6 +49,7 @@ pub struct ClaimPosition<'info> {
     pub currency: InterfaceAccount<'info, Mint>,
 
     #[account(
+        mut,
         has_one = vault,
     )]
     pub lp_vault: Account<'info, LpVault>,
@@ -56,7 +57,10 @@ pub struct ClaimPosition<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
+    )]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -75,15 +79,6 @@ pub struct ClaimPosition<'info> {
     pub currency_token_program: Interface<'info, TokenInterface>,
 }
 impl<'info> ClaimPosition<'info> {
-    pub fn validate(&self) -> Result<()> {
-        require_keys_eq!(
-            self.fee_wallet.owner,
-            self.global_settings.protocol_fee_wallet,
-            ErrorCode::IncorrectFeeWallet
-        );
-        Ok(())
-    }
-
     pub fn transfer_from_trader_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.trader_currency_account.to_account_info(),
@@ -148,7 +143,6 @@ impl<'info> ClaimPosition<'info> {
     }
 
     pub fn claim_position(&mut self) -> Result<()> {
-        self.validate()?;
         let now = Clock::get()?.unix_timestamp;
 
         let interest_paid = self.debt_controller.compute_max_interest(
@@ -165,6 +159,12 @@ impl<'info> ClaimPosition<'info> {
 
         self.transfer_from_trader_to_vault(amount_owed)?;
 
+        self.lp_vault.total_assets = self
+            .lp_vault
+            .total_assets
+            .checked_add(interest_paid)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
         let close_fee = self.position.fees_to_be_paid;
 
         let close_amounts = if self.pool.is_long_pool {
@@ -180,6 +180,7 @@ impl<'info> ClaimPosition<'info> {
                 principal_repaid: self.position.principal,
                 past_fees: self.position.fees_to_be_paid,
                 close_fee,
+                liquidation_fee: 0,
             };
 
             self.transfer_fees(
@@ -202,6 +203,7 @@ impl<'info> ClaimPosition<'info> {
                 principal_repaid: self.position.principal,
                 past_fees: self.position.fees_to_be_paid,
                 close_fee,
+                liquidation_fee: 0,
             };
             // pay out the collateral (claim_amount)
             self.transfer_from_collateral_vault_to_trader(

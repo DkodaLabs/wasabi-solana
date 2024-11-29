@@ -1,5 +1,5 @@
 use {
-    crate::error::ErrorCode,
+    crate::{error::ErrorCode, CloseStopLossOrder, CloseTakeProfitOrder},
     anchor_lang::{prelude::*, solana_program::sysvar},
 };
 
@@ -12,7 +12,15 @@ pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
     sighash
 }
 
-pub fn position_setup_transaction_introspecation_validation(
+fn check_function_hash(hash: &[u8]) -> bool {
+    match hash {
+        x if x == &CloseStopLossOrder::get_hash()[..] => true,
+        x if x == &CloseTakeProfitOrder::get_hash()[..] => true,
+        _ => false,
+    }
+}
+
+pub fn position_setup_transaction_introspection_validation(
     sysvar_info: &AccountInfo,
     clean_up_ix_hash: [u8; 8],
 ) -> Result<()> {
@@ -21,7 +29,11 @@ pub fn position_setup_transaction_introspecation_validation(
     // Validate there are no previous setup instructions
     for ixn_idx in 0..current_index {
         let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
+
         if crate::ID == ixn.program_id {
+            if check_function_hash(&ixn.data[0..8]) {
+                continue;
+            }
             return Err(ErrorCode::UnpermittedIx.into());
         }
     }

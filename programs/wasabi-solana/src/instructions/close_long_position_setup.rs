@@ -46,7 +46,7 @@ impl<'info> CloseLongPositionSetup<'info> {
         execution_fee: u64,
         expiration: i64,
     ) -> Result<()> {
-        // Allow "owner" to swap on behalf of the collateral vault
+        // Allow "authority" to swap on behalf of the collateral vault
         let cps = &mut self.close_position_setup;
         cps.approve_swap_authority_delegation(
             cps.position.collateral_amount,

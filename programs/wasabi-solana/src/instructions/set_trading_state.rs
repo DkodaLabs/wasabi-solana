@@ -25,15 +25,6 @@ pub struct TradingState<'info> {
 }
 
 impl<'info> TradingState<'info> {
-    pub fn validate(ctx: &Context<TradingState>) -> Result<()> {
-        require_keys_eq!(
-            ctx.accounts.super_admin.authority,
-            ctx.accounts.authority.key(),
-            ErrorCode::InvalidPermissions
-        );
-        Ok(())
-    }
-
     pub fn set_trading_state(&mut self, allow_trading: bool) -> Result<()> {
         match allow_trading {
             true => self.global_settings.enable_trading(),

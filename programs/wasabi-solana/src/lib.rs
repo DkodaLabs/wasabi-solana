@@ -29,8 +29,10 @@ pub mod wasabi_solana {
         ctx: Context<InitDebtController>,
         max_apy: u64,
         max_leverage: u64,
+        liquidation_fee: u8,
     ) -> Result<()> {
-        ctx.accounts.init_debt_controller(max_apy, max_leverage)
+        ctx.accounts
+            .init_debt_controller(max_apy, max_leverage, liquidation_fee)
     }
 
     #[access_control(SetSuperAdmin::validate(&ctx))]
@@ -38,12 +40,10 @@ pub mod wasabi_solana {
         ctx.accounts.set_super_admin(new_super_admin)
     }
 
-    #[access_control(TradingState::validate(&ctx))]
     pub fn set_trading_state(ctx: Context<TradingState>, allow_trading: bool) -> Result<()> {
         ctx.accounts.set_trading_state(allow_trading)
     }
 
-    #[access_control(LpState::validate(&ctx))]
     pub fn set_lp_state(ctx: Context<LpState>, allow_lp: bool) -> Result<()> {
         ctx.accounts.set_lp_state(allow_lp)
     }
@@ -56,11 +56,19 @@ pub mod wasabi_solana {
         ctx.accounts.set_max_leverage(max_leverage)
     }
 
+    pub fn set_liquidation_fee(ctx: Context<SetLiqudationFee>, liquidation_fee: u8) -> Result<()> {
+        ctx.accounts.set_liquidation_fee(liquidation_fee)
+    }
+
     pub fn init_or_update_permission(
         ctx: Context<InitOrUpdatePermission>,
         args: InitOrUpdatePermissionArgs,
     ) -> Result<()> {
         ctx.accounts.init_or_update_permission(&args)
+    }
+
+    pub fn remove_permission(ctx: Context<RemovePermission>) -> Result<()> {
+        ctx.accounts.remove_permission()
     }
 
     #[access_control(InitLpVault::validate(&ctx))]
@@ -74,16 +82,6 @@ pub mod wasabi_solana {
         max_borrow: u64,
     ) -> Result<()> {
         ctx.accounts.update_lp_vault_max_borrow(max_borrow)
-    }
-
-    #[access_control(AdminBorrow::validate(&ctx, amount))]
-    pub fn admin_borrow(ctx: Context<AdminBorrow>, amount: u64) -> Result<()> {
-        ctx.accounts.admin_borrow(amount)
-    }
-
-    #[access_control(Repay::validate(&ctx, amount))]
-    pub fn repay(ctx: Context<Repay>, amount: u64) -> Result<()> {
-        ctx.accounts.repay(amount)
     }
 
     #[access_control(InitLongPool::validate(&ctx))]
@@ -129,11 +127,6 @@ pub mod wasabi_solana {
 
     pub fn withdraw(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
         ctx.accounts.withdraw(amount)
-    }
-
-    #[access_control(DepositOrWithdraw::validate(&ctx))]
-    pub fn mint(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {
-        ctx.accounts.mint(shares_amount)
     }
 
     pub fn redeem(ctx: Context<DepositOrWithdraw>, shares_amount: u64) -> Result<()> {

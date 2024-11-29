@@ -1,8 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
+import { SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
@@ -13,9 +13,10 @@ import {
     swapTokenAccountB,
     tokenMintA,
     tokenMintB,
+    feeWalletKeypair,
 } from "./rootHooks";
 import {
-    createAssociatedTokenAccountInstruction,
+    createAssociatedTokenAccountIdempotentInstruction,
     createTransferInstruction,
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID,
@@ -40,10 +41,14 @@ describe("OpenShortPosition", () => {
             [anchor.utils.bytes.utf8.encode("super_admin")],
             program.programId,
         );
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId,
+
+    const feeWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        feeWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
     );
+
     // Collateral currency is tokenMintA (short_pool)
     // Borrowed currency is tokenMintB (lp_vault)
     // Downpayment currency is tokenMintA
@@ -86,6 +91,21 @@ describe("OpenShortPosition", () => {
     );
 
     before(async () => {
+        const vaultAta = getAssociatedTokenAddressSync(
+            tokenMintB,
+            lpVaultKey,
+            true,
+            TOKEN_PROGRAM_ID
+        );
+
+        const createVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+            SWAP_AUTHORITY.publicKey,
+            vaultAta,
+            lpVaultKey,
+            tokenMintB,
+            TOKEN_PROGRAM_ID
+        );
+
         await superAdminProgram.methods
             .initLpVault({
                 name: "PLACEHOLDER",
@@ -96,8 +116,11 @@ describe("OpenShortPosition", () => {
                 payer: superAdminProgram.provider.publicKey,
                 permission: superAdminPermissionKey,
                 assetMint: tokenMintB,
+                sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
                 assetTokenProgram: TOKEN_PROGRAM_ID,
             })
+            .preInstructions([createVaultAtaIx])
+            .signers([SWAP_AUTHORITY])
             .rpc();
         lpVault = await program.account.lpVault.fetch(lpVaultKey);
         const ownerSharesAccount = getAssociatedTokenAddressSync(
@@ -106,7 +129,7 @@ describe("OpenShortPosition", () => {
             false,
             TOKEN_2022_PROGRAM_ID,
         );
-        const createAtaIx = createAssociatedTokenAccountInstruction(
+        const createAtaIx = createAssociatedTokenAccountIdempotentInstruction(
             program.provider.publicKey,
             ownerSharesAccount,
             program.provider.publicKey,
@@ -171,7 +194,7 @@ describe("OpenShortPosition", () => {
                     })
                     .instruction();
 
-                await program.methods
+                const _tx = await program.methods
                     .openShortPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
@@ -185,8 +208,22 @@ describe("OpenShortPosition", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, setupIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc();
+                    .transaction();
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: false,
+                });
                 assert.ok(false);
             } catch (err) {
                 const regex = /already in use/;
@@ -441,7 +478,7 @@ describe("OpenShortPosition", () => {
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({skipPreflight: true});
+                    .rpc({ skipPreflight: true });
 
             } catch (err) {
                 console.log(err);

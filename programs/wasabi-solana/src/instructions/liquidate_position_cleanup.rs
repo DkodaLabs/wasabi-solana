@@ -15,11 +15,7 @@ impl<'info> LiquidatePositionCleanup<'info> {
 
     fn validate_liquidation_threshold(&self, close_amounts: &CloseAmounts) -> Result<()> {
         if self.close_position_cleanup.pool.is_long_pool {
-            require_gt!(
-                close_amounts
-                    .payout
-                    .checked_add(close_amounts.close_fee)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+            require_gte!(
                 self.close_position_cleanup
                     .position
                     .principal
@@ -27,20 +23,24 @@ impl<'info> LiquidatePositionCleanup<'info> {
                     .ok_or(ErrorCode::ArithmeticOverflow)?
                     .checked_div(100)
                     .ok_or(ErrorCode::ArithmeticOverflow)?,
+                close_amounts
+                    .payout
+                    .checked_add(close_amounts.liquidation_fee)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
                 ErrorCode::LiquidationThresholdNotReached,
             );
         } else {
-            require_gt!(
-                close_amounts
-                    .payout
-                    .checked_add(close_amounts.close_fee)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+            require_gte!(
                 self.close_position_cleanup
                     .position
                     .collateral_amount
                     .checked_mul(5)
                     .ok_or(ErrorCode::ArithmeticOverflow)?
                     .checked_div(100)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                close_amounts
+                    .payout
+                    .checked_add(close_amounts.liquidation_fee)
                     .ok_or(ErrorCode::ArithmeticOverflow)?,
                 ErrorCode::LiquidationThresholdNotReached,
             );

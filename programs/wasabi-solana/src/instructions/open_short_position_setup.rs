@@ -1,13 +1,14 @@
 use {
     super::OpenShortPositionCleanup,
     crate::{
-        SwapCache,
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::position_setup_transaction_introspecation_validation, BasePool, GlobalSettings,
-        LpVault, OpenPositionRequest, Permission, Position,
+        utils::position_setup_transaction_introspection_validation, BasePool, GlobalSettings,
+        LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenInterface, TokenAccount, TransferChecked, Mint},
+    anchor_spl::token_interface::{
+        self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
+    },
 };
 
 #[derive(Accounts)]
@@ -30,7 +31,7 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(
         has_one = vault,
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
     #[account(mut)]
     /// The LP Vault's token account.
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -40,7 +41,7 @@ pub struct OpenShortPositionSetup<'info> {
         has_one = currency_vault,
     )]
     /// The ShortPool that owns the Position
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
     #[account(mut)]
     /// The collateral account that is the destination of the swap
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -49,8 +50,8 @@ pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: InterfaceAccount<'info, Mint>,
-    pub collateral: InterfaceAccount<'info, Mint>,
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -65,10 +66,10 @@ pub struct OpenShortPositionSetup<'info> {
         init,
         payer = owner,
         seeds = [
-            b"position", 
-            owner.key().as_ref(), 
-            pool.key().as_ref(), 
-            lp_vault.key().as_ref(), 
+            b"position",
+            owner.key().as_ref(),
+            pool.key().as_ref(),
+            lp_vault.key().as_ref(),
             &nonce.to_le_bytes()
         ],
         bump,
@@ -76,6 +77,7 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     pub position: Box<Account<'info, Position>>,
 
+    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
@@ -83,7 +85,10 @@ pub struct OpenShortPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
+    )]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -96,7 +101,7 @@ pub struct OpenShortPositionSetup<'info> {
     pub collateral_token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     #[account(
-      address = sysvar::instructions::ID
+        address = sysvar::instructions::ID
     )]
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,
@@ -107,11 +112,17 @@ impl<'info> OpenShortPositionSetup<'info> {
 
         require_gt!(expiration, now, ErrorCode::PositionReqExpired);
 
-        require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
-        require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
+        require!(
+            ctx.accounts.permission.can_cosign_swaps(),
+            ErrorCode::InvalidSwapCosigner
+        );
+        require!(
+            ctx.accounts.global_settings.can_trade(),
+            ErrorCode::UnpermittedIx
+        );
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspecation_validation(
+        position_setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenShortPositionCleanup::get_hash(),
         )?;
@@ -126,7 +137,10 @@ impl<'info> OpenShortPositionSetup<'info> {
             to: self.collateral_vault.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.collateral_token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(
+            self.collateral_token_program.to_account_info(),
+            cpi_accounts,
+        );
         token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
@@ -137,7 +151,10 @@ impl<'info> OpenShortPositionSetup<'info> {
             to: self.fee_wallet.to_account_info(),
             authority: self.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(self.collateral_token_program.to_account_info(), cpi_accounts);
+        let cpi_ctx = CpiContext::new(
+            self.collateral_token_program.to_account_info(),
+            cpi_accounts,
+        );
         token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
@@ -173,15 +190,13 @@ impl<'info> OpenShortPositionSetup<'info> {
     }
 
     pub fn open_short_position_setup(
-        &mut self, 
-        #[allow(unused_variables)]
-        nonce: u16,
+        &mut self,
+        #[allow(unused_variables)] nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
         fee: u64,
-        #[allow(unused_variables)]
-        expiration: i64,
+        #[allow(unused_variables)] expiration: i64,
     ) -> Result<()> {
         // Down payment is transferred from the user to the `collateral_vault` since it's not used
         // for swapping when opening a short position.
@@ -194,7 +209,11 @@ impl<'info> OpenShortPositionSetup<'info> {
         // made.
         self.collateral_vault.reload()?;
 
-        require_gt!(self.vault.amount, principal, ErrorCode::InsufficientAvailablePrincipal);
+        require_gte!(
+            self.vault.amount,
+            principal,
+            ErrorCode::InsufficientAvailablePrincipal
+        );
 
         // Transfer the borrowed amount to the `currency_vault` to be used in a swap.
         self.transfer_from_lp_vault_to_currency_vault(principal)?;
@@ -215,7 +234,7 @@ impl<'info> OpenShortPositionSetup<'info> {
             swap_cache: SwapCache {
                 taker_bal_before: self.collateral_vault.amount,
                 maker_bal_before: self.currency_vault.amount,
-            }
+            },
         });
 
         // Cache data on the `open_position_request` account. We use the value after the borrow in

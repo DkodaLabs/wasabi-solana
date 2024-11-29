@@ -18,11 +18,11 @@ pub struct OpenLongPositionCleanup<'info> {
         has_one = currency_vault,
     )]
     /// The LongPool that owns the Position
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
     /// The collateral account that is the destination of the swap
-    pub collateral_vault: InterfaceAccount<'info, TokenAccount>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
     // The token account that is the source of the swap (where principal and downpayment are sent)
-    pub currency_vault: InterfaceAccount<'info, TokenAccount>,
+    pub currency_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -44,7 +44,8 @@ impl<'info> OpenLongPositionCleanup<'info> {
     }
 
     fn get_collateral_delta(&self) -> Result<u64> {
-        Ok(self.collateral_vault
+        Ok(self
+            .collateral_vault
             .amount
             .checked_sub(self.open_position_request.swap_cache.taker_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
@@ -73,7 +74,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
         );
 
         // Validate owner does not spend more tokens than requested.
-        let source_balance_delta = self
+        let principal_balance_delta = self
             .open_position_request
             .swap_cache
             .maker_bal_before
@@ -82,7 +83,7 @@ impl<'info> OpenLongPositionCleanup<'info> {
 
         require_gte!(
             self.open_position_request.max_amount_in,
-            source_balance_delta,
+            principal_balance_delta,
             ErrorCode::SwapAmountExceeded
         );
 

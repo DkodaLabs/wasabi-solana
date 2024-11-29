@@ -8,6 +8,7 @@ pub const LEVERAGE_DENOMINATOR: u64 = 100;
 pub struct DebtController {
     pub max_apy: u64,
     pub max_leverage: u64,
+    pub liquidation_fee: u8,
 }
 
 impl DebtController {
@@ -56,6 +57,7 @@ mod tests {
         let debt_controller = DebtController {
             max_apy: 100,
             max_leverage: 100,
+            liquidation_fee: 5,
         };
         let principal = 1000;
         let last_funding_timestamp = 0;

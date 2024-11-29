@@ -150,7 +150,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
         let collateral_received = self.get_collateral_delta()?;
         let principal_used = self.get_principal_delta()?;
 
-        require_gt!(
+        require_gte!(
             self.position
                 .down_payment
                 .checked_mul(self.debt_controller.max_leverage)

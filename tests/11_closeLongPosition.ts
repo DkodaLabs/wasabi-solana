@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { web3 } from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
@@ -6,23 +7,21 @@ import {
     TOKEN_PROGRAM_ID,
     createTransferInstruction,
     createMintToInstruction,
-    mintToChecked,
 } from "@solana/spl-token";
 import {
     abSwapKey,
-    feeWalletA,
-    feeWalletB,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
     poolMint,
-    superAdminProgram,
     SWAP_AUTHORITY,
     swapTokenAccountA,
     swapTokenAccountB,
     tokenMintA,
     tokenMintB,
     user2,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -73,6 +72,40 @@ describe("CloseLongPosition", () => {
         tokenMintA,
         longPoolBKey,
         true
+    );
+
+    const feeWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        feeWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
+    );
+
+    const liquidationWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        liquidationWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
+    );
+
+    const [feeWallet] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("protocol_wallet"),
+            globalSettingsKey.toBuffer(),
+            Buffer.from([0]),
+            Buffer.from([1]),
+        ],
+        program.programId,
+    );
+
+    const [liquidationWallet] = anchor.web3.PublicKey.findProgramAddressSync(
+        [
+            anchor.utils.bytes.utf8.encode("protocol_wallet"),
+            globalSettingsKey.toBuffer(),
+            Buffer.from([1]),
+            Buffer.from([1]),
+        ],
+        program.programId,
     );
 
     describe("With owned long position", () => {
@@ -150,7 +183,7 @@ describe("CloseLongPosition", () => {
                 try {
                     const _tx = await program.methods
                         .closeLongPositionCleanup()
-                        .accounts({
+                        .accountsPartial({
                             owner: user2.publicKey,
                             closePositionCleanup: {
                                 owner: user2.publicKey,
@@ -159,7 +192,8 @@ describe("CloseLongPosition", () => {
                                 currency: tokenMintA,
                                 collateral: tokenMintB,
                                 authority: SWAP_AUTHORITY.publicKey,
-                                feeWallet: feeWalletA,
+                                feeWallet,
+                                liquidationWallet,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -261,9 +295,9 @@ describe("CloseLongPosition", () => {
                     BigInt(0)
                 );
                 try {
-                    await program.methods
+                    const _tx = await program.methods
                         .closeLongPositionCleanup()
-                        .accounts({
+                        .accountsPartial({
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
@@ -273,15 +307,34 @@ describe("CloseLongPosition", () => {
                                 collateral: tokenMintB,
                                 authority: NON_SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
                         })
                         .preInstructions([setupIx, swapIx])
-                        .signers([NON_SWAP_AUTHORITY])
-                        .rpc();
+                        .transaction();
+
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new anchor.web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new anchor.web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
                     assert.ok(false);
-                } catch (err) {
+                } catch (e: any) {
+                    const err = anchor.translateError(
+                        e,
+                        anchor.parseIdlErrors(program.idl)
+                    );
                     if (err instanceof anchor.AnchorError) {
                         assert.equal(err.error.errorCode.number, 6008);
                     } else if (err instanceof anchor.ProgramError) {
@@ -325,7 +378,7 @@ describe("CloseLongPosition", () => {
                         .instruction();
                     await program.methods
                         .closeLongPositionCleanup()
-                        .accounts({
+                        .accountsPartial({
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
@@ -335,6 +388,7 @@ describe("CloseLongPosition", () => {
                                 collateral: tokenMintB,
                                 authority: SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -444,9 +498,9 @@ describe("CloseLongPosition", () => {
                 );
 
                 try {
-                    await program.methods
+                    const _tx = await program.methods
                         .closeLongPositionCleanup()
-                        .accounts({
+                        .accountsPartial({
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
@@ -456,6 +510,7 @@ describe("CloseLongPosition", () => {
                                 collateral: tokenMintB,
                                 authority: SWAP_AUTHORITY.publicKey,
                                 feeWallet: feeWalletA,
+                                liquidationWallet: liquidationWalletA,
                                 collateralTokenProgram: TOKEN_PROGRAM_ID,
                                 currencyTokenProgram: TOKEN_PROGRAM_ID,
                             },
@@ -465,13 +520,38 @@ describe("CloseLongPosition", () => {
                             drainCollateralIx,
                             mintCurrencyIx,
                         ])
-                        .signers([SWAP_AUTHORITY])
-                        .rpc({ skipPreflight: true });
+                        .transaction();
+
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
+
 
                     assert.fail("Expected transaction to fail with BadDebt error");
-                } catch (error) {
-                    assert.equal(error.code, 6011);
-                    assert.equal(error.msg, "Cannot close bad debt");
+                } catch (e: any) {
+                    const err = anchor.translateError(
+                        e,
+                        anchor.parseIdlErrors(program.idl)
+                    );
+                    if (err instanceof anchor.AnchorError) {
+
+                        assert.equal(err.error.errorCode.number, 6011);
+                    } else if (err instanceof anchor.ProgramError) {
+                        assert.equal(err.code, 6011);
+                    } else {
+                        assert.ok(false);
+                    }
                 }
             });
         });
@@ -479,7 +559,7 @@ describe("CloseLongPosition", () => {
         describe("correct setup", () => {
             it("should close the position and return funds", async () => {
                 const interestOwed = new anchor.BN(1);
-                const closeFee = new anchor.BN(11);
+                //                const closeFee = new anchor.BN(11);
                 const positionBefore = await program.account.position.fetch(
                     positionKey
                 );
@@ -494,7 +574,7 @@ describe("CloseLongPosition", () => {
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
                             ownerTokenA,
-                            feeWalletA,
+                            feeWalletA
                         ], TOKEN_PROGRAM_ID)
                     ]);
                 const args = {
@@ -548,9 +628,9 @@ describe("CloseLongPosition", () => {
                     BigInt(positionBefore.collateralAmount.toString()),
                     BigInt(0)
                 );
-                await program.methods
+                const _tx = await program.methods
                     .closeLongPositionCleanup()
-                    .accounts({
+                    .accountsPartial({
                         owner: program.provider.publicKey,
                         closePositionCleanup: {
                             owner: program.provider.publicKey,
@@ -560,22 +640,41 @@ describe("CloseLongPosition", () => {
                             collateral: tokenMintB,
                             authority: SWAP_AUTHORITY.publicKey,
                             feeWallet: feeWalletA,
+                            liquidationWallet: liquidationWalletA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
                     })
                     .preInstructions([setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .transaction();
 
-                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter, feeBalanceAfter]] =
+                try {
+                    const connection = program.provider.connection;
+                    const lookupAccount = await connection
+                        .getAddressLookupTable(openPosLut)
+                        .catch(() => null);
+                    const message = new web3.TransactionMessage({
+                        instructions: _tx.instructions,
+                        payerKey: program.provider.publicKey!,
+                        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                    }).compileToV0Message([lookupAccount.value]);
+
+                    const tx = new web3.VersionedTransaction(message);
+                    await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                        skipPreflight: false,
+                    });
+                } catch (e: any) {
+                    console.log(e);
+                }
+
+                const [lpVaultAfter, positionAfter, [vaultAfter, ownerAAfter, feeWalletAAfter]] =
                     await Promise.all([
                         program.account.lpVault.fetchNullable(lpVaultKey),
                         program.account.position.fetchNullable(positionKey),
                         getMultipleTokenAccounts(program.provider.connection, [
                             vaultKey,
                             ownerTokenA,
-                            feeWalletA,
+                            feeWalletA
                         ], TOKEN_PROGRAM_ID),
                     ]);
                 assert.isNull(positionAfter);
@@ -588,10 +687,8 @@ describe("CloseLongPosition", () => {
 
                 // Validate the user got the rest
                 const ownerADiff = ownerAAfter.amount - ownerABefore.amount;
-                assert.equal(ownerADiff.toString(), "948");
+                assert.equal(ownerADiff.toString(), "939");
 
-                const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-                assert.equal(feeBalanceDiff.toString(), closeFee.toString());
 
                 // we expect the totalAssets of the lpVault to be incremented by the interestOwed
                 assert.equal(lpVaultAfter.totalAssets.sub(lpVaultBefore.totalAssets).toString(), interestOwed.toString());

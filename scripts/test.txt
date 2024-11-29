@@ -3,6 +3,35 @@ SOL: D1TTPYBrEoNejgBoMsg6hNgLMPRFUfiqqwmTz2k4XACF
 WIF: ADVu91DTK3wzgwNdazM2SWf25cmroNnStb9Jm3UmR65y
 BONK: Ana1MHFrtjQ7KUMfutsmDpLf1z3s4evakshVdWnxY1RC
 
+fee_wallets (USDC):
+0: 7WLt3AEENbhYSKQbKAj99tHY1si1V236vTaM1R5ft6yJ
+1: FkF7CxMsz9e6F8fcJ8Lvzkwmh4uMJHoxqFeR4MqYdtzG
+2: Bv5TYm24KESXapKxepqEbCjVtvgkRPH8GpZnmwZJgkGX
+3: 6Nq4g2GN4S5Q7ccs9ByoCYVY3PYUjRenrwnHUf77Zr2r
+4: 23N2sag98chKYcp3yNFi3oF2frTPfaZjnphT2L8qFQGN
+
+fee_wallets (SOL):
+0: 7ak8QgUVbKR7ikXkpYjqfH6aVdVEt9JYkcjNpuqjrzzi
+1: 2AD9VbZ9M8hKzJQ49dEtSrxUFjkbcdUnwFshv2Daot9S
+2: C9z9dsAp8BUm6mdhMMA4cQFaCB4gnzhyXrWdKos1ghJ4
+3: 5F5YHSBAhZ5t41S68Lzf8vRVNcszBodseLgKo4XPY6pJ
+4: 2mk38JNd29riDwweNtirfbRrrjNEHXtukd94mzFw1Ez2
+
+liquidation wallets (USDC):
+0: CZkc5LYBxye5SsQ1PrwgF5Hv3URViHTJF74yJKsdFrfn
+1: 712Yn62k5MFhSTaLbfvoZLYQQua67a6P4zNpQHLCYjVJ
+2: BoGUiMCGeh3frbqiNiKHvt8HBWJxR3uXA2LxBKgdUkro
+3: BHjmweNdx6C1hZaqjnJx5dh6pxXFcWBooc49QAWTnWqy
+4: BUH7QceCuzy11GYpc5nyUmC3bSrg1XGVV9t64naXCFW4
+
+liquidation wallets (SOL):
+0: 8U43JKYo43GKeQK2xz2yFc71tB9GUeBpTC6qr3NyZSnB
+1: 7RCFnHJEt8FgkDfEV8qnTR1eALArzsCfrYfiZx3Q8991
+2: H758Ea4xwoMMJmWJQGdnoucf8PMHiwz2Ejq3QurRq9zc
+3: EgTgcTt2uKspda9tcd62ebcRnvdLFUB2WXhvC6swTsR8
+4: DBZzMFvGpSVNXxXQk5Q3T5zAAJS2MNyPBW8FhCUjfdbj
+
+
 
  marketId: "4dCdw8Am7FW5JsKyS3iBex7v2cMYiPodxZyJ2CFVq5fn",
   requestQueue: "HQWh85Gpg5w6siriKNviC3BsECbam1NkHZU3uFJUVVHw",

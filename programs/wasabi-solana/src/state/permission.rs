@@ -10,8 +10,7 @@ pub enum AuthorityStatus {
 pub const INIT_VAULT_PERMISSION: u8 = 0b00000001;
 pub const LIQUIDATE_PERMISSION: u8 = 0b00000010;
 pub const COSIGN_PERMISSION: u8 = 0b00000100;
-pub const VAULT_BORROW_PERMISSION: u8 = 0b00001000;
-pub const INIT_POOL_PERMISSION: u8 = 0b00010000;
+pub const INIT_POOL_PERMISSION: u8 = 0b00001000;
 
 #[account]
 pub struct Permission {
@@ -23,20 +22,9 @@ pub struct Permission {
 }
 
 impl Permission {
-    /// True if the authority can grant permissions to other keys
-    pub fn can_create_permission(&self) -> bool {
-        self.is_super_authority
-    }
-
     /// True if the authority has permission to initialize vaults
     pub fn can_init_vault(&self) -> bool {
         self.permissions_map & INIT_VAULT_PERMISSION == INIT_VAULT_PERMISSION
-            || self.is_super_authority
-    }
-
-    /// True if the authority has permission to borrow from vaults
-    pub fn can_borrow_from_vault(&self) -> bool {
-        self.permissions_map & VAULT_BORROW_PERMISSION == VAULT_BORROW_PERMISSION
             || self.is_super_authority
     }
 
@@ -56,4 +44,3 @@ impl Permission {
             || self.is_super_authority
     }
 }
-

@@ -1,4 +1,4 @@
-use anchor_lang::prelude::*;
+use {crate::error::ErrorCode, anchor_lang::prelude::*};
 
 #[account]
 pub struct Position {
@@ -23,4 +23,42 @@ pub struct Position {
     pub collateral_vault: Pubkey,
     // Link to the LP Vault that the Position borrowed from.
     pub lp_vault: Pubkey,
+}
+
+impl Position {
+    pub fn compute_close_fee(&self, net_value: u64, is_long: bool) -> Result<u64> {
+        if is_long {
+            //(self.principal + net_value) * self.fees_to_be_paid
+            //    / (self.fees_to_be_paid + self.down_payment + self.principal)
+            Ok(self
+                .principal
+                .checked_add(net_value)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_mul(self.fees_to_be_paid)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_div(
+                    self.fees_to_be_paid
+                        .checked_add(self.down_payment)
+                        .ok_or(ErrorCode::ArithmeticOverflow)?
+                        .checked_add(self.principal)
+                        .ok_or(ErrorCode::ArithmeticOverflow)?,
+                )
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
+        } else {
+            //(self.collateral_amount + net_value) * self.fees_to_be_paid
+            //    / (self.fees_to_be_paid + self.collateral_amount)
+            Ok(self
+                .collateral_amount
+                .checked_add(net_value)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_mul(self.fees_to_be_paid)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_div(
+                    self.fees_to_be_paid
+                        .checked_add(self.collateral_amount)
+                        .ok_or(ErrorCode::ArithmeticOverflow)?,
+                )
+                .ok_or(ErrorCode::ArithmeticOverflow)?)
+        }
+    }
 }

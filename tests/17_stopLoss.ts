@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
@@ -13,6 +12,9 @@ import {
     tokenMintA,
     tokenMintB,
     user2,
+    superAdminProgram,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
@@ -24,6 +26,11 @@ import { getMultipleTokenAccounts } from "./utils";
 
 describe("stopLoss", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
+
+    const feeWallet = getAssociatedTokenAddressSync(tokenMintA, feeWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID)
+
+    const liquidationWallet = getAssociatedTokenAddressSync(tokenMintA, liquidationWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
+
     const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
         [
             anchor.utils.bytes.utf8.encode("admin"),
@@ -161,7 +168,7 @@ describe("stopLoss", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
@@ -248,15 +255,91 @@ describe("stopLoss", () => {
             );
         });
 
-        it("should close SL order", async () => {
+        it("should fail to close SL order without proper permissions", async () => {
+            const [adminKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("admin"), NON_SWAP_AUTHORITY.publicKey.toBuffer()],
+                superAdminProgram.programId,
+            );
+            try {
+                await program.methods
+                    .closeStopLossOrder()
+                    .accounts({
+                        closer: SWAP_AUTHORITY.publicKey,
+                        //@ts-ignore
+                        trader: user2.publicKey,
+                        permission: adminKey,
+                        position: longPositionKey,
+                    })
+                    .signers([SWAP_AUTHORITY])
+                    .rpc();
+                throw new Error("Should fail");
+            } catch (e: any) {
+                const err = anchor.translateError(
+                    e,
+                    anchor.parseIdlErrors(program.idl)
+                );
+                if (err instanceof anchor.AnchorError) {
+                    assert.equal(err.error.errorCode.number, 6000);
+                } else if (err instanceof anchor.ProgramError) {
+                    assert.equal(err.code, 6000);
+                } else {
+                    assert.ok(false);
+                }
+            }
+        });
+
+        it("should close SL order with user", async () => {
+            const [adminKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("admin"), NON_SWAP_AUTHORITY.publicKey.toBuffer()],
+                superAdminProgram.programId,
+            );
             await program.methods
                 .closeStopLossOrder()
+                .accounts({
+                    closer: user2.publicKey,
+                    //@ts-ignore
+                    trader: user2.publicKey,
+                    permission: adminKey,
+                    position: longPositionKey,
+                })
+                .signers([user2])
+                .rpc();
+            const stopLossOrder = await program.account.stopLossOrder.fetchNullable(
+                longStopLossOrderKey
+            );
+            assert.isNull(stopLossOrder);
+        });
+
+        it("should close SL order with admin", async () => {
+            const makerAmount = new anchor.BN(100);
+            const takerAmount = new anchor.BN(200);
+            await program.methods
+                .initOrUpdateStopLossOrder(
+                    makerAmount,
+                    takerAmount,
+                )
                 .accounts({
                     //@ts-ignore
                     trader: user2.publicKey,
                     position: longPositionKey,
                 })
                 .signers([user2])
+                .rpc();
+
+            const [adminKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("admin"), NON_SWAP_AUTHORITY.publicKey.toBuffer()],
+                superAdminProgram.programId,
+            );
+            await program.methods
+                .closeStopLossOrder()
+                .accounts({
+                    closer: NON_SWAP_AUTHORITY.publicKey,
+                    //@ts-ignore
+                    trader: user2.publicKey,
+                    permission: adminKey,
+                    position: longPositionKey,
+                })
+                .signers([NON_SWAP_AUTHORITY])
                 .rpc();
             const stopLossOrder = await program.account.stopLossOrder.fetchNullable(
                 longStopLossOrderKey
@@ -335,7 +418,8 @@ describe("stopLoss", () => {
                             authority: NON_SWAP_AUTHORITY.publicKey,
                             //@ts-ignore
                             lpVault: lpVaultTokenAKey,
-                            feeWallet: feeWalletA,
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -456,7 +540,9 @@ describe("stopLoss", () => {
                             currency: tokenMintA,
                             collateral: tokenMintB,
                             authority: SWAP_AUTHORITY.publicKey,
-                            feeWallet: feeWalletA,
+                            //@ts-ignore
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -481,6 +567,9 @@ describe("stopLoss", () => {
                 });
                 throw new Error("Failed to error");
             } catch (e) {
+                if (e.message && e.message.includes('{"Custom":6017}')) {
+                    return;
+                }
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -490,7 +579,6 @@ describe("stopLoss", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6017);
                 } else {
-                    console.error(err);
                     assert.ok(false);
                 }
             }
@@ -499,8 +587,10 @@ describe("stopLoss", () => {
             await program.methods
                 .closeStopLossOrder()
                 .accounts({
+                    closer: user2.publicKey,
                     //@ts-ignore
                     trader: user2.publicKey,
+                    permission: coSignerPermission,
                     position: longPositionKey,
                 })
                 .signers([user2])
@@ -525,7 +615,7 @@ describe("stopLoss", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -601,7 +691,9 @@ describe("stopLoss", () => {
                         collateral: tokenMintB,
                         currency: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        //@ts-ignore
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -635,7 +727,7 @@ describe("stopLoss", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
             // Position should be cleaned up
@@ -693,7 +785,7 @@ describe("stopLoss", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet,
                     currencyTokenProgram: TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID
                 })
@@ -837,7 +929,9 @@ describe("stopLoss", () => {
                             currency: tokenMintB,
                             collateral: tokenMintA,
                             authority: SWAP_AUTHORITY.publicKey,
-                            feeWallet: feeWalletA,
+                            //@ts-ignore
+                            feeWallet,
+                            liquidationWallet,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -862,6 +956,9 @@ describe("stopLoss", () => {
                 });
                 throw new Error("Failed to error");
             } catch (e) {
+                if (e.message && e.message.includes('{"Custom":6017}')) {
+                    return;
+                }
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -879,8 +976,10 @@ describe("stopLoss", () => {
             await program.methods
                 .closeStopLossOrder()
                 .accounts({
+                    closer: user2.publicKey,
                     //@ts-ignore
                     trader: user2.publicKey,
+                    permission: NON_SWAP_AUTHORITY.publicKey,
                     position: shortPositionKey,
                 })
                 .signers([user2])
@@ -906,7 +1005,7 @@ describe("stopLoss", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID);
 
             await program.methods
@@ -973,15 +1072,16 @@ describe("stopLoss", () => {
             );
             const _tx = await program.methods
                 .stopLossCleanup()
-                .accounts({
+                .accountsPartial({
                     closePositionCleanup: {
                         owner: user2.publicKey,
                         pool: shortPoolAKey,
                         position: shortPositionKey,
-                        collateral: tokenMintA,
                         currency: tokenMintB,
+                        collateral: tokenMintA,
                         authority: SWAP_AUTHORITY.publicKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
@@ -990,20 +1090,24 @@ describe("stopLoss", () => {
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
-            const connection = program.provider.connection;
-            const lookupAccount = await connection
-                .getAddressLookupTable(openPosLut)
-                .catch(() => null);
-            const message = new anchor.web3.TransactionMessage({
-                instructions: _tx.instructions,
-                payerKey: program.provider.publicKey!,
-                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-            }).compileToV0Message([lookupAccount.value]);
+            try {
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
 
-            const tx = new anchor.web3.VersionedTransaction(message);
-            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
-                skipPreflight: true,
-            });
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+            } catch (e: any) {
+                console.log(e);
+            }
 
             const [
                 stopLossOrderAfter,
@@ -1015,7 +1119,7 @@ describe("stopLoss", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 
@@ -1038,4 +1142,131 @@ describe("stopLoss", () => {
             assert.ok(feeBalanceDiff > 0);
         });
     });
+
+    describe("Close position and close TP", () => {
+        before(async () => {
+            // Create Long position that will have a TP order
+            const fee = new anchor.BN(10);
+            const now = new Date().getTime() / 1_000;
+            const downPayment = new anchor.BN(1_000);
+            // amount to be borrowed
+            const principal = new anchor.BN(1_000);
+            const swapAmount = downPayment.add(principal);
+            const minimumAmountOut = new anchor.BN(1_900);
+
+            const args = {
+                nonce,
+                minTargetAmount: minimumAmountOut,
+                downPayment,
+                principal,
+                fee,
+                expiration: new anchor.BN(now + 3_600),
+            };
+            const setupIx = await program.methods
+                .openLongPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration
+                )
+                .accounts({
+                    owner: user2.publicKey,
+                    lpVault: lpVaultTokenAKey,
+                    pool: longPoolBKey,
+                    currency: tokenMintA,
+                    collateral: tokenMintB,
+                    //@ts-ignore
+                    authority: SWAP_AUTHORITY.publicKey,
+                    permission: coSignerPermission,
+                    feeWallet,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .instruction();
+            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                [abSwapKey.publicKey.toBuffer()],
+                TOKEN_SWAP_PROGRAM_ID
+            );
+            const swapIx = TokenSwap.swapInstruction(
+                abSwapKey.publicKey,
+                swapAuthority,
+                SWAP_AUTHORITY.publicKey,
+                longPoolBCurrencyVaultKey,
+                swapTokenAccountA,
+                swapTokenAccountB,
+                longPoolBVaultKey,
+                poolMint,
+                poolFeeAccount,
+                null,
+                tokenMintA,
+                tokenMintB,
+                TOKEN_SWAP_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                BigInt(swapAmount.toString()),
+                BigInt(minimumAmountOut.toString())
+            );
+            const _tx = await program.methods
+                .openLongPositionCleanup()
+                .accounts({
+                    owner: user2.publicKey,
+                    pool: longPoolBKey,
+                    position: longPositionKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .preInstructions([setupIx, swapIx])
+                .transaction();
+
+            const connection = program.provider.connection;
+            const lookupAccount = await connection
+                .getAddressLookupTable(openPosLut)
+                .catch(() => null);
+            const message = new anchor.web3.TransactionMessage({
+                instructions: _tx.instructions,
+                payerKey: program.provider.publicKey!,
+                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+            }).compileToV0Message([lookupAccount.value]);
+
+            const tx = new anchor.web3.VersionedTransaction(message);
+            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY, user2], {
+                skipPreflight: false,
+            });
+        });
+        it("Should succesfully cancel SL", async () => {
+            const makerAmount = new anchor.BN(100);
+            const takerAmount = new anchor.BN(200);
+            await program.methods
+                .initOrUpdateStopLossOrder(
+                    makerAmount,
+                    takerAmount,
+                )
+                .accounts({
+                    //@ts-ignore
+                    trader: user2.publicKey,
+                    position: longPositionKey,
+                })
+                .signers([user2])
+                .rpc();
+            const stopLossOrder = await program.account.stopLossOrder.fetch(
+                longStopLossOrderKey
+            );
+            assert.equal(
+                stopLossOrder.makerAmount.toString(),
+                makerAmount.toString()
+            );
+            assert.equal(
+                stopLossOrder.takerAmount.toString(),
+                takerAmount.toString()
+            );
+            assert.equal(
+                stopLossOrder.position.toString(),
+                longPositionKey.toString()
+            );
+
+        });
+
+    });
+
 });

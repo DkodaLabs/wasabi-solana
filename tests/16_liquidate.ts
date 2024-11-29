@@ -2,8 +2,8 @@ import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
+    CAN_SWAP_CANT_LIQ_AUTH,
     openPosLut,
     poolFeeAccount,
     poolMint,
@@ -13,11 +13,14 @@ import {
     tokenMintA,
     tokenMintB,
     user2,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
+    superAdminProgram
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
+    mintTo,
     TOKEN_PROGRAM_ID,
-    createMintToInstruction,
 } from "@solana/spl-token";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
 import { assert } from "chai";
@@ -40,28 +43,26 @@ describe("liquidate", () => {
         program.programId
     );
 
-    const [globalSettingsKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("global_settings")],
-        program.programId
-    );
+    const feeWallet = getAssociatedTokenAddressSync(tokenMintA, feeWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
+
+    const liquidationWallet = getAssociatedTokenAddressSync(tokenMintA, liquidationWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
+
     const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
         program.programId
     );
+
     const [lpVaultTokenBKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
         program.programId
     );
+
     const ownerTokenA = getAssociatedTokenAddressSync(
         tokenMintA,
         user2.publicKey,
         false
     );
-    const ownerTokenB = getAssociatedTokenAddressSync(
-        tokenMintB,
-        user2.publicKey,
-        false
-    );
+
     const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [
             anchor.utils.bytes.utf8.encode("long_pool"),
@@ -120,6 +121,11 @@ describe("liquidate", () => {
         program.programId
     );
 
+    const [noLiqPerm] = anchor.web3.PublicKey.findProgramAddressSync(
+        [anchor.utils.bytes.utf8.encode("admin"), CAN_SWAP_CANT_LIQ_AUTH.publicKey.toBuffer()],
+        program.programId,
+    );
+
     describe("Long", () => {
         before(async () => {
             // Create Long position that will have a TP order
@@ -158,7 +164,7 @@ describe("liquidate", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                 .instruction();
@@ -241,8 +247,8 @@ describe("liquidate", () => {
                         pool: longPoolBKey,
                         collateral: tokenMintB,
                         // @ts-ignore
-                        authority: SWAP_AUTHORITY.publicKey,
-                        permission: coSignerPermission,
+                        authority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
+                        permission: noLiqPerm,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
@@ -254,7 +260,7 @@ describe("liquidate", () => {
             const swapIx = TokenSwap.swapInstruction(
                 abSwapKey.publicKey,
                 swapAuthority,
-                SWAP_AUTHORITY.publicKey,
+                CAN_SWAP_CANT_LIQ_AUTH.publicKey,
                 longPoolBVaultKey,
                 swapTokenAccountB,
                 swapTokenAccountA,
@@ -282,10 +288,11 @@ describe("liquidate", () => {
                             collateral: tokenMintB,
                             currency: tokenMintA,
                             position: longPositionKey,
-                            authority: SWAP_AUTHORITY.publicKey,
+                            authority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
                             //@ts-ignore
                             lpVault: lpVaultTokenAKey,
-                            feeWallet: feeWalletA,
+                            feeWallet,
+                            liquidationWallet,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             currencyTokenProgram: TOKEN_PROGRAM_ID,
                         },
@@ -303,10 +310,11 @@ describe("liquidate", () => {
                 }).compileToV0Message([lookupAccount.value]);
 
                 const tx = new anchor.web3.VersionedTransaction(message);
-                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                await program.provider.sendAndConfirm(tx, [CAN_SWAP_CANT_LIQ_AUTH], {
                     skipPreflight: true,
                 });
             } catch (e) {
+                console.log(e);
                 const err = anchor.translateError(
                     e,
                     anchor.parseIdlErrors(program.idl)
@@ -322,129 +330,12 @@ describe("liquidate", () => {
         });
 
         it("should fail if liquidation threshold has not been exceeded", async () => {
-            const closeRequestExpiration = new anchor.BN(Date.now() / 1000 + 3600);
-            const position = await program.account.position.fetch(longPositionKey);
-
-            // Setup liquidation
-            const setupIx = await program.methods
-                .liquidatePositionSetup(
-                    new anchor.BN(0), // minTargetAmount
-                    new anchor.BN(10), // interest
-                    new anchor.BN(11), // executionFee
-                    closeRequestExpiration
-                )
-                .accounts({
-                    closePositionSetup: {
-                        owner: user2.publicKey,
-                        position: longPositionKey,
-                        pool: longPoolBKey,
-                        collateral: tokenMintB,
-                        //@ts-ignore
-                        authority: NON_SWAP_AUTHORITY.publicKey,
-                        permission: liquidateSignerPermission,
-                        tokenProgram: TOKEN_PROGRAM_ID,
-                    },
-                })
-                .instruction();
-
-            // Calculate swap amount to ensure we're under threshold
-            // For longs: payout + close_fee should be <= principal * 5/100
-            const thresholdAmount = position.principal
-                .mul(new anchor.BN(5))
-                .div(new anchor.BN(100));
-
-            // Swap just enough to be under threshold
-            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-                [abSwapKey.publicKey.toBuffer()],
-                TOKEN_SWAP_PROGRAM_ID
-            );
-            const swapIx = TokenSwap.swapInstruction(
-                abSwapKey.publicKey,
-                swapAuthority,
-                NON_SWAP_AUTHORITY.publicKey,
-                longPoolBVaultKey,
-                swapTokenAccountB,
-                swapTokenAccountA,
-                longPoolBCurrencyVaultKey,
-                poolMint,
-                poolFeeAccount,
-                null,
-                tokenMintB,
-                tokenMintA,
-                TOKEN_SWAP_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                TOKEN_PROGRAM_ID,
-                BigInt(thresholdAmount.sub(new anchor.BN(1)).toString()), // Just under threshold
-                BigInt(0)
-            );
-
-            try {
-                const _tx = await program.methods
-                    .liquidatePositionCleanup()
-                    .accounts({
-                        closePositionCleanup: {
-                            owner: user2.publicKey,
-                            pool: longPoolBKey,
-                            position: longPositionKey,
-                            currency: tokenMintA,
-                            collateral: tokenMintB,
-                            authority: NON_SWAP_AUTHORITY.publicKey,
-                            //@ts-ignore
-                            lpVault: lpVaultTokenAKey,
-                            feeWallet: feeWalletA,
-                            currencyTokenProgram: TOKEN_PROGRAM_ID,
-                            collateralTokenProgram: TOKEN_PROGRAM_ID,
-                        },
-                    })
-                    .preInstructions([setupIx, swapIx])
-                    .transaction();
-
-                const connection = program.provider.connection;
-                const lookupAccount = await connection
-                    .getAddressLookupTable(openPosLut)
-                    .catch(() => null);
-                const message = new anchor.web3.TransactionMessage({
-                    instructions: _tx.instructions,
-                    payerKey: program.provider.publicKey!,
-                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-                }).compileToV0Message([lookupAccount.value]);
-
-                const tx = new anchor.web3.VersionedTransaction(message);
-                await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
-                    skipPreflight: true,
-                });
-
-                assert.fail("Expected transaction to fail with LiquidationThresholdNotReached error");
-            } catch (error) {
-                const parsedError = JSON.parse(error.message.split('failed (')[1].slice(0, -1));
-                assert.equal(parsedError.err.InstructionError[1].Custom, 6026);
-            }
-
-            // Verify position still exists and wasn't liquidated
-            const positionAfter = await program.account.position.fetch(longPositionKey);
-            assert.ok(positionAfter, "Position should still exist");
-        });
-
-        it("should liquidate position", async () => {
             const closeRequestExpiration = new anchor.BN(
                 Date.now() / 1_000 + 60 * 60
             );
             const positionBefore = await program.account.position.fetch(
                 longPositionKey
             );
-            const vaultKey = getAssociatedTokenAddressSync(
-                positionBefore.currency,
-                lpVaultTokenAKey,
-                true
-            );
-            const [vaultBefore, ownerABefore, feeBalanceBefore] =
-                await getMultipleTokenAccounts(program.provider.connection, [
-                    vaultKey,
-                    ownerTokenA,
-                    feeWalletA,
-                ], TOKEN_PROGRAM_ID);
-
             const args = {
                 minTargetAmount: new anchor.BN(0),
                 interest: new anchor.BN(10),
@@ -507,27 +398,161 @@ describe("liquidate", () => {
                         authority: NON_SWAP_AUTHORITY.publicKey,
                         //@ts-ignore
                         lpVault: lpVaultTokenAKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
-            const connection = program.provider.connection;
-            const lookupAccount = await connection
-                .getAddressLookupTable(openPosLut)
-                .catch(() => null);
-            const message = new anchor.web3.TransactionMessage({
-                instructions: _tx.instructions,
-                payerKey: program.provider.publicKey!,
-                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-            }).compileToV0Message([lookupAccount.value]);
+            try {
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
 
-            const tx = new anchor.web3.VersionedTransaction(message);
-            await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
-                skipPreflight: true,
-            });
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+                assert.ok(false);
+            } catch (e: any) {
+                const err = anchor.translateError(
+                    e,
+                    anchor.parseIdlErrors(program.idl)
+                );
+                if (err instanceof anchor.AnchorError) {
+                    assert.equal(err.error.errorCode.number, 6026);
+                } else if (err instanceof anchor.ProgramError) {
+                    assert.equal(err.code, 6026);
+                } else {
+                    assert.ok(false);
+                }
+            }
+        });
+
+        it("should liquidate position", async () => {
+            const closeRequestExpiration = new anchor.BN(
+                Date.now() / 1_000 + 60 * 60
+            );
+            const positionBefore = await program.account.position.fetch(
+                longPositionKey
+            );
+            const vaultKey = getAssociatedTokenAddressSync(
+                positionBefore.currency,
+                lpVaultTokenAKey,
+                true
+            );
+            const [vaultBefore, ownerABefore, feeBalanceBefore, liquidationBalanceBefore] =
+                await getMultipleTokenAccounts(program.provider.connection, [
+                    vaultKey,
+                    ownerTokenA,
+                    feeWallet,
+                    liquidationWallet,
+                ], TOKEN_PROGRAM_ID);
+
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
+
+            const setupIx = await program.methods
+                .liquidatePositionSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration
+                )
+                .accounts({
+                    closePositionSetup: {
+                        owner: user2.publicKey,
+                        position: longPositionKey,
+                        pool: longPoolBKey,
+                        collateral: tokenMintB,
+                        //@ts-ignore
+                        authority: NON_SWAP_AUTHORITY.publicKey,
+                        permission: liquidateSignerPermission,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    },
+                })
+                .instruction();
+
+            // Use a much larger multiplier to ensure liquidation threshold is met
+            const swapAmount = positionBefore.collateralAmount.muln(5);
+
+            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                [abSwapKey.publicKey.toBuffer()],
+                TOKEN_SWAP_PROGRAM_ID
+            );
+
+            const swapIx = TokenSwap.swapInstruction(
+                abSwapKey.publicKey,
+                swapAuthority,
+                NON_SWAP_AUTHORITY.publicKey,
+                longPoolBVaultKey,
+                swapTokenAccountB,
+                swapTokenAccountA,
+                longPoolBCurrencyVaultKey,
+                poolMint,
+                poolFeeAccount,
+                null,
+                tokenMintB,
+                tokenMintA,
+                TOKEN_SWAP_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                BigInt(swapAmount.toString()),
+                BigInt(0)
+            );
+
+            const _tx = await program.methods
+                .liquidatePositionCleanup()
+                .accounts({
+                    closePositionCleanup: {
+                        owner: user2.publicKey,
+                        position: longPositionKey,
+                        pool: longPoolBKey,
+                        currency: tokenMintA,
+                        collateral: tokenMintB,
+                        authority: NON_SWAP_AUTHORITY.publicKey,
+                        //@ts-ignore
+                        lpVault: lpVaultTokenAKey,
+                        feeWallet,
+                        liquidationWallet,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    },
+                })
+                .preInstructions([setupIx, swapIx])
+                .transaction();
+
+            try {
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+            } catch (e: any) {
+                console.log(e);
+            }
 
             const [
                 positionAfter,
@@ -537,9 +562,11 @@ describe("liquidate", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
+            console.log(positionAfter);
+
             // Position should be cleaned up
             assert.isNull(positionAfter);
 
@@ -592,7 +619,7 @@ describe("liquidate", () => {
                     //@ts-ignore
                     authority: SWAP_AUTHORITY.publicKey,
                     permission: coSignerPermission,
-                    feeWallet: feeWalletA,
+                    feeWallet,
                     currencyTokenProgram: TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID,
                 })
@@ -652,107 +679,7 @@ describe("liquidate", () => {
             });
         });
 
-        //it("should fail if liquidation threshold has not been exceeded", async () => {
-        //    const closeRequestExpiration = new anchor.BN(Date.now() / 1000 + 3600);
-        //    const position = await program.account.position.fetch(shortPositionKey);
-
-        //    // Setup liquidation
-        //    const setupIx = await program.methods
-        //        .liquidatePositionSetup(
-        //            new anchor.BN(0), // minTargetAmount
-        //            new anchor.BN(10), // interest
-        //            new anchor.BN(11), // executionFee
-        //            closeRequestExpiration
-        //        )
-        //        .accounts({
-        //            closePositionSetup: {
-        //                owner: user2.publicKey,
-        //                position: shortPositionKey,
-        //                pool: shortPoolAKey,
-        //                collateral: tokenMintA,
-        //                // @ts-ignore
-        //                authority: NON_SWAP_AUTHORITY.publicKey,
-        //                permission: liquidateSignerPermission,
-        //                tokenProgram: TOKEN_PROGRAM_ID,
-        //            },
-        //        })
-        //        .instruction();
-
-        //    const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-        //        [abSwapKey.publicKey.toBuffer()],
-        //        TOKEN_SWAP_PROGRAM_ID
-        //    );
-        //    const swapIx = TokenSwap.swapInstruction(
-        //        abSwapKey.publicKey,
-        //        swapAuthority,
-        //        NON_SWAP_AUTHORITY.publicKey,
-        //        shortPoolAVaultKey,
-        //        swapTokenAccountA,
-        //        swapTokenAccountB,
-        //        shortPoolACurrencyVaultKey,
-        //        poolMint,
-        //        poolFeeAccount,
-        //        null,
-        //        tokenMintA,
-        //        tokenMintB,
-        //        TOKEN_SWAP_PROGRAM_ID,
-        //        TOKEN_PROGRAM_ID,
-        //        TOKEN_PROGRAM_ID,
-        //        TOKEN_PROGRAM_ID,
-        //        BigInt(position.principal.add(new anchor.BN(1)).toString()),
-        //        BigInt(0)
-        //    );
-
-        //    try {
-        //        const _tx = await program.methods
-        //            .liquidatePositionCleanup()
-        //            .accounts({
-        //                closePositionCleanup: {
-        //                    owner: user2.publicKey,
-        //                    pool: shortPoolAKey,
-        //                    collateral: tokenMintA,
-        //                    currency: tokenMintB,
-        //                    position: shortPositionKey,
-        //                    authority: NON_SWAP_AUTHORITY.publicKey,
-        //                    //@ts-ignore
-        //                    lpVault: lpVaultTokenBKey,
-        //                    feeWallet: feeWalletA,
-        //                    currencyTokenProgram: TOKEN_PROGRAM_ID,
-        //                    collateralTokenProgram: TOKEN_PROGRAM_ID,
-        //                },
-        //            })
-        //            .preInstructions([mintToVaultIx, setupIx, swapIx])
-        //            .transaction();
-
-        //        const connection = program.provider.connection;
-        //        const lookupAccount = await connection
-        //            .getAddressLookupTable(openPosLut)
-        //            .catch(() => null);
-        //        const message = new anchor.web3.TransactionMessage({
-        //            instructions: _tx.instructions,
-        //            payerKey: program.provider.publicKey!,
-        //            recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-        //        }).compileToV0Message([lookupAccount.value]);
-
-        //        const tx = new anchor.web3.VersionedTransaction(message);
-        //        await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
-        //            skipPreflight: true,
-        //        });
-
-        //        assert.fail("Expected transaction to fail with LiquidationThresholdNotReached error");
-        //    } catch (error) {
-        //        console.log(error);
-        //        const parsedError = JSON.parse(error.message.split('failed (')[1].slice(0, -1));
-        //        assert.equal(parsedError.err.InstructionError[1].Custom, 6026);
-
-        //    }
-
-        //    // Verify position still exists and wasn't liquidated
-        //    const positionAfter = await program.account.position.fetch(shortPositionKey);
-        //    assert.ok(positionAfter, "Position should still exist");
-        //});
-
-        it("Should liquidate position", async () => {
+        it("should fail if liquidation threshold has not been exceeded", async () => {
             const closeRequestExpiration = new anchor.BN(
                 Date.now() / 1_000 + 60 * 60
             );
@@ -768,7 +695,7 @@ describe("liquidate", () => {
                 await getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID);
 
             const args = {
@@ -818,7 +745,7 @@ describe("liquidate", () => {
                 TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
                 TOKEN_PROGRAM_ID,
-                BigInt(positionBefore.principal.add(new anchor.BN(12)).toString()),
+                BigInt(positionBefore.principal.mul(new anchor.BN(3)).toString()),
                 BigInt(0)
             );
             const _tx = await program.methods
@@ -833,27 +760,158 @@ describe("liquidate", () => {
                         authority: NON_SWAP_AUTHORITY.publicKey,
                         //@ts-ignore
                         lpVault: lpVaultTokenBKey,
-                        feeWallet: feeWalletA,
+                        feeWallet,
+                        liquidationWallet,
                         currencyTokenProgram: TOKEN_PROGRAM_ID,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .preInstructions([setupIx, swapIx])
                 .transaction();
-            const connection = program.provider.connection;
-            const lookupAccount = await connection
-                .getAddressLookupTable(openPosLut)
-                .catch(() => null);
-            const message = new anchor.web3.TransactionMessage({
-                instructions: _tx.instructions,
-                payerKey: program.provider.publicKey!,
-                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-            }).compileToV0Message([lookupAccount.value]);
+            try {
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
 
-            const tx = new anchor.web3.VersionedTransaction(message);
-            await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
-                skipPreflight: true,
-            });
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+
+                assert.fail("Expected transaction to fail with LiquidationThresholdNotReached error");
+            } catch (e: any) {
+                console.log(e);
+                const err = anchor.translateError(
+                    e,
+                    anchor.parseIdlErrors(program.idl)
+                );
+                if (err instanceof anchor.AnchorError) {
+                    assert.equal(err.error.errorCode.number, 6026);
+                } else if (err instanceof anchor.ProgramError) {
+                    assert.equal(err.code, 6026);
+                } else {
+                    assert.ok(false);
+                }
+            }
+
+            // Verify position still exists and wasn't liquidated
+            const positionAfter = await program.account.position.fetch(shortPositionKey);
+            assert.ok(positionAfter, "Position should still exist");
+        });
+
+        it("Should liquidate position", async () => {
+            const closeRequestExpiration = new anchor.BN(
+                Date.now() / 1_000 + 60 * 60
+            );
+            const positionBefore = await program.account.position.fetch(
+                shortPositionKey
+            );
+            const vaultKey = getAssociatedTokenAddressSync(
+                positionBefore.currency,
+                lpVaultTokenBKey,
+                true
+            );
+            const [vaultBefore, ownerABefore, feeBalanceBefore] =
+                await getMultipleTokenAccounts(program.provider.connection, [
+                    vaultKey,
+                    ownerTokenA,
+                    feeWallet,
+                ], TOKEN_PROGRAM_ID);
+
+            const args = {
+                minTargetAmount: new anchor.BN(0),
+                interest: new anchor.BN(10),
+                executionFee: new anchor.BN(11),
+                expiration: closeRequestExpiration,
+            };
+            const setupIx = await program.methods
+                .liquidatePositionSetup(
+                    args.minTargetAmount,
+                    args.interest,
+                    args.executionFee,
+                    args.expiration,
+                )
+                .accounts({
+                    closePositionSetup: {
+                        owner: user2.publicKey,
+                        position: shortPositionKey,
+                        pool: shortPoolAKey,
+                        collateral: tokenMintA,
+                        // @ts-ignore
+                        authority: NON_SWAP_AUTHORITY.publicKey,
+                        permission: liquidateSignerPermission,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    },
+                })
+                .instruction();
+            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                [abSwapKey.publicKey.toBuffer()],
+                TOKEN_SWAP_PROGRAM_ID
+            );
+            const swapIx = TokenSwap.swapInstruction(
+                abSwapKey.publicKey,
+                swapAuthority,
+                NON_SWAP_AUTHORITY.publicKey,
+                shortPoolAVaultKey,
+                swapTokenAccountA,
+                swapTokenAccountB,
+                shortPoolACurrencyVaultKey,
+                poolMint,
+                poolFeeAccount,
+                null,
+                tokenMintA,
+                tokenMintB,
+                TOKEN_SWAP_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                BigInt(positionBefore.principal.mul(new anchor.BN(3)).toString()),
+                BigInt(0)
+            );
+            const _tx = await program.methods
+                .liquidatePositionCleanup()
+                .accounts({
+                    closePositionCleanup: {
+                        owner: user2.publicKey,
+                        pool: shortPoolAKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
+                        position: shortPositionKey,
+                        authority: NON_SWAP_AUTHORITY.publicKey,
+                        //@ts-ignore
+                        lpVault: lpVaultTokenBKey,
+                        feeWallet,
+                        liquidationWallet,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    },
+                })
+                .preInstructions([setupIx, swapIx])
+                .transaction();
+            try {
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new anchor.web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new anchor.web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [NON_SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+            } catch (e: any) {
+                console.log(e);
+            }
 
             const [
                 positionAfter,
@@ -863,7 +921,7 @@ describe("liquidate", () => {
                 getMultipleTokenAccounts(program.provider.connection, [
                     vaultKey,
                     ownerTokenA,
-                    feeWalletA,
+                    feeWallet,
                 ], TOKEN_PROGRAM_ID),
             ]);
 

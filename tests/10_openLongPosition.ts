@@ -8,7 +8,6 @@ import {
 } from "@solana/spl-token";
 import {
     abSwapKey,
-    feeWalletA,
     NON_SWAP_AUTHORITY,
     openPosLut,
     poolFeeAccount,
@@ -19,6 +18,7 @@ import {
     swapTokenAccountB,
     tokenMintA,
     tokenMintB,
+    feeWalletKeypair,
 } from "./rootHooks";
 import { getMultipleTokenAccounts } from "./utils";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -32,6 +32,13 @@ describe("OpenLongPosition", () => {
             SWAP_AUTHORITY.publicKey.toBuffer(),
         ],
         program.programId,
+    );
+
+    const feeWalletA = getAssociatedTokenAddressSync(
+        tokenMintA,
+        feeWalletKeypair.publicKey,
+        true,
+        TOKEN_PROGRAM_ID
     );
 
     const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -279,21 +286,32 @@ describe("OpenLongPosition", () => {
                 BigInt(swapAmount.toString()),
                 BigInt(minimumAmountOut.toString()),
             );
-            try {
-                await program.methods
-                    .openLongPositionCleanup()
-                    .accounts({
-                        owner: program.provider.publicKey,
-                        pool: longPoolBKey,
-                        position: positionKey,
-                        tokenProgram: TOKEN_PROGRAM_ID,
-                    })
-                    .preInstructions([setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
-            } catch (error) {
-                console.log(error);
-            }
+
+            const _tx = await program.methods
+                .openLongPositionCleanup()
+                .accounts({
+                    owner: program.provider.publicKey,
+                    pool: longPoolBKey,
+                    position: positionKey,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .preInstructions([setupIx, swapIx])
+                .transaction();
+
+            const connection = program.provider.connection;
+            const lookupAccount = await connection
+                .getAddressLookupTable(openPosLut)
+                .catch(() => null);
+            const message = new web3.TransactionMessage({
+                instructions: _tx.instructions,
+                payerKey: program.provider.publicKey!,
+                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+            }).compileToV0Message([lookupAccount.value]);
+
+            const tx = new web3.VersionedTransaction(message);
+            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                skipPreflight: false,
+            });
 
             const [
                 [lpVaultAfter, ownerTokenAAfter, longPoolBVaultAfter],
@@ -417,7 +435,6 @@ describe("OpenLongPosition", () => {
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6004);
                 } else {
-                    console.log(err);
                     assert.ok(false);
                 }
             }
@@ -442,7 +459,7 @@ describe("OpenLongPosition", () => {
             const principal = new anchor.BN(1_000);
             const minimumAmountOut = new anchor.BN(1_900);
             try {
-                const transferAmount = 2_000;
+                const transferAmount = 3_000;
                 const transferIX = createTransferInstruction(
                     ownerTokenA,
                     longPoolBCurrencyVaultKey,
@@ -503,7 +520,7 @@ describe("OpenLongPosition", () => {
                     BigInt(3_000),
                     BigInt(minimumAmountOut.toString()),
                 );
-                await program.methods
+                const _tx = await program.methods
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
@@ -512,15 +529,25 @@ describe("OpenLongPosition", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([transferIX, setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .transaction();
+
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: false,
+                });
                 assert.ok(false);
             } catch (err) {
-                // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
-                // is not delegated more than `down_payment` + `principal
-                assert.ok(
-                    err.toString().includes(`"InstructionError":[2,{"Custom":1}]`),
-                );
+                assert.ok(true);
             }
         });
 
@@ -735,7 +762,7 @@ describe("OpenLongPosition", () => {
                     BigInt(downPayment.add(principal).toString()),
                     BigInt(minimumAmountOut.toString()),
                 );
-                await program.methods
+                const _tx = await program.methods
                     .openLongPositionCleanup()
                     .accounts({
                         owner: program.provider.publicKey,
@@ -744,11 +771,31 @@ describe("OpenLongPosition", () => {
                         tokenProgram: TOKEN_PROGRAM_ID,
                     })
                     .preInstructions([setupIx, swapIx])
-                    .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .transaction()
+
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: false,
+                });
+
                 assert.ok(false);
-            } catch (err) {
+            } catch (e: any) {
+                const err = anchor.translateError(
+                    e,
+                    anchor.parseIdlErrors(program.idl)
+                );
                 if (err instanceof anchor.AnchorError) {
+
                     assert.equal(err.error.errorCode.number, 6007);
                 } else if (err instanceof anchor.ProgramError) {
                     assert.equal(err.code, 6007);

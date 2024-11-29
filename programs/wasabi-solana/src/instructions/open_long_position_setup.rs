@@ -2,11 +2,12 @@ use {
     super::OpenLongPositionCleanup,
     crate::{
         error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
-        utils::position_setup_transaction_introspecation_validation, BasePool, DebtController,
-        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
+        utils::position_setup_transaction_introspection_validation, BasePool, DebtController,
+        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{
+    anchor_spl::
+        token_interface::{
         self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
     },
 };
@@ -32,7 +33,7 @@ pub struct OpenLongPositionSetup<'info> {
     #[account(
         has_one = vault
     )]
-    pub lp_vault: Account<'info, LpVault>,
+    pub lp_vault: Box<Account<'info, LpVault>>,
 
     /// The LP Vault's token account.
     #[account(mut)]
@@ -43,7 +44,7 @@ pub struct OpenLongPositionSetup<'info> {
         has_one = collateral_vault,
         has_one = currency_vault,
     )]
-    pub pool: Account<'info, BasePool>,
+    pub pool: Box<Account<'info, BasePool>>,
 
     /// The collateral account that is the destination of the swap
     #[account(mut)]
@@ -63,7 +64,7 @@ pub struct OpenLongPositionSetup<'info> {
         bump,
         space = 8 + std::mem::size_of::<OpenPositionRequest>(),
     )]
-    pub open_position_request: Account<'info, OpenPositionRequest>,
+    pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(
         init,
@@ -89,14 +90,17 @@ pub struct OpenLongPositionSetup<'info> {
     )]
     pub permission: Box<Account<'info, Permission>>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = fee_wallet.owner == global_settings.fee_wallet
+    )]
     pub fee_wallet: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"debt_controller"],
         bump,
     )]
-    pub debt_controller: Account<'info, DebtController>,
+    pub debt_controller: Box<Account<'info, DebtController>>,
 
     #[account(
         seeds = [b"global_settings"],
@@ -123,7 +127,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspecation_validation(
+        position_setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenLongPositionCleanup::get_hash(),
         )?;
