@@ -25,24 +25,8 @@ pub struct ClosePositionCleanup<'info> {
     /// CHECK: No need
     pub owner: AccountInfo<'info>,
 
-    /// The account that holds the owner's collateral currency.
-    /// NOTE: this account is only used when closing `Short` Positions
-    #[account(
-        mut,
-        associated_token::mint = collateral,
-        associated_token::authority = owner,
-        associated_token::token_program = collateral_token_program,
-    )]
-    pub owner_collateral_account: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    /// The account that holds the owner's base currency
-    #[account(
-        mut,
-        associated_token::mint = currency,
-        associated_token::authority = owner,
-        associated_token::token_program = currency_token_program,
-    )]
-    pub owner_currency_account: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(mut)]
+    pub owner_payout_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The Long or Short Pool that owns the Position
     #[account(
@@ -160,6 +144,32 @@ impl<'info> ClosePositionCleanup<'info> {
             self.position.collateral_amount,
             self.get_collateral_delta()?,
             ErrorCode::MaxSwapExceeded
+        );
+
+        require_keys_eq!(
+            self.owner_payout_account.owner,
+            self.owner.key(),
+            ErrorCode::InvalidAccountOwner,
+        );
+
+        require_keys_eq!(
+            *self.owner_payout_account.to_account_info().owner,
+            if self.pool.is_long_pool {
+                self.currency_token_program.key()
+            } else {
+                self.collateral_token_program.key()
+            },
+            ErrorCode::IncorrectTokenProgram,
+        );
+
+        require_keys_eq!(
+            self.owner_payout_account.mint,
+            if self.pool.is_long_pool {
+                self.currency.key()
+            } else {
+                self.collateral.key()
+            },
+            ErrorCode::MintMismatch,
         );
 
         Ok(())
@@ -285,7 +295,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.currency_vault.to_account_info(),
                 mint: self.currency.to_account_info(),
-                to: self.owner_currency_account.to_account_info(),
+                to: self.owner_payout_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {
@@ -300,7 +310,7 @@ impl<'info> ClosePositionCleanup<'info> {
             let cpi_accounts = TransferChecked {
                 from: self.collateral_vault.to_account_info(),
                 mint: self.collateral.to_account_info(),
-                to: self.owner_collateral_account.to_account_info(),
+                to: self.owner_payout_account.to_account_info(),
                 authority: self.pool.to_account_info(),
             };
             let cpi_ctx = CpiContext {

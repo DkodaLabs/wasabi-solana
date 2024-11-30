@@ -56,4 +56,10 @@ pub enum ErrorCode {
     ZeroDivision, // 6025
     #[msg("Liquidation threshold not reached")]
     LiquidationThresholdNotReached, // 6026
+    #[msg("Payout token account is not owned by the correct wallet")]
+    InvalidAccountOwner, // 6027
+    #[msg("Payout token account is not owned by the correct token program")]
+    IncorrectTokenProgram, // 6028
+    #[msg("The payout token account's associated mint does not match")]
+    MintMismatch, // 6029
 }
