@@ -42,9 +42,9 @@ describe("CloseShortPosition", () => {
     );
 
     const feeWallet = getAssociatedTokenAddressSync(
-        tokenMintA, 
-        feeWalletKeypair.publicKey, 
-        true, 
+        tokenMintA,
+        feeWalletKeypair.publicKey,
+        true,
         TOKEN_PROGRAM_ID
     );
 
@@ -174,7 +174,9 @@ describe("CloseShortPosition", () => {
                             collateral: tokenMintA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             closePositionCleanup: {
+                                //@ts-ignore
                                 owner: user2.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: shortPoolAKey,
                                 position: positionKey,
                                 currency: tokenMintB,
@@ -290,7 +292,9 @@ describe("CloseShortPosition", () => {
                             collateral: tokenMintA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             closePositionCleanup: {
+                                //@ts-ignore
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: shortPoolAKey,
                                 position: positionKey,
                                 currency: tokenMintB,
@@ -375,7 +379,9 @@ describe("CloseShortPosition", () => {
                             collateral: tokenMintA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             closePositionCleanup: {
+                                //@ts-ignore
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: shortPoolAKey,
                                 position: positionKey,
                                 currency: tokenMintB,
@@ -498,7 +504,9 @@ describe("CloseShortPosition", () => {
                             collateral: tokenMintA,
                             collateralTokenProgram: TOKEN_PROGRAM_ID,
                             closePositionCleanup: {
+                                //@ts-ignore
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: shortPoolAKey,
                                 collateral: tokenMintA,
                                 currency: tokenMintB,
@@ -599,7 +607,9 @@ describe("CloseShortPosition", () => {
                         collateral: tokenMintA,
                         collateralTokenProgram: TOKEN_PROGRAM_ID,
                         closePositionCleanup: {
+                            //@ts-ignore
                             owner: program.provider.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             pool: shortPoolAKey,
                             collateral: tokenMintA,
                             currency: tokenMintB,

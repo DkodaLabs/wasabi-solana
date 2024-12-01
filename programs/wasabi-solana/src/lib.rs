@@ -12,7 +12,7 @@ pub use constants::*;
 pub use instructions::*;
 pub use state::*;
 
-declare_id!("spicyfuhLBKM2ebrUF7jf59WDNgF7xXeLq62GyKnKrB");
+declare_id!("spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c");
 
 #[program]
 pub mod wasabi_solana {

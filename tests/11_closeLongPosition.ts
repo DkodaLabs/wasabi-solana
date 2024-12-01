@@ -187,6 +187,7 @@ describe("CloseLongPosition", () => {
                             owner: user2.publicKey,
                             closePositionCleanup: {
                                 owner: user2.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: longPoolBKey,
                                 position: positionKey,
                                 currency: tokenMintA,
@@ -301,6 +302,7 @@ describe("CloseLongPosition", () => {
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: longPoolBKey,
                                 position: positionKey,
                                 currency: tokenMintA,
@@ -382,6 +384,7 @@ describe("CloseLongPosition", () => {
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: longPoolBKey,
                                 position: positionKey,
                                 currency: tokenMintA,
@@ -504,6 +507,7 @@ describe("CloseLongPosition", () => {
                             owner: program.provider.publicKey,
                             closePositionCleanup: {
                                 owner: program.provider.publicKey,
+                                ownerPayoutAccount: ownerTokenA,
                                 pool: longPoolBKey,
                                 position: positionKey,
                                 currency: tokenMintA,
@@ -634,6 +638,7 @@ describe("CloseLongPosition", () => {
                         owner: program.provider.publicKey,
                         closePositionCleanup: {
                             owner: program.provider.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             pool: longPoolBKey,
                             position: positionKey,
                             currency: tokenMintA,
