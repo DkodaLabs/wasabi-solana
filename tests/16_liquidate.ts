@@ -15,11 +15,9 @@ import {
     user2,
     feeWalletKeypair,
     liquidationWalletKeypair,
-    superAdminProgram
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
-    mintTo,
     TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
@@ -283,7 +281,9 @@ describe("liquidate", () => {
                     .liquidatePositionCleanup()
                     .accounts({
                         closePositionCleanup: {
+                            //@ts-ignore
                             owner: user2.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             pool: longPoolBKey,
                             collateral: tokenMintB,
                             currency: tokenMintA,
@@ -390,7 +390,9 @@ describe("liquidate", () => {
                 .liquidatePositionCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         position: longPositionKey,
                         pool: longPoolBKey,
                         currency: tokenMintA,
@@ -518,7 +520,9 @@ describe("liquidate", () => {
                 .liquidatePositionCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         position: longPositionKey,
                         pool: longPoolBKey,
                         currency: tokenMintA,
@@ -752,7 +756,9 @@ describe("liquidate", () => {
                 .liquidatePositionCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: shortPoolAKey,
                         collateral: tokenMintA,
                         currency: tokenMintB,
@@ -878,7 +884,9 @@ describe("liquidate", () => {
                 .liquidatePositionCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: shortPoolAKey,
                         collateral: tokenMintA,
                         currency: tokenMintB,

@@ -25,7 +25,10 @@ pub struct ClosePositionCleanup<'info> {
     /// CHECK: No need
     pub owner: AccountInfo<'info>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        has_one = owner,
+    )]
     pub owner_payout_account: Box<InterfaceAccount<'info, TokenAccount>>,
 
     /// The Long or Short Pool that owns the Position
@@ -144,12 +147,6 @@ impl<'info> ClosePositionCleanup<'info> {
             self.position.collateral_amount,
             self.get_collateral_delta()?,
             ErrorCode::MaxSwapExceeded
-        );
-
-        require_keys_eq!(
-            self.owner_payout_account.owner,
-            self.owner.key(),
-            ErrorCode::InvalidAccountOwner,
         );
 
         require_keys_eq!(

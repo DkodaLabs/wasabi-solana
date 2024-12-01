@@ -440,6 +440,7 @@ describe("takeProfitOrder", () => {
                     .accountsPartial({
                         closePositionCleanup: {
                             owner: user2.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             position: longPositionKey,
                             pool: longPoolBKey,
                             currency: tokenMintA,
@@ -575,6 +576,7 @@ describe("takeProfitOrder", () => {
                     .accountsPartial({
                         closePositionCleanup: {
                             owner: user2.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             position: longPositionKey,
                             pool: longPoolBKey,
                             currency: tokenMintA,
@@ -721,6 +723,7 @@ describe("takeProfitOrder", () => {
                 .accountsPartial({
                     closePositionCleanup: {
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: longPoolBKey,
                         position: longPositionKey,
                         currency: tokenMintA,
@@ -957,7 +960,9 @@ describe("takeProfitOrder", () => {
                     .takeProfitCleanup()
                     .accounts({
                         closePositionCleanup: {
+                            //@ts-ignore
                             owner: user2.publicKey,
+                            ownerPayoutAccount: ownerTokenA,
                             pool: shortPoolAKey,
                             position: shortPositionKey,
                             currency: tokenMintB,
@@ -1108,7 +1113,9 @@ describe("takeProfitOrder", () => {
                 .takeProfitCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: shortPoolAKey,
                         position: shortPositionKey,
                         currency: tokenMintB,
@@ -1419,6 +1426,7 @@ describe("takeProfitOrder", () => {
                 .accountsPartial({
                     closePositionCleanup: {
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: longPoolBKey,
                         position: longPositionKey,
                         currency: tokenMintA,
@@ -1707,7 +1715,9 @@ describe("takeProfitOrder", () => {
                 .takeProfitCleanup()
                 .accounts({
                     closePositionCleanup: {
+                        //@ts-ignore
                         owner: user2.publicKey,
+                        ownerPayoutAccount: ownerTokenA,
                         pool: shortPoolAKey,
                         position: shortPositionKey,
                         currency: tokenMintB,
