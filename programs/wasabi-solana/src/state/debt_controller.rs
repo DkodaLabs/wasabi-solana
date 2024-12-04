@@ -22,14 +22,17 @@ impl DebtController {
         // uint256 secondsSince = block.timestamp - _lastFundingTimestamp;
         // maxInterestToPay = _principal * maxApy * secondsSince / (APY_DENOMINATOR * (365 days));
         let seconds_since = now - last_funding_timestamp;
-        let seconds_since = seconds_since as u64;
-        let max_interest_to_pay = principal
-            .checked_mul(self.max_apy)
+        let seconds_since_u128 = seconds_since as u128;
+        let principal_u128 = principal as u128;
+        let max_interest_to_pay = principal_u128
+            .checked_mul(self.max_apy as u128)
             .ok_or(ErrorCode::ArithmeticOverflow)?
-            .checked_mul(seconds_since)
+            .checked_mul(seconds_since_u128)
             .ok_or(ErrorCode::ArithmeticOverflow)?
-            .checked_div(APY_DENOMINATOR * ONE_YEAR_IN_SECONDS)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+            .checked_div((APY_DENOMINATOR * ONE_YEAR_IN_SECONDS) as u128)
+            .ok_or(ErrorCode::ArithmeticOverflow)?
+            .try_into()
+            .map_err(|_| ErrorCode::U64Overflow)?;
         if max_interest_to_pay == 0 {
             Ok(1)
         } else {
