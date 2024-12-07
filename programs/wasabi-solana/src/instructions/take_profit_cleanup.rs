@@ -32,15 +32,19 @@ impl<'info> TakeProfitCleanup<'info> {
 
             // uint256 actualTakerAmount = closeAmounts.payout + closeAmounts.closeFee + closeAmounts.interestPaid + closeAmounts.principalRepaid;
             // if (actualTakerAmount < _order.takerAmount) revert PriceTargetNotReached();
+            let payout_u128 = close_amounts.payout as u128;
+            let target_amount: u64 = payout_u128
+                .checked_add(close_amounts.close_fee as u128)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_add(close_amounts.interest_paid as u128)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_add(close_amounts.principal_repaid as u128)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .try_into()
+                .map_err(|_| ErrorCode::U64Overflow)?;
+
             require_gte!(
-                close_amounts
-                    .payout
-                    .checked_add(close_amounts.close_fee)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?
-                    .checked_add(close_amounts.interest_paid)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?
-                    .checked_add(close_amounts.principal_repaid)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?,
+                target_amount,
                 self.take_profit_order.taker_amount,
                 ErrorCode::PriceTargetNotReached
             );
@@ -52,19 +56,17 @@ impl<'info> TakeProfitCleanup<'info> {
             // TP: executed price <= order price
             //      actualMakerAmount / actualTakerAmount <= order.makerAmount / order.takerAmount
             //      actualMakerAmount * order.takerAmount <= order.makerAmount * actualTakerAmount
+            let interest_paid_u128 = close_amounts.interest_paid as u128;
+            let collateral_spent_u128 = close_amounts.collateral_spent as u128;
 
-            let actual_taker_amount = close_amounts
-                .interest_paid
-                .checked_add(close_amounts.principal_repaid)
+            let actual_taker_amount = interest_paid_u128
+                .checked_add(close_amounts.principal_repaid as u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
-            let lhs = close_amounts
-                .collateral_spent
-                .checked_mul(self.take_profit_order.taker_amount)
+            let lhs = collateral_spent_u128
+                .checked_mul(self.take_profit_order.taker_amount as u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
-            let rhs = self
-                .take_profit_order
-                .maker_amount
-                .checked_mul(actual_taker_amount)
+            let rhs = actual_taker_amount
+                .checked_mul(self.take_profit_order.maker_amount as u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             require_gte!(rhs, lhs, ErrorCode::PriceTargetNotReached);
