@@ -2,7 +2,7 @@ use {
     super::OpenShortPositionCleanup,
     crate::{
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::position_setup_transaction_introspection_validation, BasePool, GlobalSettings,
+        utils::{approve_authority_delegation, position_setup_transaction_introspection_validation}, BasePool, GlobalSettings,
         LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
@@ -174,21 +174,6 @@ impl<'info> OpenShortPositionSetup<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
-    pub fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = Approve {
-            to: self.currency_vault.to_account_info(),
-            delegate: self.authority.to_account_info(),
-            authority: self.pool.to_account_info(),
-        };
-        let cpi_ctx = CpiContext {
-            program: self.currency_token_program.to_account_info(),
-            accounts: cpi_accounts,
-            remaining_accounts: Vec::new(),
-            signer_seeds: &[short_pool_signer_seeds!(self.pool)],
-        };
-        token_interface::approve(cpi_ctx, amount)
-    }
-
     pub fn open_short_position_setup(
         &mut self,
         #[allow(unused_variables)] nonce: u16,
@@ -222,8 +207,15 @@ impl<'info> OpenShortPositionSetup<'info> {
         // transferred.
         self.currency_vault.reload()?;
 
-        // Approve the user to make a swap on behalf of the `currency_vault`
-        self.approve_owner_delegation(principal)?;
+        // Approve the authority to make a swap on behalf of the `currency_vault`
+        approve_authority_delegation(
+            &self.currency_vault,
+            &self.authority,
+            &self.pool,
+            &self.currency_token_program,
+            false,
+            principal,
+        )?;
 
         self.open_position_request.set_inner(OpenPositionRequest {
             position: self.position.key(),

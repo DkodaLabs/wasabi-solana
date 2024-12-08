@@ -39,6 +39,8 @@ pub mod take_profit_cleanup;
 pub mod take_profit_setup;
 pub mod update_vault_max_borrow;
 pub mod withdraw;
+mod open_long_position_with_vault_deposit_setup;
+mod open_short_position_with_vault_deposit;
 
 pub use set_fee_wallet::*;
 pub use set_liquidation_wallet::*;

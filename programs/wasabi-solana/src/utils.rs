@@ -1,7 +1,12 @@
+use anchor_spl::token::Token;
 use {
-    crate::{error::ErrorCode, CloseStopLossOrder, CloseTakeProfitOrder},
+    crate::{error::ErrorCode, CloseStopLossOrder, CloseTakeProfitOrder, BasePool, LpVault},
     anchor_lang::{prelude::*, solana_program::sysvar},
+    anchor_spl::{
+        token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked, Approve},
+    }
 };
+use crate::{long_pool_signer_seeds, lp_vault_signer_seeds, short_pool_signer_seeds};
 
 pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{}:{}", namespace, name);
@@ -100,4 +105,84 @@ pub fn validate_difference(value: u64, value_to_compare: u64, percentage: u8) ->
     );
 
     Ok(())
+}
+
+pub(crate) fn approve_authority_delegation(
+    vault: &TokenAccount,
+    authority: &Signer,
+    pool: &BasePool,
+    token_program: &Interface<TokenInterface>,
+    is_long: bool,
+    amount: u64
+) -> Result<()> {
+    let cpi_accounts = Approve {
+        to: vault.to_account_info(),
+        delegate: authority.to_account_info(),
+        authority: pool.to_account_info(),
+   };
+
+    let cpi_ctx = CpiContext {
+        program: token_program.to_account_info(),
+        accounts: cpi_accounts,
+        remaining_accounts: Vec::new(),
+        signer_seeds: if is_long {
+            &[long_pool_signer_seeds!(pool)]
+        } else {
+            &[short_pool_signer_seeds!(pool)]
+        }
+    };
+
+    token_interface::approve(cpi_ctx, amount)
+}
+
+pub(crate) fn transfer_borrow_amount_from_vault(
+    vault: &TokenAccount,
+    asset: &Mint,
+    asset_vault: &TokenAccount,
+    authority: &LpVault,
+    token_program: &TokenInterface,
+    amount: u64,
+) -> Result<()> {
+    let cpi_accounts = TransferChecked {
+        from: vault.to_account_info(),
+        mint: asset.to_account_info(),
+        to: asset_vault.to_account_info(),
+        authority: authority.to_account_info(),
+    };
+
+    let cpi_ctx = CpiContext {
+        program: token_program.to_account_info(),
+        accounts: cpi_accounts,
+        remaining_accounts: Vec::new(),
+        signer_seeds: &[lp_vault_signer_seeds!(authority)]
+    };
+
+    token_interface::transfer_checked(cpi_ctx, amount, asset.decimals)
+}
+
+pub(crate) fn calculate_shares_to_burn(
+    src: &LpVault,
+    shares_mint: &Mint,
+    amount: u64
+) -> Result<u64> {
+    let amount_u128 = amount as u128;
+    let total_assets_u128 = src.total_assets as u128;
+    let shares_supply_u128 = shares_mint.supply as u128;
+
+    // Calculate proportional rounding protection
+    // Uses 0.1% (1/1000) of withdrawal amount as protection, minimum of 1
+    let rounding_protection = std::cmp::max(1, amount_u128.checked_div(1000).unwrap_or(1));
+
+    let shares_burn_amount = amount_u128
+        .checked_mul(shares_supply_u128)
+        .ok_or(ErrorCode::ArithmeticOverflow)?
+        .checked_add(rounding_protection)
+        .ok_or(ErrorCode::ArithmeticOverflow)?
+        .checked_div(total_assets_u128)
+        .ok_or(ErrorCode::ZeroDivision)?;
+
+    let shares_to_burn_u64 =
+        u64::try_from(shares_burn_amount).map_err(|_| ErrorCode::U64Overflow)?;
+
+    Ok(shares_to_burn_u64)
 }
