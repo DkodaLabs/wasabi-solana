@@ -1,14 +1,15 @@
 use {
     super::OpenLongPositionCleanup,
     crate::{
-        error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
-        utils::{position_setup_transaction_introspection_validation, approve_authority_delegation, transfer_borrow_amount_from_vault}, BasePool, DebtController,
-        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache
+        error::ErrorCode,
+        utils::{position_setup_transaction_introspection_validation, approve_authority_delegation}, BasePool, DebtController,
+        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
+        lp_vault_signer_seeds,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
     anchor_spl::
         token_interface::{
-        self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
+        self, Mint, TokenAccount, TokenInterface, TransferChecked,
     },
 };
 
@@ -134,6 +135,31 @@ impl<'info> OpenLongPositionSetup<'info> {
         Ok(())
     }
 
+    pub(crate) fn transfer_borrow_amount_from_vault<'a>(
+        vault: &'a InterfaceAccount<'a, TokenAccount>,
+        asset: &'a InterfaceAccount<'a, Mint>,
+        asset_vault: InterfaceAccount<'a, TokenAccount>,
+        authority: &'a Account<'a, LpVault>,
+        token_program: &'a Interface<'a, TokenInterface>,
+        amount: u64,
+    ) -> Result<()> {
+        let cpi_accounts = TransferChecked {
+            from: vault.to_account_info(),
+            mint: asset.to_account_info(),
+            to: asset_vault.to_account_info(),
+            authority: authority.to_account_info(),
+        };
+
+        let cpi_ctx = CpiContext {
+            program: token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(authority)],
+        };
+
+        token_interface::transfer_checked(cpi_ctx, amount, asset.decimals)
+    }
+
     fn transfer_down_payment_from_user(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_currency_account.to_account_info(),
@@ -157,8 +183,8 @@ impl<'info> OpenLongPositionSetup<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
-    pub fn open_long_position_setup(
-        &mut self,
+    pub fn open_long_position_setup<'a: 'info>(
+        &'a mut self,
         #[allow(unused_variables)]
         nonce: u16,
         min_target_amount: u64,
@@ -168,10 +194,10 @@ impl<'info> OpenLongPositionSetup<'info> {
         #[allow(unused_variables)]
         expiration: i64,
     ) -> Result<()> {
-        transfer_borrow_amount_from_vault(
+        Self::transfer_borrow_amount_from_vault(
             &self.vault,
             &self.currency,
-            &self.currency_vault,
+            *self.currency_vault.clone(),
             &self.lp_vault,
             &self.token_program,
             principal

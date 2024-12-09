@@ -1,12 +1,14 @@
-use anchor_spl::token::Token;
 use {
-    crate::{error::ErrorCode, CloseStopLossOrder, CloseTakeProfitOrder, BasePool, LpVault},
+    crate::{
+        error::ErrorCode,
+        BasePool, CloseStopLossOrder, CloseTakeProfitOrder, LpVault,
+        {long_pool_signer_seeds, lp_vault_signer_seeds, short_pool_signer_seeds},
+    },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::{
-        token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked, Approve},
-    }
+    anchor_spl::token_interface::{
+        self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
+    },
 };
-use crate::{long_pool_signer_seeds, lp_vault_signer_seeds, short_pool_signer_seeds};
 
 pub fn get_function_hash(namespace: &str, name: &str) -> [u8; 8] {
     let preimage = format!("{}:{}", namespace, name);
@@ -107,19 +109,19 @@ pub fn validate_difference(value: u64, value_to_compare: u64, percentage: u8) ->
     Ok(())
 }
 
-pub(crate) fn approve_authority_delegation(
-    vault: &TokenAccount,
-    authority: &Signer,
-    pool: &BasePool,
-    token_program: &Interface<TokenInterface>,
+pub(crate) fn approve_authority_delegation<'a>(
+    vault: &'a InterfaceAccount<'a, TokenAccount>,
+    authority: &'a Signer<'a>,
+    pool: &'a Account<'a, BasePool>,
+    token_program: &'a Interface<'a, TokenInterface>,
     is_long: bool,
-    amount: u64
+    amount: u64,
 ) -> Result<()> {
     let cpi_accounts = Approve {
         to: vault.to_account_info(),
         delegate: authority.to_account_info(),
         authority: pool.to_account_info(),
-   };
+    };
 
     let cpi_ctx = CpiContext {
         program: token_program.to_account_info(),
@@ -129,41 +131,18 @@ pub(crate) fn approve_authority_delegation(
             &[long_pool_signer_seeds!(pool)]
         } else {
             &[short_pool_signer_seeds!(pool)]
-        }
+        },
     };
 
     token_interface::approve(cpi_ctx, amount)
 }
 
-pub(crate) fn transfer_borrow_amount_from_vault(
-    vault: &TokenAccount,
-    asset: &Mint,
-    asset_vault: &TokenAccount,
-    authority: &LpVault,
-    token_program: &TokenInterface,
+
+
+pub(crate) fn calculate_shares_to_burn<'a>(
+    src: Account<'a, LpVault>,
+    shares_mint: &'a InterfaceAccount<'a, Mint>,
     amount: u64,
-) -> Result<()> {
-    let cpi_accounts = TransferChecked {
-        from: vault.to_account_info(),
-        mint: asset.to_account_info(),
-        to: asset_vault.to_account_info(),
-        authority: authority.to_account_info(),
-    };
-
-    let cpi_ctx = CpiContext {
-        program: token_program.to_account_info(),
-        accounts: cpi_accounts,
-        remaining_accounts: Vec::new(),
-        signer_seeds: &[lp_vault_signer_seeds!(authority)]
-    };
-
-    token_interface::transfer_checked(cpi_ctx, amount, asset.decimals)
-}
-
-pub(crate) fn calculate_shares_to_burn(
-    src: &LpVault,
-    shares_mint: &Mint,
-    amount: u64
 ) -> Result<u64> {
     let amount_u128 = amount as u128;
     let total_assets_u128 = src.total_assets as u128;
@@ -186,3 +165,5 @@ pub(crate) fn calculate_shares_to_burn(
 
     Ok(shares_to_burn_u64)
 }
+
+

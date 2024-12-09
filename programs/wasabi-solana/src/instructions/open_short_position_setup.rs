@@ -1,14 +1,15 @@
 use {
     super::OpenShortPositionCleanup,
     crate::{
-        error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::{approve_authority_delegation, position_setup_transaction_introspection_validation}, BasePool, GlobalSettings,
-        LpVault, OpenPositionRequest, Permission, Position, SwapCache,
+        error::ErrorCode,
+        lp_vault_signer_seeds,
+        utils::{
+            approve_authority_delegation, position_setup_transaction_introspection_validation,
+        },
+        BasePool, GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{
-        self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
-    },
+    anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},
 };
 
 #[derive(Accounts)]
@@ -130,7 +131,31 @@ impl<'info> OpenShortPositionSetup<'info> {
         Ok(())
     }
 
-    pub fn transfer_from_user_to_collateral_vault(&self, amount: u64) -> Result<()> {
+    pub(crate) fn transfer_from_lp_vault_to_currency_vault<'a>(
+        vault: &'a InterfaceAccount<'a, TokenAccount>,
+        currency: &'a InterfaceAccount<'a, Mint>,
+        currency_vault: InterfaceAccount<'a, TokenAccount>,
+        authority: &'a Account<'a, LpVault>,
+        token_program: &'a Interface<'a, TokenInterface>,
+        amount: u64,
+    ) -> Result<()> {
+        let cpi_accounts = TransferChecked {
+            from: vault.to_account_info(),
+            mint: currency.to_account_info(),
+            to: currency_vault.to_account_info(),
+            authority: authority.to_account_info(),
+        };
+        let cpi_ctx = CpiContext {
+            program: token_program.to_account_info(),
+            accounts: cpi_accounts,
+            remaining_accounts: Vec::new(),
+            signer_seeds: &[lp_vault_signer_seeds!(authority)],
+        };
+
+        token_interface::transfer_checked(cpi_ctx, amount, currency.decimals)
+    }
+
+    fn transfer_from_user_to_collateral_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
             mint: self.collateral.to_account_info(),
@@ -144,7 +169,7 @@ impl<'info> OpenShortPositionSetup<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
-    pub fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
+    fn transfer_from_user_to_fee_wallet(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.owner_target_currency_account.to_account_info(),
             mint: self.collateral.to_account_info(),
@@ -158,24 +183,8 @@ impl<'info> OpenShortPositionSetup<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.collateral.decimals)
     }
 
-    pub fn transfer_from_lp_vault_to_currency_vault(&self, amount: u64) -> Result<()> {
-        let cpi_accounts = TransferChecked {
-            from: self.vault.to_account_info(),
-            mint: self.currency.to_account_info(),
-            to: self.currency_vault.to_account_info(),
-            authority: self.lp_vault.to_account_info(),
-        };
-        let cpi_ctx = CpiContext {
-            program: self.currency_token_program.to_account_info(),
-            accounts: cpi_accounts,
-            remaining_accounts: Vec::new(),
-            signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
-        };
-        token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
-    }
-
-    pub fn open_short_position_setup(
-        &mut self,
+    pub fn open_short_position_setup<'a: 'info>(
+        &'a mut self,
         #[allow(unused_variables)] nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
@@ -201,7 +210,14 @@ impl<'info> OpenShortPositionSetup<'info> {
         );
 
         // Transfer the borrowed amount to the `currency_vault` to be used in a swap.
-        self.transfer_from_lp_vault_to_currency_vault(principal)?;
+        Self::transfer_from_lp_vault_to_currency_vault(
+            &self.vault,
+            &self.currency,
+            *self.currency_vault.clone(),
+            &self.lp_vault,
+            &self.currency_token_program,
+            principal
+        )?;
 
         // Reload the `currency_vault` so we can get the balance after the principal has be
         // transferred.
@@ -238,8 +254,7 @@ impl<'info> OpenShortPositionSetup<'info> {
             down_payment,
             principal,
             collateral_vault: self.collateral_vault.key(),
-            collateral_amount: 0, // This doesn't seem right, check why
-            // this isn't being set - set after we do the swap
+            collateral_amount: 0,
             lp_vault: self.lp_vault.key(),
             fees_to_be_paid: fee,
             last_funding_timestamp: Clock::get()?.unix_timestamp,
