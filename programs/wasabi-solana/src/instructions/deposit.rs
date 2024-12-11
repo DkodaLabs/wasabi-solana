@@ -61,7 +61,9 @@ pub struct DepositOrWithdraw<'info> {
 }
 
 impl<'info> DepositOrWithdraw<'info> {
-    pub fn validate(ctx: &Context<DepositOrWithdraw>) -> Result<()> {
+    pub fn validate(ctx: &Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
+        require_gt!(amount, 0, ErrorCode::ZeroAmount);
+
         require!(
             ctx.accounts.global_settings.can_lp(),
             ErrorCode::UnpermittedIx

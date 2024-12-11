@@ -62,4 +62,6 @@ pub enum ErrorCode {
     IncorrectTokenProgram, // 6028
     #[msg("The payout token account's associated mint does not match")]
     MintMismatch, // 6029
+    #[msg("Value must be greater than 0")]
+    ZeroAmount,
 }

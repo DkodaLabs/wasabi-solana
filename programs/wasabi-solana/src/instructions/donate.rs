@@ -46,7 +46,8 @@ pub struct Donate<'info> {
 }
 
 impl<'info> Donate<'info> {
-    pub fn validate(ctx: &Context<Donate>) -> Result<()> {
+    pub fn validate(ctx: &Context<Donate>, amount: u64) -> Result<()> {
+        require_gt!(amount, 0, ErrorCode::ZeroAmount);
         require!(
             ctx.accounts.global_settings.can_lp(),
             ErrorCode::UnpermittedIx
