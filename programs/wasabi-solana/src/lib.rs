@@ -131,7 +131,7 @@ pub mod wasabi_solana {
         ctx.accounts.close_stop_loss_order()
     }
 
-    #[access_control(DepositOrWithdraw::validate(&ctx))]
+    #[access_control(DepositOrWithdraw::validate(&ctx, amount))]
     pub fn deposit(ctx: Context<DepositOrWithdraw>, amount: u64) -> Result<()> {
         ctx.accounts.deposit(amount)
     }
@@ -144,7 +144,7 @@ pub mod wasabi_solana {
         ctx.accounts.redeem(shares_amount)
     }
 
-    #[access_control(Donate::validate(&ctx))]
+    #[access_control(Donate::validate(&ctx, amount))]
     pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
         ctx.accounts.donate(amount)
     }
