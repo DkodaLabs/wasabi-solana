@@ -3,7 +3,7 @@ use crate::{
     JITO_POOL_TOKEN_MINT, JITO_RESERVE_STAKE_ACCOUNT, JITO_STAKE_POOL, JITO_WITHDRAW_AUTHORITY,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount};
+use anchor_spl::token::{Token, TokenAccount, Mint};
 use spl_stake_pool::instruction::StakePoolInstruction;
 use std::str::FromStr;
 
@@ -41,7 +41,7 @@ pub struct JitoStake<'info> {
     pub jito_fee_account: AccountInfo<'info>,
 
     #[account(mut)]
-    pub jito_pool_token_mint: Box<Account<'info, TokenAccount>>,
+    pub jito_pool_token_mint: Box<Account<'info, Mint>>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -100,24 +100,21 @@ impl<'info> JitoStake<'info> {
 
         require_gt!(amount, 0, ErrorCode::ZeroAmount);
 
-        Ok(())
-    }
-
-    pub fn stake_into_jito(&mut self, amount: u64) -> Result<()> {
-<<<<<<< Updated upstream
-=======
-        require_gt!(amount, 0, ErrorCode::ZeroAmount);
         require_gt!(
-            self.sol_lp_vault.max_borrow,
-            self.sol_lp_vault
+            ctx.accounts.sol_lp_vault.max_borrow,
+            ctx.accounts
+                .sol_lp_vault
                 .total_borrowed
                 .checked_add(amount)
                 .ok_or(ErrorCode::ArithmeticOverflow)?,
             ErrorCode::MaxBorrowExceeded
         );
 
+        Ok(())
+    }
+
+    pub fn stake_into_jito(&mut self, amount: u64) -> Result<()> {
         let protocol_jito_balance_before = self.protocol_jito_vault.amount;
->>>>>>> Stashed changes
 
         let accounts = vec![
             AccountMeta::new(self.jito_stake_pool.key(), false),
