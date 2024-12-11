@@ -292,4 +292,27 @@ pub mod wasabi_solana {
     pub fn claim_position(ctx: Context<ClaimPosition>) -> Result<()> {
         ctx.accounts.claim_position()
     }
+
+    #[access_control(StakeFromVault::validate(&ctx, stake_amount))]
+    pub fn stake_from_vault(
+        ctx: Context<StakeFromVault>,
+        stake_amount: u64,
+        min_target_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts.stake_from_vault(stake_amount, min_target_amount)
+    }
+
+    #[access_control(UnstakeViaSwapSetup::validate(&ctx, amount_in))]
+    pub fn unstake_via_swap_setup(
+        ctx: Context<UnstakeViaSwapSetup>,
+        amount_in: u64,
+        min_target_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .unstake_via_swap_setup(amount_in, min_target_amount)
+    }
+
+    pub fn unstake_via_swap_cleanup(ctx: Context<UnstakeViaSwapCleanup>) -> Result<()> {
+        ctx.accounts.unstake_via_swap_cleanup()
+    }
 }
