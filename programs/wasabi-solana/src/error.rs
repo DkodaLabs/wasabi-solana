@@ -76,4 +76,6 @@ pub enum ErrorCode {
     InvalidJitoReserveAccount,
     #[msg("Amount cannot be 0")]
     ZeroAmount,
+    #[msg("Vault balance unchanged")]
+    BalanceUnchanged,
 }

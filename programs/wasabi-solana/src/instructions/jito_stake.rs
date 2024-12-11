@@ -48,7 +48,7 @@ pub struct JitoStake<'info> {
 }
 
 impl<'info> JitoStake<'info> {
-    pub fn validate(ctx: &Context<Self>) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, amount: u64) -> Result<()> {
         let jito_mint =
             Pubkey::from_str(JITO_POOL_TOKEN_MINT).map_err(|_| ErrorCode::InvalidPubkey)?;
         require_keys_eq!(
@@ -98,11 +98,26 @@ impl<'info> JitoStake<'info> {
             ErrorCode::InvalidPermissions,
         );
 
+        require_gt!(amount, 0, ErrorCode::ZeroAmount);
+
         Ok(())
     }
 
     pub fn stake_into_jito(&mut self, amount: u64) -> Result<()> {
+<<<<<<< Updated upstream
+=======
         require_gt!(amount, 0, ErrorCode::ZeroAmount);
+        require_gt!(
+            self.sol_lp_vault.max_borrow,
+            self.sol_lp_vault
+                .total_borrowed
+                .checked_add(amount)
+                .ok_or(ErrorCode::ArithmeticOverflow)?,
+            ErrorCode::MaxBorrowExceeded
+        );
+
+        let protocol_jito_balance_before = self.protocol_jito_vault.amount;
+>>>>>>> Stashed changes
 
         let accounts = vec![
             AccountMeta::new(self.jito_stake_pool.key(), false),
@@ -141,6 +156,20 @@ impl<'info> JitoStake<'info> {
             &account_infos,
             &[lp_vault_signer_seeds!(self.sol_lp_vault)],
         )?;
+
+        self.protocol_jito_vault.reload()?;
+
+        require_gt!(
+            self.protocol_jito_vault.amount,
+            protocol_jito_balance_before,
+            ErrorCode::BalanceUnchanged
+        );
+
+        self.sol_lp_vault.total_borrowed = self
+            .sol_lp_vault
+            .total_borrowed
+            .checked_add(amount)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         Ok(())
     }
