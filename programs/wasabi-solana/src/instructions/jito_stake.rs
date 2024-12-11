@@ -1,10 +1,17 @@
 use crate::{
-    error::ErrorCode, lp_vault_signer_seeds, state::Permission, LpVault, JITO_FEE_ACCOUNT,
-    JITO_POOL_TOKEN_MINT, JITO_RESERVE_STAKE_ACCOUNT, JITO_STAKE_POOL, JITO_WITHDRAW_AUTHORITY,
+    constants::{
+        JITO_POOL_TOKEN_MINT, JITO_RESERVE_STAKE_ACCOUNT, JITO_STAKE_POOL, JITO_WITHDRAW_AUTHORITY,
+    },
+    error::ErrorCode,
+    lp_vault_signer_seeds,
+    state::Permission,
+    LpVault, JITO_FEE_ACCOUNT,
 };
+
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Token, TokenAccount, Mint};
+use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use spl_stake_pool::instruction::StakePoolInstruction;
+
 use std::str::FromStr;
 
 #[derive(Accounts)]
@@ -12,22 +19,20 @@ pub struct JitoStake<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    #[account(
-        has_one = authority,
-    )]
+    #[account(has_one = authority)]
     pub permission: Box<Account<'info, Permission>>,
 
+    #[account(mut, has_one = vault)]
+    pub lp_vault: Box<Account<'info, LpVault>>,
+
+    #[account(mut)]
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
-        has_one = vault,
+        mut,
+        constraint = jito_vault.owner == lp_vault.key()
     )]
-    pub sol_lp_vault: Box<Account<'info, LpVault>>,
-
-    #[account(mut)]
-    pub vault: Box<Account<'info, TokenAccount>>,
-
-    // We should init this on the client side first
-    #[account(mut)]
-    pub protocol_jito_vault: Box<Account<'info, TokenAccount>>,
+    pub jito_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // Jito accounts required for CPI
     /// CHECK: Validated
@@ -41,9 +46,9 @@ pub struct JitoStake<'info> {
     pub jito_fee_account: AccountInfo<'info>,
 
     #[account(mut)]
-    pub jito_pool_token_mint: Box<Account<'info, Mint>>,
+    pub jito_pool_token_mint: Box<InterfaceAccount<'info, Mint>>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
@@ -82,13 +87,7 @@ impl<'info> JitoStake<'info> {
         );
 
         require_keys_eq!(
-            ctx.accounts.protocol_jito_vault.owner,
-            ctx.accounts.authority.key(),
-            ErrorCode::IncorrectOwner,
-        );
-
-        require_keys_eq!(
-            ctx.accounts.protocol_jito_vault.mint,
+            ctx.accounts.jito_vault.mint,
             jito_mint,
             ErrorCode::InvalidJitoPoolTokenMint
         );
@@ -101,9 +100,9 @@ impl<'info> JitoStake<'info> {
         require_gt!(amount, 0, ErrorCode::ZeroAmount);
 
         require_gt!(
-            ctx.accounts.sol_lp_vault.max_borrow,
+            ctx.accounts.lp_vault.max_borrow,
             ctx.accounts
-                .sol_lp_vault
+                .lp_vault
                 .total_borrowed
                 .checked_add(amount)
                 .ok_or(ErrorCode::ArithmeticOverflow)?,
@@ -113,17 +112,17 @@ impl<'info> JitoStake<'info> {
         Ok(())
     }
 
-    pub fn stake_into_jito(&mut self, amount: u64) -> Result<()> {
-        let protocol_jito_balance_before = self.protocol_jito_vault.amount;
+    pub fn stake_into_jito(&mut self, stake_amount: u64, min_target_amount: u64) -> Result<()> {
+        let protocol_jito_balance_before = self.jito_vault.amount;
 
         let accounts = vec![
             AccountMeta::new(self.jito_stake_pool.key(), false),
             AccountMeta::new_readonly(self.jito_withdraw_authority.key(), false),
             AccountMeta::new(self.jito_stake_pool_reserve_account.key(), false),
             AccountMeta::new(self.vault.key(), false),
-            AccountMeta::new(self.protocol_jito_vault.key(), false),
+            AccountMeta::new(self.jito_vault.key(), false),
             AccountMeta::new(self.jito_fee_account.key(), false),
-            AccountMeta::new(self.protocol_jito_vault.key(), false),
+            AccountMeta::new(self.jito_vault.key(), false),
             AccountMeta::new(self.jito_pool_token_mint.key(), false),
             AccountMeta::new_readonly(self.system_program.key(), false),
             AccountMeta::new_readonly(self.token_program.key(), false),
@@ -132,7 +131,7 @@ impl<'info> JitoStake<'info> {
         let instruction = anchor_lang::solana_program::instruction::Instruction {
             program_id: spl_stake_pool::ID,
             accounts,
-            data: StakePoolInstruction::DepositSol(amount).try_to_vec()?,
+            data: StakePoolInstruction::DepositSol(stake_amount).try_to_vec()?,
         };
 
         let account_infos = [
@@ -140,9 +139,9 @@ impl<'info> JitoStake<'info> {
             self.jito_withdraw_authority.to_account_info(),
             self.jito_stake_pool_reserve_account.to_account_info(),
             self.vault.to_account_info(),
-            self.protocol_jito_vault.to_account_info(),
+            self.jito_vault.to_account_info(),
             self.jito_fee_account.to_account_info(),
-            self.protocol_jito_vault.to_account_info(),
+            self.jito_vault.to_account_info(),
             self.jito_pool_token_mint.to_account_info(),
             self.system_program.to_account_info(),
             self.token_program.to_account_info(),
@@ -151,21 +150,24 @@ impl<'info> JitoStake<'info> {
         anchor_lang::solana_program::program::invoke_signed(
             &instruction,
             &account_infos,
-            &[lp_vault_signer_seeds!(self.sol_lp_vault)],
+            &[lp_vault_signer_seeds!(self.lp_vault)],
         )?;
 
-        self.protocol_jito_vault.reload()?;
+        self.jito_vault.reload()?;
 
-        require_gt!(
-            self.protocol_jito_vault.amount,
-            protocol_jito_balance_before,
-            ErrorCode::BalanceUnchanged
+        require_gte!(
+            self.jito_vault
+                .amount
+                .checked_sub(protocol_jito_balance_before)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?,
+            min_target_amount,
+            ErrorCode::MinTokensNotMet
         );
 
-        self.sol_lp_vault.total_borrowed = self
-            .sol_lp_vault
+        self.lp_vault.total_borrowed = self
+            .lp_vault
             .total_borrowed
-            .checked_add(amount)
+            .checked_add(stake_amount)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         Ok(())

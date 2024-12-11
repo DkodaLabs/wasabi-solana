@@ -73,9 +73,9 @@ pub enum ErrorCode {
     #[msg("Invalid Jito pool token mint")]
     InvalidJitoPoolTokenMint, // 6034
     #[msg("Invalid Jito reserve stake account address")]
-    InvalidJitoReserveAccount,
+    InvalidJitoReserveAccount, // 6035
     #[msg("Amount cannot be 0")]
-    ZeroAmount,
-    #[msg("Vault balance unchanged")]
-    BalanceUnchanged,
+    ZeroAmount, // 6036
+    #[msg("Invalid swap")]
+    InvalidSwap, // 6037
 }
