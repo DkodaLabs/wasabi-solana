@@ -35,7 +35,9 @@ impl Position {
             let principal_u128 = self.principal as u128;
             //(self.principal + net_value) * self.fees_to_be_paid
             //    / (self.fees_to_be_paid + self.down_payment + self.principal)
-            Ok(principal
+            Ok(principal_u128
+                .checked_add(net_value_u128)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_mul(fees_to_be_paid_u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_div(
@@ -63,7 +65,7 @@ impl Position {
             //   )
             //   .ok_or(ErrorCode::ArithmeticOverflow)?)
         } else {
-            let collateral_amount_u128 = self.colateral_amount as u128;
+            let collateral_amount_u128 = self.collateral_amount as u128;
             //(self.collateral_amount + net_value) * self.fees_to_be_paid
             //    / (self.fees_to_be_paid + self.collateral_amount)
             Ok(collateral_amount_u128
