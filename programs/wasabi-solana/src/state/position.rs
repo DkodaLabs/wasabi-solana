@@ -29,10 +29,10 @@ impl Position {
     pub fn compute_close_fee(&self, net_value: u64, is_long: bool) -> Result<u64> {
         let net_value_u128 = net_value as u128;
         let fees_to_be_paid_u128 = self.fees_to_be_paid as u128;
-        let down_payment_u128 = self.down_payment as u128;
-        let principal_u128 = self.principal as u128;
 
         if is_long {
+            let down_payment_u128 = self.down_payment as u128;
+            let principal_u128 = self.principal as u128;
             //(self.principal + net_value) * self.fees_to_be_paid
             //    / (self.fees_to_be_paid + self.down_payment + self.principal)
             Ok(principal
@@ -48,20 +48,20 @@ impl Position {
                 .ok_or(ErrorCode::ArithmeticOverflow)?)
             .try_into()
             .map_err(|_| ErrorCode::U64Overflow)?
-             //Ok(self
-             //   .principal
-             //   .checked_add(net_value)
-             //   .ok_or(ErrorCode::ArithmeticOverflow)?
-             //   .checked_mul(self.fees_to_be_paid)
-             //   .ok_or(ErrorCode::ArithmeticOverflow)?
-             //   .checked_div(
-             //       self.fees_to_be_paid
-             //           .checked_add(self.down_payment)
-             //           .ok_or(ErrorCode::ArithmeticOverflow)?
-             //           .checked_add(self.principal)
-             //           .ok_or(ErrorCode::ArithmeticOverflow)?,
-             //   )
-             //   .ok_or(ErrorCode::ArithmeticOverflow)?)
+            //Ok(self
+            //   .principal
+            //   .checked_add(net_value)
+            //   .ok_or(ErrorCode::ArithmeticOverflow)?
+            //   .checked_mul(self.fees_to_be_paid)
+            //   .ok_or(ErrorCode::ArithmeticOverflow)?
+            //   .checked_div(
+            //       self.fees_to_be_paid
+            //           .checked_add(self.down_payment)
+            //           .ok_or(ErrorCode::ArithmeticOverflow)?
+            //           .checked_add(self.principal)
+            //           .ok_or(ErrorCode::ArithmeticOverflow)?,
+            //   )
+            //   .ok_or(ErrorCode::ArithmeticOverflow)?)
         } else {
             let collateral_amount_u128 = self.colateral_amount as u128;
             //(self.collateral_amount + net_value) * self.fees_to_be_paid
