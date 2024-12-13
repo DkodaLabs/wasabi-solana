@@ -47,9 +47,9 @@ impl Position {
                         .checked_add(principal_u128)
                         .ok_or(ErrorCode::ArithmeticOverflow)?,
                 )
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-            .try_into()
-            .map_err(|_| ErrorCode::U64Overflow)?
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .try_into()
+                .map_err(|_| ErrorCode::U64Overflow)?)
             //Ok(self
             //   .principal
             //   .checked_add(net_value)
@@ -78,9 +78,9 @@ impl Position {
                         .checked_add(collateral_amount_u128)
                         .ok_or(ErrorCode::ArithmeticOverflow)?,
                 )
-                .ok_or(ErrorCode::ArithmeticOverflow)?)
-            .try_into()
-            .map_err(|_| ErrorCode::U64Overflow)?
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .try_into()
+                .map_err(|_| ErrorCode::U64Overflow)?)
             //Ok(self
             //    .collateral_amount
             //    .checked_add(net_value)
