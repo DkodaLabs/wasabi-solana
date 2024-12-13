@@ -19,8 +19,8 @@ pub struct InitShortPool<'info> {
     )]
     pub permission: Account<'info, Permission>,
 
-    pub collateral: InterfaceAccount<'info, Mint>,
-    pub currency: InterfaceAccount<'info, Mint>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,

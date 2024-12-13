@@ -10,6 +10,7 @@ pub trait WithdrawTrait {
 
 impl WithdrawTrait for DepositOrWithdraw<'_> {
     fn withdraw(&mut self, amount: u64) -> Result<()> {
+        require_gt!(amount, 0, ErrorCode::ZeroAmount);
         let amount_u128 = amount as u128;
         let total_assets_u128 = self.lp_vault.total_assets as u128;
         let shares_supply_u128 = self.shares_mint.supply as u128;

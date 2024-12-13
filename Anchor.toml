@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-wasabi_solana = "spicyfuhLBKM2ebrUF7jf59WDNgF7xXeLq62GyKnKrB"
+wasabi_solana = "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Mainnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [[test.genesis]] # TokenSwap program ID

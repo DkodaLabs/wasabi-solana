@@ -15,6 +15,7 @@ pub trait RedeemTrait {
 
 impl RedeemTrait for DepositOrWithdraw<'_> {
     fn redeem(&mut self, shares_amount: u64) -> Result<()> {
+        require_gt!(shares_amount, 0, ErrorCode::ZeroAmount);
         let shares_amount_u128 = shares_amount as u128;
         let total_assets_u128 = self.lp_vault.total_assets as u128;
         let shares_supply_u128 = self.shares_mint.supply as u128;
