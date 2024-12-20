@@ -78,6 +78,4 @@ pub enum ErrorCode {
     ZeroAmount, // 6036
     #[msg("Invalid swap")]
     InvalidSwap, // 6037
-    #[msg("Value must be greater than 0")]
-    ZeroAmount,
 }
