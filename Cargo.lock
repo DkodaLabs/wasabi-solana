@@ -2142,8 +2142,6 @@ dependencies = [
  "sha2 0.10.8",
  "syn 2.0.90",
  "thiserror",
- "spl-discriminator-syn",
- "syn 2.0.90",
 ]
 
 [[package]]
