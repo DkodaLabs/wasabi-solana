@@ -80,6 +80,4 @@ pub enum ErrorCode {
     InvalidSwap, // 6037
     #[msg("Vault balance unchanged")]
     BalanceUnchanged, // 6038
-    #[msg("Value must be greater than 0")]
-    ZeroAmount, // 6039
 }

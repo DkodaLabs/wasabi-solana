@@ -22,4 +22,4 @@ anchor-spl = { version = "0.30.1", features = ["metadata"] }
 serde = "=1.0.201"
 log = "0.4.22"
 mpl-token-metadata = "5.1.0"
-spl-stake-pool = "1.0.0"
+spl-stake-pool = { version = "1.0.0", features = ["no-entrypoint"] }
