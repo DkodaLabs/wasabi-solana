@@ -7,5 +7,8 @@ test-ledger
 .yarn
 .env
 devnet-program-deployer.json
+devnet_deployments.txt
+spicyfuhLBKM2ebrUF7jf59WDNgF7xXeLq62GyKnKrB.json
+spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c.json
 keypair.json
 test_mint.json

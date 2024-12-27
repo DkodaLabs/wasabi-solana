@@ -2,7 +2,7 @@ use {
     super::OpenShortPositionCleanup,
     crate::{
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::position_setup_transaction_introspection_validation, BasePool, GlobalSettings,
+        utils::setup_transaction_introspection_validation, BasePool, GlobalSettings,
         LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
@@ -122,9 +122,10 @@ impl<'info> OpenShortPositionSetup<'info> {
         );
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspection_validation(
+        setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenShortPositionCleanup::get_hash(),
+            true,
         )?;
 
         Ok(())

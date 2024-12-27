@@ -20,9 +20,10 @@ fn check_function_hash(hash: &[u8]) -> bool {
     }
 }
 
-pub fn position_setup_transaction_introspection_validation(
+pub fn setup_transaction_introspection_validation(
     sysvar_info: &AccountInfo,
     clean_up_ix_hash: [u8; 8],
+    is_position_setup: bool,
 ) -> Result<()> {
     let current_index = sysvar::instructions::load_current_index_checked(sysvar_info)? as usize;
 
@@ -31,8 +32,10 @@ pub fn position_setup_transaction_introspection_validation(
         let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
 
         if crate::ID == ixn.program_id {
-            if check_function_hash(&ixn.data[0..8]) {
-                continue;
+            if is_position_setup {
+                if check_function_hash(&ixn.data[0..8]) {
+                    continue;
+                }
             }
             return Err(ErrorCode::UnpermittedIx.into());
         }

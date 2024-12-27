@@ -62,6 +62,22 @@ pub enum ErrorCode {
     IncorrectTokenProgram, // 6028
     #[msg("The payout token account's associated mint does not match")]
     MintMismatch, // 6029
-    #[msg("Value must be greater than 0")]
-    ZeroAmount,
+    #[msg("Invalid pubkey")]
+    InvalidPubkey, // 6030
+    #[msg("Invalid Jito stake pool address")]
+    InvalidJitoStakePool, // 6031
+    #[msg("Invalid Jito stake withdraw authority address")]
+    InvalidJitoWithdrawAuthority, // 6032
+    #[msg("Invalid Jito fee account address")]
+    InvalidJitoFeeAccount, // 6033
+    #[msg("Invalid Jito pool token mint")]
+    InvalidJitoPoolTokenMint, // 6034
+    #[msg("Invalid Jito reserve stake account address")]
+    InvalidJitoReserveAccount, // 6035
+    #[msg("Amount cannot be 0")]
+    ZeroAmount, // 6036
+    #[msg("Invalid swap")]
+    InvalidSwap, // 6037
+    #[msg("Vault balance unchanged")]
+    BalanceUnchanged, // 6038
 }

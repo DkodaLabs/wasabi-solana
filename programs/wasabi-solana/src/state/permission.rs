@@ -11,6 +11,7 @@ pub const INIT_VAULT_PERMISSION: u8 = 0b00000001;
 pub const LIQUIDATE_PERMISSION: u8 = 0b00000010;
 pub const COSIGN_PERMISSION: u8 = 0b00000100;
 pub const INIT_POOL_PERMISSION: u8 = 0b00001000;
+pub const VAULT_BORROW_PERMISSION: u8 = 0b00010000;
 
 #[account]
 pub struct Permission {
@@ -41,6 +42,11 @@ impl Permission {
 
     pub fn can_init_pool(&self) -> bool {
         self.permissions_map & INIT_POOL_PERMISSION == INIT_POOL_PERMISSION
+            || self.is_super_authority
+    }
+
+    pub fn can_borrow_from_vaults(&self) -> bool {
+        self.permissions_map & VAULT_BORROW_PERMISSION == VAULT_BORROW_PERMISSION
             || self.is_super_authority
     }
 }
