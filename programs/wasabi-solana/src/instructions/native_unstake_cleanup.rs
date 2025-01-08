@@ -1,7 +1,7 @@
 use crate::{
     error::ErrorCode,
     lp_vault_signer_seeds,
-    state::{LpVault, Permission, StakeSwapRequest},
+    state::{LpVault, Permission, StakeRequest},
     utils::get_function_hash,
 };
 
@@ -9,7 +9,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Revoke, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
-pub struct UnstakeViaSwapCleanup<'info> {
+pub struct NativeUnstakeCleanup<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -20,26 +20,40 @@ pub struct UnstakeViaSwapCleanup<'info> {
     pub lp_vault: Box<Account<'info, LpVault>>,
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
+        has_one = lp_vault.key(),
+        has_one = collateral_vault.key(),
+        has_one = collateral.key(),
+        seeds = [
+            b"native_yield",
+            lp_vault.key().as_ref(),
+            collateral.key().as_ref(),
+        ],
+        bump
+    )]
+    pub native_yield: Account<'info, NativeYield>,
     #[account(
         mut,
         constraint = stake_vault.owner == lp_vault.key()
     )]
-    pub stake_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
         close = authority,
-        seeds = [b"swap_request"],
+        seeds = [b"stake_req", native_yield.key().as_ref()],
         bump,
     )]
-    pub swap_request: Account<'info, StakeSwapRequest>,
+    pub stake_request: Account<'info, StakeRequest>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-impl<'info> UnstakeViaSwapCleanup<'info> {
+impl<'info> NativeUnstakeCleanup<'info> {
     pub fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "unstake_via_swap_cleanup")
+        get_function_hash("global", "native_unstake_cleanup")
     }
 
     fn get_dst_delta(&self) -> Result<u64> {
@@ -103,7 +117,7 @@ impl<'info> UnstakeViaSwapCleanup<'info> {
         token_interface::revoke(cpi_ctx)
     }
 
-    pub fn unstake_via_swap_cleanup(&mut self) -> Result<()> {
+    pub fn unstake_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
         Ok(())

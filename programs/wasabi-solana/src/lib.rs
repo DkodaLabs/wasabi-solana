@@ -304,7 +304,7 @@ pub mod wasabi_solana {
 
     #[access_control(UnstakeViaSwapSetup::validate(&ctx, amount_in))]
     pub fn unstake_via_swap_setup(
-        ctx: Context<UnstakeViaSwapSetup>,
+        ctx: Context<UnstakeSetup>,
         amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
@@ -312,7 +312,7 @@ pub mod wasabi_solana {
             .unstake_via_swap_setup(amount_in, min_target_amount)
     }
 
-    pub fn unstake_via_swap_cleanup(ctx: Context<UnstakeViaSwapCleanup>) -> Result<()> {
+    pub fn unstake_via_swap_cleanup(ctx: Context<NativeUnstakeCleanup>) -> Result<()> {
         ctx.accounts.unstake_via_swap_cleanup()
     }
 }

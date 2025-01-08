@@ -230,3 +230,24 @@ pub struct NativeYieldClaimed {
     pub token: Pubkey,
     pub amount: u64,
 }
+
+#[event]
+pub struct NativeStaked {
+    pub vault_address: Pubkey,
+    pub amount_staked: u64,       // x - SOL
+    pub collateral_received: u64, // y - JitoSOL
+}
+
+#[event]
+pub struct NativeUnstaked {
+    pub vault_address: Pubkey, // Not actual vault address; it's asset mint.
+    pub amount_unstaked: u64,  // x - SOL
+    pub collateral_sold: u64,  // y - SOL
+}
+
+#[event]
+pub struct NativeStakedYieldClaimed {
+    pub vault_address: Pubkey,
+    pub token_address: Pubkey,
+    pub amount: u64,
+}
