@@ -298,14 +298,14 @@ pub mod wasabi_solana {
         ctx.accounts.init_native_yield(&ctx.bumps)
     }
 
-    #[access_control(NativeStakeSetup::validate(&ctx))]
+    #[access_control(NativeStakeSetup::validate(&ctx, amount_in))]
     pub fn native_stake_setup(
         ctx: Context<NativeStakeSetup>,
-        stake_amount: u64,
+        amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
         ctx.accounts
-            .native_stake_setup(stake_amount, min_target_amount)
+            .native_stake_setup(amount_in, min_target_amount)
     }
 
     pub fn native_stake_cleanup(ctx: Context<NativeStakeCleanup>) -> Result<()> {

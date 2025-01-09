@@ -12,6 +12,9 @@ pub struct ClaimNativeStakedYield<'info> {
     #[account(has_one = authority)]
     pub permission: Account<'info, Permission>,
 
+    #[account(mut)]
+    pub lp_vault: Account<'info, LpVault>,
+
     pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -26,9 +29,6 @@ pub struct ClaimNativeStakedYield<'info> {
         bump
     )]
     pub native_yield: Account<'info, NativeYield>,
-
-    #[account(mut)]
-    pub lp_vault: Account<'info, LpVault>,
 }
 
 impl<'info> ClaimNativeStakedYield<'info> {

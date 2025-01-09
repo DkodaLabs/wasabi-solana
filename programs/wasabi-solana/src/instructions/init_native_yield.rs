@@ -12,6 +12,13 @@ pub struct InitNativeYield<'info> {
     #[account(has_one = authority)]
     pub permission: Account<'info, Permission>,
 
+    #[account(has_one = vault)]
+    pub lp_vault: Account<'info, LpVault>,
+    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    pub currency: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
+
     #[account(
         init,
         payer = authority,
@@ -26,13 +33,6 @@ pub struct InitNativeYield<'info> {
     pub native_yield: Account<'info, NativeYield>,
     #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    pub currency: Box<InterfaceAccount<'info, Mint>>,
-    pub collateral: Box<InterfaceAccount<'info, Mint>>,
-
-    #[account(has_one = vault)]
-    pub lp_vault: Account<'info, LpVault>,
-    pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub system_program: Program<'info, System>,
 }

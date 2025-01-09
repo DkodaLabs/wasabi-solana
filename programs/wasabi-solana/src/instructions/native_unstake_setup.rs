@@ -83,7 +83,7 @@ impl<'info> NativeUnstakeSetup<'info> {
         Ok(())
     }
 
-    fn approve_authority_delegation(&self, amount_in: u64) -> Result<()> {
+    fn approve_authority_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.collateral_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
@@ -97,13 +97,13 @@ impl<'info> NativeUnstakeSetup<'info> {
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
 
-        token_interface::approve(cpi_ctx, amount_in)
+        token_interface::approve(cpi_ctx, amount)
     }
 
     pub fn native_unstake_setup(
-        &mut self, 
-        amount_in: u64, 
-        min_target_amount: u64, 
+        &mut self,
+        amount_in: u64,
+        min_target_amount: u64,
     ) -> Result<()> {
         self.approve_authority_delegation(amount_in)?;
 

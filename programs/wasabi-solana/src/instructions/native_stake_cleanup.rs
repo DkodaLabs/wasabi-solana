@@ -22,9 +22,6 @@ pub struct NativeStakeCleanup<'info> {
     )]
     pub stake_request: Account<'info, StakeRequest>,
 
-    #[account(mut)]
-    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
     #[account(
         mut, 
         has_one = lp_vault,
@@ -38,6 +35,10 @@ pub struct NativeStakeCleanup<'info> {
         bump,
     )]
     pub native_yield: Account<'info, NativeYield>,
+
+    #[account(mut)]
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,

@@ -52,11 +52,13 @@ pub struct NativeStakeSetup<'info> {
     pub system_program: Program<'info, System>,
     /// CHECK: Sysvar instruction check applied
     #[account(address = sysvar::instructions::ID)]
-    pub sysvar_info: AccountInfo<'info>
+    pub sysvar_info: AccountInfo<'info>,
 }
 
 impl<'info> NativeStakeSetup<'info> {
-    pub fn validate(ctx: &Context<Self>) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, amount_in: u64) -> Result<()> {
+        require_gt!(amount_in, 0, ErrorCode::ZeroAmount);
+
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
             ErrorCode::InvalidPermissions
@@ -65,7 +67,7 @@ impl<'info> NativeStakeSetup<'info> {
         setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             NativeStakeCleanup::get_hash(),
-            true,
+            false,
         )?;
 
         Ok(())
@@ -88,15 +90,15 @@ impl<'info> NativeStakeSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn native_stake_setup(&mut self, amount: u64, min_target_amount: u64) -> Result<()> {
-        self.approve_authority_delegation(amount)?;
+    pub fn native_stake_setup(&mut self, amount_in: u64, min_target_amount: u64) -> Result<()> {
+        self.approve_authority_delegation(amount_in)?;
 
         self.stake_request.set_inner(StakeRequest {
             stake_cache: StakeCache {
                 src_bal_before: self.vault.amount,
-                dst_bal_before: self.collateral_vault.amount
+                dst_bal_before: self.collateral_vault.amount,
             },
-            max_amount_in: amount,
+            max_amount_in: amount_in,
             min_target_amount,
             lp_vault_key: self.lp_vault.key(),
             native_yield: self.native_yield.key(),
