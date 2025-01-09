@@ -13,6 +13,9 @@ pub struct NativeStakeSetup<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
+    #[account(has_one = authority)]
+    pub permission: Account<'info, Permission>,
+
     #[account(mut, has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
     #[account(mut)]
@@ -58,7 +61,7 @@ impl<'info> NativeStakeSetup<'info> {
 
         setup_transaction_introspection_validation(
             &ctx.accounts.sysar_info,
-            StakeCleanup::get_hash(),
+            NativeStakeCleanup::get_hash(),
             true,
         )?;
 

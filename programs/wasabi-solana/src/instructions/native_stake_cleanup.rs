@@ -8,6 +8,9 @@ use {
 pub struct NativeStakeCleanup<'info> {
     pub authority: Signer<'info>,
 
+    #[account(has_one = authority)]
+    pub permission: Account<'info, Permission>,
+
     #[account(mut, has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,

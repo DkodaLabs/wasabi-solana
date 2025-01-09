@@ -12,7 +12,7 @@ pub struct NativeYield {
     // link to the token account holding the collateral
     pub collateral_vault: Pubkey,
     // total_amount_borrowed + total cumulative interest
-    pub total_amount_borrowed: u64,
+    pub total_borrowed_amount: u64,
     // `unix_timestamp` when the total_amount_borrowed was updated
     pub last_updated: i64,
 }

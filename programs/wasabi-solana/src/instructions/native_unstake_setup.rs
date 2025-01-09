@@ -64,7 +64,7 @@ pub struct NativeUnstakeSetup<'info> {
 
 impl<'info> NativeUnstakeSetup<'info> {
     pub fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "naitve_unstake_setup")
+        get_function_hash("global", "native_unstake_setup")
     }
 
     pub fn validate(ctx: &Context<Self>, amount_in: u64) -> Result<()> {
