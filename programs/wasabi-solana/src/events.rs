@@ -242,7 +242,7 @@ pub struct NativeStaked {
 pub struct NativeUnstaked {
     pub vault_address: Pubkey, // Not actual vault address; it's asset mint.
     pub amount_unstaked: u64,  // x - SOL
-    pub collateral_sold: u64,  // y - SOL
+    pub collateral_sold: u64,  // y - JitoSOL
 }
 
 #[event]

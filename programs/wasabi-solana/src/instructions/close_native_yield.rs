@@ -1,9 +1,10 @@
 use {
-    crate::{lp_vault_signer_seeds, LpVault, NativeYield},
-    anchor::prelude::*,
+    crate::{lp_vault_signer_seeds, LpVault, NativeYield, error::ErrorCode, Permission},
+    anchor_lang::prelude::*,
     anchor_spl::token_interface::{close_account, CloseAccount, TokenAccount, TokenInterface},
 };
 
+#[derive(Accounts)]
 pub struct CloseNativeYield<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -12,6 +13,8 @@ pub struct CloseNativeYield<'info> {
     pub permission: Account<'info, Permission>,
 
     pub lp_vault: Account<'info, LpVault>,
+
+    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         mut,
@@ -27,15 +30,8 @@ pub struct CloseNativeYield<'info> {
         bump
     )]
     pub native_yield: Account<'info, NativeYield>,
-    #[account(
-        mut,
-        associated_token::mint = collateral.key(),
-        associated_token::authority = lp_vault.key(),
-        associated_token::token_program = token_program.key(),
-    )]
+    #[account(mut)]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     // The token program that controls the collateral token
     pub token_program: Interface<'info, TokenInterface>,
@@ -44,8 +40,7 @@ pub struct CloseNativeYield<'info> {
 impl<'info> CloseNativeYield<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
-            ctx.account.permission.can_borrow_from_vaults(),
-            true,
+            ctx.accounts.permission.can_borrow_from_vaults(),
             ErrorCode::InvalidPermissions
         );
 
@@ -62,11 +57,11 @@ impl<'info> CloseNativeYield<'info> {
         let cpi_ctx = CpiContext {
             program: self.token_program.to_account_info(),
             accounts: cpi_accounts,
-            remaining_acocunts: Vec::new(),
+            remaining_accounts: Vec::new(),
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
 
-        token_interface::close_account(cpi_ctx)?;
+        close_account(cpi_ctx)?;
 
         Ok(())
     }

@@ -295,12 +295,12 @@ pub mod wasabi_solana {
 
     #[access_control(InitNativeYield::validate(&ctx))]
     pub fn init_native_yield(ctx: Context<InitNativeYield>) -> Result<()> {
-        ctx.accounts.init_native_yield(ctx.bumps)
+        ctx.accounts.init_native_yield(&ctx.bumps)
     }
 
-    #[access_control(NativeStakeSetup::validate(&ctx, stake_amount))]
+    #[access_control(NativeStakeSetup::validate(&ctx))]
     pub fn native_stake_setup(
-        ctx: Context<StakeFromVault>,
+        ctx: Context<NativeStakeSetup>,
         stake_amount: u64,
         min_target_amount: u64,
     ) -> Result<()> {
@@ -314,7 +314,7 @@ pub mod wasabi_solana {
 
     #[access_control(NativeUnstakeSetup::validate(&ctx, amount_in))]
     pub fn native_unstake_setup(
-        ctx: Context<UnstakeSetup>,
+        ctx: Context<NativeUnstakeSetup>,
         amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
@@ -336,6 +336,6 @@ pub mod wasabi_solana {
         ctx: Context<ClaimNativeStakedYield>,
         new_quote: u64,
     ) -> Result<()> {
-        ctx.accounts.claim_native_staked_yield(new_amount)
+        ctx.accounts.claim_native_staked_yield(new_quote)
     }
 }

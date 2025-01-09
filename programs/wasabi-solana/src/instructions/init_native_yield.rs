@@ -1,12 +1,10 @@
 use {
-    crate::{LpVault, NativeYield},
+    crate::{error::ErrorCode, LpVault, NativeYield, Permission},
     anchor_lang::prelude::*,
-    anchor_spl::{
-        associated_token::AssociatedToken,
-        token_interface::{Mint, TokenAccount, TokenInterface},
-    },
+    anchor_spl::token_interface::{Mint, TokenAccount},
 };
 
+#[derive(Accounts)]
 pub struct InitNativeYield<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -57,7 +55,7 @@ impl<'info> InitNativeYield<'info> {
             collateral: self.collateral.key(),
             collateral_vault: self.collateral_vault.key(),
             total_borrowed_amount: 0,
-            last_updated: Clock::get()?,
+            last_updated: Clock::get()?.unix_timestamp,
         });
 
         Ok(())

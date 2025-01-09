@@ -1,21 +1,31 @@
 use {
-    crate::{NativeYield, LpVault},
+    crate::{error::ErrorCode, LpVault, NativeYield, Permission},
     anchor_lang::prelude::*,
+    anchor_spl::token_interface::TokenAccount,
 };
 
+#[derive(Accounts)]
 pub struct ClaimNativeStakedYield<'info> {
+    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(has_one = authority)]
     pub permission: Account<'info, Permission>,
 
+    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
         mut,
+        has_one = collateral,
         has_one = lp_vault,
-        seeds = [b"native_yield", lp_vault.key().as_ref()],
+        seeds = [
+            b"native_yield", 
+            lp_vault.key().as_ref(), 
+            collateral.key().as_ref()
+        ],
         bump
     )]
-    pub native_yield: Acocunt<'info, NativeYield>,
+    pub native_yield: Account<'info, NativeYield>,
 
     #[account(mut)]
     pub lp_vault: Account<'info, LpVault>,
@@ -23,21 +33,35 @@ pub struct ClaimNativeStakedYield<'info> {
 
 impl<'info> ClaimNativeStakedYield<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
-        require!(ctx.accounts.permission.can_borrow_from_vaults(), ErrorCode::InvalidPermissions);
+        require!(
+            ctx.accounts.permission.can_borrow_from_vaults(),
+            ErrorCode::InvalidPermissions
+        );
 
         Ok(())
     }
 
     pub fn claim_native_staked_yield(&mut self, new_quote: u64) -> Result<()> {
-        self.native_yield.total_amount_borrowed = self
+        let interest_earned = self.native_yield.calculate_interest(new_quote)?;
+
+        self.native_yield.total_borrowed_amount = self
             .native_yield
-            .checked_add(
-                self.native_yield
-                    .calculate_interest(new_quote)?
-            )
+            .total_borrowed_amount
+            .checked_add(interest_earned)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        self.native_yield.last_updated = Clock::get()?;
+        self.lp_vault.total_assets = self
+            .lp_vault
+            .total_assets
+            .checked_add(interest_earned)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+        self.lp_vault.total_borrowed = self
+            .lp_vault.total_borrowed
+            .checked_add(interest_earned)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
 
         Ok(())
     }

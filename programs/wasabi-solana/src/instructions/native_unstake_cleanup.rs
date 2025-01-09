@@ -1,7 +1,8 @@
 use crate::{
     error::ErrorCode,
+    events::NativeUnstaked,
     lp_vault_signer_seeds,
-    state::{LpVault, Permission, StakeRequest},
+    state::{LpVault, NativeYield, StakeRequest},
     utils::get_function_hash,
 };
 
@@ -13,19 +14,18 @@ pub struct NativeUnstakeCleanup<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
-    #[account(has_one = authority)]
-    pub permission: Box<Account<'info, Permission>>,
-
     #[account(mut, has_one = vault)]
     pub lp_vault: Box<Account<'info, LpVault>>,
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
         mut,
-        has_one = lp_vault.key(),
-        has_one = collateral_vault.key(),
-        has_one = collateral.key(),
+        has_one = lp_vault,
+        has_one = collateral_vault,
+        has_one = collateral,
         seeds = [
             b"native_yield",
             lp_vault.key().as_ref(),
@@ -34,10 +34,7 @@ pub struct NativeUnstakeCleanup<'info> {
         bump
     )]
     pub native_yield: Account<'info, NativeYield>,
-    #[account(
-        mut,
-        constraint = stake_vault.owner == lp_vault.key()
-    )]
+    #[account(mut)]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
@@ -60,42 +57,37 @@ impl<'info> NativeUnstakeCleanup<'info> {
         Ok(self
             .vault
             .amount
-            .checked_sub(self.swap_request.swap_cache.dst_bal_before)
+            .checked_sub(self.stake_request.stake_cache.dst_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn get_src_delta(&self) -> Result<u64> {
         Ok(self
-            .swap_request
-            .swap_cache
+            .stake_request
+            .stake_cache
             .src_bal_before
-            .checked_sub(self.stake_vault.amount)
+            .checked_sub(self.collateral_vault.amount)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     pub fn validate(&self) -> Result<()> {
         // Validate the same lp vault was used in setup and cleanup
         require_keys_eq!(
-            self.swap_request.lp_vault_key,
+            self.stake_request.lp_vault_key,
             self.lp_vault.key(),
             ErrorCode::InvalidSwap,
         );
 
         require_gte!(
             self.get_dst_delta()?,
-            self.swap_request.min_target_amount,
+            self.stake_request.min_target_amount,
             ErrorCode::MinTokensNotMet,
         );
 
         require_gte!(
-            self.swap_request.max_amount_in,
+            self.stake_request.max_amount_in,
             self.get_src_delta()?,
             ErrorCode::SwapAmountExceeded,
-        );
-
-        require!(
-            self.permission.can_borrow_from_vaults(),
-            ErrorCode::InvalidPermissions
         );
 
         Ok(())
@@ -103,7 +95,7 @@ impl<'info> NativeUnstakeCleanup<'info> {
 
     fn revoke_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
-            source: self.stake_vault.to_account_info(),
+            source: self.collateral_vault.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
 
@@ -120,6 +112,27 @@ impl<'info> NativeUnstakeCleanup<'info> {
     pub fn native_unstake_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
+
+        let amount_received = self.get_dst_delta()?;
+
+        self.native_yield.total_borrowed_amount = self
+            .native_yield
+            .total_borrowed_amount
+            .checked_sub(amount_received)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+        self.lp_vault.total_borrowed = self
+            .lp_vault
+            .total_borrowed
+            .checked_sub(amount_received)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+        emit!(NativeUnstaked {
+            vault_address: self.collateral_vault.mint,
+            amount_unstaked: amount_received,
+            collateral_sold: self.get_src_delta()?,
+        });
+
         Ok(())
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     lp_vault_signer_seeds,
     error::ErrorCode,
     instructions::NativeUnstakeCleanup,
-    state::{Permission, LpVault, StakeRequest, StakeCache},
+    state::{Permission, LpVault, StakeRequest, StakeCache, NativeYield},
     utils::{setup_transaction_introspection_validation, get_function_hash}
 };
 
@@ -25,6 +25,8 @@ pub struct NativeUnstakeSetup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+
     #[account(
         mut, 
         has_one = collateral,
@@ -42,7 +44,7 @@ pub struct NativeUnstakeSetup<'info> {
     // operations
     #[account(
         mut, 
-        constraint = stake_vault.owner == lp_vault.key()
+        constraint = collateral_vault.owner == lp_vault.key()
     )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -83,7 +85,7 @@ impl<'info> NativeUnstakeSetup<'info> {
 
     fn approve_authority_delegation(&self, amount_in: u64) -> Result<()> {
         let cpi_accounts = Approve {
-            to: self.stake_vault.to_account_info(),
+            to: self.collateral_vault.to_account_info(),
             delegate: self.authority.to_account_info(),
             authority: self.lp_vault.to_account_info(),
         };
@@ -105,13 +107,13 @@ impl<'info> NativeUnstakeSetup<'info> {
     ) -> Result<()> {
         self.approve_authority_delegation(amount_in)?;
 
-        self.swap_request.set_inner(StakeRequest {
+        self.stake_request.set_inner(StakeRequest {
             min_target_amount,
             max_amount_in: amount_in,
             lp_vault_key: self.lp_vault.key(),
             native_yield: self.native_yield.key(),
-            swap_cache: StakeCache {
-                src_bal_before: self.colalteral_vault.amount,
+            stake_cache: StakeCache {
+                src_bal_before: self.collateral_vault.amount,
                 dst_bal_before: self.vault.amount,
             }
         });

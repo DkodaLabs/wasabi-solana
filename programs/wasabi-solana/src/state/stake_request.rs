@@ -18,7 +18,7 @@ pub struct StakeCache {
 /// An account that is used to cache data between the open position setup and cleanup instructions.
 #[account]
 pub struct StakeRequest {
-    pub swap_cache: StakeCache,
+    pub stake_cache: StakeCache,
     // the minimum amount of tokens received from staking
     pub min_target_amount: u64,
     // the maximum amount of tokens to be staked

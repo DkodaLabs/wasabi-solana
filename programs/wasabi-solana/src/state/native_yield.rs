@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::error::ErrorCode;
 
 #[account]
 pub struct NativeYield {
@@ -18,9 +19,9 @@ pub struct NativeYield {
 }
 
 impl NativeYield {
-    pub fn calculate_interest(new_quote: u64) -> Result<u64> {
+    pub fn calculate_interest(&self, new_quote: u64) -> Result<u64> {
         Ok(new_quote
-            .checked_sub(self.total_amount_borrowed)
+            .checked_sub(self.total_borrowed_amount)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 }

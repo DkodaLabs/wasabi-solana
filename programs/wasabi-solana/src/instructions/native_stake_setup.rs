@@ -5,7 +5,7 @@ use {
         LpVault, NativeYield, Permission, StakeCache, StakeRequest,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface, TransferChecked},
+    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
@@ -21,8 +21,7 @@ pub struct NativeStakeSetup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency: Box<InterfaceAccount<'info, Mint>>,
-    pub collateral: Box<InterfaceAccount<'info, Mint>>,
+    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(
         init,
@@ -35,32 +34,36 @@ pub struct NativeStakeSetup<'info> {
     // Init beforehand
     #[account(
         mut,
+        has_one = collateral,
         has_one = collateral_vault,
-        seeds = [b"native_yield", lp_vault.key().as_ref()],
+        has_one = lp_vault,
+        seeds = [
+            b"native_yield",
+            lp_vault.key().as_ref(),
+            collateral.key().as_ref()
+        ],
         bump,
     )]
     pub native_yield: Account<'info, NativeYield>,
     // Ensure initialised beforehand
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub currency_token_program: Interface<'info, TokenInterface>,
-    pub collateral_token_program: Interface<'info, TokenInterface>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
+    /// CHECK: Sysvar instruction check applied
+    #[account(address = sysvar::instructions::ID)]
+    pub sysvar_info: AccountInfo<'info>
 }
 
 impl<'info> NativeStakeSetup<'info> {
-    pub fn validate(ctx: &Context<Self>, last_updated: i64) -> Result<()> {
-        let now = Clock::get()?;
-
-        require_gt!(last_updated, now, ErrorCode::LastUpdatedTooSoon);
-
+    pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
             ErrorCode::InvalidPermissions
         );
 
         setup_transaction_introspection_validation(
-            &ctx.accounts.sysar_info,
+            &ctx.accounts.sysvar_info,
             NativeStakeCleanup::get_hash(),
             true,
         )?;
@@ -82,14 +85,17 @@ impl<'info> NativeStakeSetup<'info> {
             signer_seeds: &[lp_vault_signer_seeds!(self.lp_vault)],
         };
 
-        token_interface::approve(ctx_ctx, amount)
+        token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn stake_setup(&mut self, amount: u64, min_target_amount: u64) -> Result<()> {
+    pub fn native_stake_setup(&mut self, amount: u64, min_target_amount: u64) -> Result<()> {
         self.approve_authority_delegation(amount)?;
 
         self.stake_request.set_inner(StakeRequest {
-            swap_cache: SwapCache {},
+            stake_cache: StakeCache {
+                src_bal_before: self.vault.amount,
+                dst_bal_before: self.collateral_vault.amount
+            },
             max_amount_in: amount,
             min_target_amount,
             lp_vault_key: self.lp_vault.key(),
