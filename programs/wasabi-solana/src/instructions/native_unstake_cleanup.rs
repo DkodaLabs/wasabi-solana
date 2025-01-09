@@ -117,7 +117,7 @@ impl<'info> NativeUnstakeCleanup<'info> {
         token_interface::revoke(cpi_ctx)
     }
 
-    pub fn unstake_cleanup(&mut self) -> Result<()> {
+    pub fn native_unstake_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
         Ok(())

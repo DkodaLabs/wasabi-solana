@@ -98,7 +98,7 @@ impl<'info> NativeUnstakeSetup<'info> {
         token_interface::approve(cpi_ctx, amount_in)
     }
 
-    pub fn unstake_via_swap_setup(
+    pub fn native_unstake_setup(
         &mut self, 
         amount_in: u64, 
         min_target_amount: u64, 

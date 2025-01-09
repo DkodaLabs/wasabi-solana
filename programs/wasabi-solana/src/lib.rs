@@ -293,26 +293,49 @@ pub mod wasabi_solana {
         ctx.accounts.claim_position()
     }
 
-    #[access_control(StakeFromVault::validate(&ctx, stake_amount))]
-    pub fn stake_from_vault(
+    #[access_control(InitNativeYield::validate(&ctx))]
+    pub fn init_native_yield(ctx: Context<InitNativeYield>) -> Result<()> {
+        ctx.accounts.init_native_yield(ctx.bumps)
+    }
+
+    #[access_control(NativeStakeSetup::validate(&ctx, stake_amount))]
+    pub fn native_stake_setup(
         ctx: Context<StakeFromVault>,
         stake_amount: u64,
         min_target_amount: u64,
     ) -> Result<()> {
-        ctx.accounts.stake_from_vault(stake_amount, min_target_amount)
+        ctx.accounts
+            .native_stake_setup(stake_amount, min_target_amount)
     }
 
-    #[access_control(UnstakeViaSwapSetup::validate(&ctx, amount_in))]
-    pub fn unstake_via_swap_setup(
+    pub fn native_stake_cleanup(ctx: Context<NativeStakeCleanup>) -> Result<()> {
+        ctx.accounts.native_stake_cleanup()
+    }
+
+    #[access_control(NativeUnstakeSetup::validate(&ctx, amount_in))]
+    pub fn native_unstake_setup(
         ctx: Context<UnstakeSetup>,
         amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
         ctx.accounts
-            .unstake_via_swap_setup(amount_in, min_target_amount)
+            .native_unstake_setup(amount_in, min_target_amount)
     }
 
-    pub fn unstake_via_swap_cleanup(ctx: Context<NativeUnstakeCleanup>) -> Result<()> {
-        ctx.accounts.unstake_via_swap_cleanup()
+    pub fn native_unstake_cleanup(ctx: Context<NativeUnstakeCleanup>) -> Result<()> {
+        ctx.accounts.native_unstake_cleanup()
+    }
+
+    #[access_control(CloseNativeYield::validate(&ctx))]
+    pub fn close_native_yield(ctx: Context<CloseNativeYield>) -> Result<()> {
+        ctx.accounts.close_native_yield()
+    }
+
+    #[access_control(ClaimNativeStakedYield::validate(&ctx))]
+    pub fn claim_native_staked_yield(
+        ctx: Context<ClaimNativeStakedYield>,
+        new_quote: u64,
+    ) -> Result<()> {
+        ctx.accounts.claim_native_staked_yield(new_amount)
     }
 }

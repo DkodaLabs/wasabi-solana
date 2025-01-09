@@ -1,5 +1,5 @@
 pub mod claim_position;
-pub mod claim_yield;
+pub mod claim_native_staked_yield;
 pub mod close_long_position_cleanup;
 pub mod close_long_position_setup;
 pub mod close_native_yield;
@@ -48,7 +48,7 @@ pub mod update_vault_max_borrow;
 pub mod withdraw;
 
 pub use claim_position::*;
-pub use claim_yield::*;
+pub use claim_native_staked_yield::*;
 pub use close_long_position_cleanup::*;
 pub use close_long_position_setup::*;
 pub use close_native_yield::*;
