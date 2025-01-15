@@ -63,6 +63,13 @@ impl<'info> ClaimNativeStakedYield<'info> {
 
         self.native_yield.last_updated = Clock::get()?.unix_timestamp;
 
+        emit!(ClaimedNativeStakedYield {
+            native_yield: self.native_yield.key(),
+            vault_address: self.native_yield.currency,
+            colleteral: self.collateral.key(),
+            amount: interest_earned,
+        });
+
         Ok(())
     }
 }

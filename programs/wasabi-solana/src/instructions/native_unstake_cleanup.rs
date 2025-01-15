@@ -128,7 +128,9 @@ impl<'info> NativeUnstakeCleanup<'info> {
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         emit!(NativeUnstaked {
+            native_yield: self.native_yield.key(),
             vault_address: self.collateral_vault.mint,
+            collateral: self.collateral.key(),
             amount_unstaked: amount_received,
             collateral_sold: self.get_src_delta()?,
         });

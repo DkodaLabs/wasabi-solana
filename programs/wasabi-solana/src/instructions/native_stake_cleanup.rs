@@ -116,7 +116,9 @@ impl<'info> NativeStakeCleanup<'info> {
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         emit!(NativeStaked {
+            native_yield: self.native_yield.key(),
             vault_address: self.lp_vault.key(),
+            collateral: self.collateral.key(),
             amount_staked: amount_sent,
             collateral_received: self.get_dst_delta()?,
         });
