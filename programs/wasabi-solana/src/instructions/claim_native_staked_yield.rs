@@ -1,5 +1,5 @@
 use {
-    crate::{error::ErrorCode, LpVault, NativeYield, Permission},
+    crate::{error::ErrorCode, LpVault, NativeYield, Permission, events::NativeStakedYieldClaimed},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::TokenAccount,
 };
@@ -63,10 +63,10 @@ impl<'info> ClaimNativeStakedYield<'info> {
 
         self.native_yield.last_updated = Clock::get()?.unix_timestamp;
 
-        emit!(ClaimedNativeStakedYield {
+        emit!(NativeStakedYieldClaimed{
             native_yield: self.native_yield.key(),
             vault_address: self.native_yield.currency,
-            colleteral: self.collateral.key(),
+            collateral: self.collateral.key(),
             amount: interest_earned,
         });
 

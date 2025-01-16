@@ -85,7 +85,7 @@ impl<'info> Donate<'info> {
             source: self.owner.key(),
             vault: self.lp_vault.shares_mint,
             token: self.lp_vault.asset,
-            amount: amount,
+            amount,
         });
 
         Ok(())

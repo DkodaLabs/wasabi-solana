@@ -1,12 +1,11 @@
 # Configuration
 wasabi_ts := "/Users/a7rs/Projects/Dkoda/wasabi-solana-ts"
 interest_test_program := "/Users/a7rs/Projects/Solana/interest_bearing_token_test"
-buffer_increase := "0"
 
 # Program Configuration
 program_name := "wasabi_solana"
 program_keypair := "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c.json"
-deployment_keypair := "/Users/a7rs/.config/solana/id.json"
+deployment_keypair := "/Users/a7rs/.config/solana/deploy.json"
 
 # Program Parameters
 super_admin := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
@@ -159,7 +158,7 @@ configure-accounts:
 
 local-deploy: validator (deploy "localnet") configure
 
-update C +BUFFER_INCREASE=buffer_increase:
+update C buffer_len="0":
     #!/usr/bin/env bash
     just set-cluster {{C}}
     ALIAS=$(just cluster-alias $(just get-cluster))
@@ -171,11 +170,15 @@ update C +BUFFER_INCREASE=buffer_increase:
 
     # Get current program size and calculate new buffer length
     PROGRAM_ID=$(solana address -k {{program_keypair}})
-    CURRENT_LEN=$(solana program show $PROGRAM_ID | grep "Program data len:" | awk '{print $4}')
-    NEW_LEN=$(echo "$CURRENT_LEN * (100 + {{BUFFER_INCREASE}}) / 100" | bc)
+    echo "Program ID: $PROGRAM_ID"
+    CURRENT_LEN=$(solana program show $PROGRAM_ID --output json | jq '.dataLen')
+    NEW_LEN=$(echo "($CURRENT_LEN * (100 + {{buffer_len}})) / 100" | bc)
 
     echo "Current length: $CURRENT_LEN"
     echo "New buffer length: $NEW_LEN"
+
+    echo "Extending program buffer..."
+    solana program extend $PROGRAM_ID $NEW_LEN
 
     echo "Updating program..."
     anchor deploy \
@@ -183,4 +186,3 @@ update C +BUFFER_INCREASE=buffer_increase:
         --program-keypair "{{program_keypair}}" \
         --provider.cluster "$(just get-cluster)" \
         --provider.wallet "{{deployment_keypair}}" \
-        --buffer-len $NEW_LEN
