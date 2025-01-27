@@ -5,7 +5,7 @@ use {
         LpVault, NativeYield, Permission, StakeCache, StakeRequest,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface},
+    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterfacem, Mint},
 };
 
 #[derive(Accounts)]
@@ -21,7 +21,7 @@ pub struct NativeStakeSetup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,

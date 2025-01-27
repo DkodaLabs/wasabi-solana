@@ -7,7 +7,7 @@ use crate::{
 };
 
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, Revoke, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{self, Revoke, TokenAccount, Mint, TokenInterface};
 
 #[derive(Accounts)]
 pub struct NativeUnstakeCleanup<'info> {
@@ -19,7 +19,7 @@ pub struct NativeUnstakeCleanup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,

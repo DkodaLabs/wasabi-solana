@@ -10,7 +10,7 @@ use anchor_lang::{
     prelude::*,
     solana_program::sysvar,
 };
-use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, Approve};
+use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, Approve, Mint};
 
 #[derive(Accounts)]
 pub struct NativeUnstakeSetup<'info> {
@@ -25,7 +25,7 @@ pub struct NativeUnstakeSetup<'info> {
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut, 

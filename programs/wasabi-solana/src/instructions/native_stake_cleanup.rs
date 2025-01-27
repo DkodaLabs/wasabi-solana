@@ -1,7 +1,7 @@
 use {
     crate::{error::ErrorCode, NativeYield,  StakeRequest, lp_vault_signer_seeds, LpVault, utils::get_function_hash, events::NativeStaked},
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{Revoke, TokenAccount, TokenInterface, revoke},
+    anchor_spl::token_interface::{Revoke, TokenAccount, TokenInterface, Mint, revoke},
 };
 
 #[derive(Accounts)]
@@ -12,7 +12,7 @@ pub struct NativeStakeCleanup<'info> {
     pub lp_vault: Account<'info, LpVault>,
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
