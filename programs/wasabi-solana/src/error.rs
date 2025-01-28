@@ -70,4 +70,8 @@ pub enum ErrorCode {
     InvalidSwap, // 6032
     #[msg("Vault balance unchanged")]
     BalanceUnchanged, // 6033
+    #[msg("Source overflow")]
+    SourceOverflow, // 6034
+    #[msg("Destionation overflow")]
+    DestionationOverflow, // 6035
 }

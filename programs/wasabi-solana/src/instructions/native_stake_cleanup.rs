@@ -10,6 +10,7 @@ pub struct NativeStakeCleanup<'info> {
 
     #[account(mut, has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
+    #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub collateral: Box<InterfaceAccount<'info, Mint>>,
@@ -70,16 +71,16 @@ impl<'info> NativeStakeCleanup<'info> {
             .collateral_vault
             .amount
             .checked_sub(self.stake_request.stake_cache.dst_bal_before)
-            .ok_or(ErrorCode::ArithmeticOverflow)?)
+            .ok_or(ErrorCode::DestionationOverflow)?)
     }
 
     #[inline]
     fn get_src_delta(&self) -> Result<u64> {
         Ok(self
-            .vault
-            .amount
-            .checked_sub(self.stake_request.stake_cache.src_bal_before)
-            .ok_or(ErrorCode::ArithmeticUnderflow)?)
+            .stake_request.stake_cache
+            .src_bal_before
+            .checked_sub(self.vault.amount)
+            .ok_or(ErrorCode::SourceOverflow)?)
     }
 
     fn revoke_delegation(&self) -> Result<()> {
@@ -114,6 +115,8 @@ impl<'info> NativeStakeCleanup<'info> {
             .lp_vault.total_borrowed
             .checked_add(amount_sent)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
 
         emit!(NativeStaked {
             native_yield: self.native_yield.key(),

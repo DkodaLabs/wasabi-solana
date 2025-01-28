@@ -127,6 +127,8 @@ impl<'info> NativeUnstakeCleanup<'info> {
             .checked_sub(amount_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
+        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
+
         emit!(NativeUnstaked {
             native_yield: self.native_yield.key(),
             vault_address: self.collateral_vault.mint,

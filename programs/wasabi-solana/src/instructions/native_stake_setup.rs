@@ -5,7 +5,7 @@ use {
         LpVault, NativeYield, Permission, StakeCache, StakeRequest,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterfacem, Mint},
+    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface, Mint},
 };
 
 #[derive(Accounts)]
