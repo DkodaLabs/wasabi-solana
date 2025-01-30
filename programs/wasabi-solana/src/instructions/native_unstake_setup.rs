@@ -5,7 +5,6 @@ use crate::{
     state::{Permission, LpVault, StakeRequest, StakeCache, NativeYield},
     utils::{setup_transaction_introspection_validation, get_function_hash}
 };
-
 use anchor_lang::{
     prelude::*,
     solana_program::sysvar,
@@ -40,10 +39,11 @@ pub struct NativeUnstakeSetup<'info> {
         bump,
     )]
     pub native_yield: Account<'info, NativeYield>,
+
     // Should init beforehand - is owned by the `lp_vault` so only the `lp_vault` can sign
     // operations
     #[account(
-        mut, 
+        mut,
         constraint = collateral_vault.owner == lp_vault.key()
     )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,

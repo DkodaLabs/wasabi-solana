@@ -46,6 +46,7 @@ pub struct NativeStakeSetup<'info> {
     )]
     pub native_yield: Account<'info, NativeYield>,
     // Ensure initialised beforehand
+    #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,

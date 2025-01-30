@@ -37,7 +37,10 @@ pub struct NativeStakeCleanup<'info> {
     )]
     pub native_yield: Account<'info, NativeYield>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = collateral_vault.owner == lp_vault.key(),
+    )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
 
