@@ -12,7 +12,7 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(nonce: u16)]
+#[instruction(nonce: u32)]
 pub struct OpenShortPositionSetup<'info> {
     #[account(mut)]
     /// The wallet that owns the assets
@@ -191,7 +191,7 @@ impl<'info> OpenShortPositionSetup<'info> {
 
     pub fn open_short_position_setup(
         &mut self,
-        #[allow(unused_variables)] nonce: u16,
+        #[allow(unused_variables)] nonce: u32,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
