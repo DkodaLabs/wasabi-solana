@@ -6,15 +6,21 @@ use {
 
 #[derive(Accounts)]
 pub struct NativeStakeCleanup<'info> {
+    /// The account that has permission to borrow from the vaults
     pub authority: Signer<'info>,
 
+    /// The lp vault being borrowed from
     #[account(mut, has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
+
+    /// The token account for the asset which the lp vault holds
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// The mint of the token that will be received for staking the vault asset
     pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
+    /// Temporary 'cache' account to store the state of the stake request between instructions
     #[account(
         mut,
         close = authority,
@@ -23,6 +29,7 @@ pub struct NativeStakeCleanup<'info> {
     )]
     pub stake_request: Account<'info, StakeRequest>,
 
+    /// The 'strategy'
     #[account(
         mut, 
         has_one = lp_vault,
@@ -37,6 +44,7 @@ pub struct NativeStakeCleanup<'info> {
     )]
     pub native_yield: Account<'info, NativeYield>,
 
+    /// The lp vault's collateral token account
     #[account(
         mut,
         constraint = collateral_vault.owner == lp_vault.key(),
@@ -69,6 +77,7 @@ impl<'info> NativeStakeCleanup<'info> {
         Ok(())
     }
 
+    // The difference between the lp vault's collateral token account before and after staking
     fn get_dst_delta(&self) -> Result<u64> {
         Ok(self
             .collateral_vault
@@ -77,6 +86,7 @@ impl<'info> NativeStakeCleanup<'info> {
             .ok_or(ErrorCode::DestionationOverflow)?)
     }
 
+    // The difference between the lp vault's asset token account before and after staking
     #[inline]
     fn get_src_delta(&self) -> Result<u64> {
         Ok(self
@@ -86,6 +96,7 @@ impl<'info> NativeStakeCleanup<'info> {
             .ok_or(ErrorCode::SourceOverflow)?)
     }
 
+    // Revoke the authority's permission to stake on behalf of the lp vault
     fn revoke_delegation(&self) -> Result<()> {
         let cpi_accounts = Revoke {
             source: self.vault.to_account_info(),
@@ -108,6 +119,8 @@ impl<'info> NativeStakeCleanup<'info> {
 
         let amount_sent = self.get_src_delta()?;
 
+        // Increase the total borrowed amount in the lp vault and strategy by
+        // the amount that was staked
         self.native_yield.total_borrowed_amount = self
             .native_yield
             .total_borrowed_amount

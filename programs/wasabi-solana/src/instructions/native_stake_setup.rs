@@ -10,19 +10,24 @@ use {
 
 #[derive(Accounts)]
 pub struct NativeStakeSetup<'info> {
+    /// The account that has permission to borrow from the vaults
     #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(has_one = authority)]
     pub permission: Account<'info, Permission>,
 
+    /// The lp vault being borrowed from
     #[account(mut, has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
+    /// The token account for the asset which the lp vault holds
     #[account(mut)]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// The mint of the token that will be received for staking the vault asset
     pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
+    /// Temporary 'cache' account to store the state of the stake request between instructions
     #[account(
         init,
         payer = authority,
@@ -31,6 +36,8 @@ pub struct NativeStakeSetup<'info> {
         space = 8 + std::mem::size_of::<StakeRequest>()
     )]
     pub stake_request: Account<'info, StakeRequest>,
+
+    /// The 'strategy'
     // Init beforehand
     #[account(
         mut,
@@ -45,6 +52,9 @@ pub struct NativeStakeSetup<'info> {
         bump,
     )]
     pub native_yield: Account<'info, NativeYield>,
+
+    /// The lp vault's token account 
+    /// Holds the 'collateral' token
     // Ensure initialised beforehand
     #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
@@ -65,6 +75,7 @@ impl<'info> NativeStakeSetup<'info> {
             ErrorCode::InvalidPermissions
         );
 
+        // Ensure there is a clean up instruction
         setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             NativeStakeCleanup::get_hash(),
@@ -74,6 +85,7 @@ impl<'info> NativeStakeSetup<'info> {
         Ok(())
     }
 
+    // Approve the authority to stake the given amount on behalf of the lp vault
     fn approve_authority_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.vault.to_account_info(),

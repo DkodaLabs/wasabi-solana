@@ -6,19 +6,24 @@ use {
 
 #[derive(Accounts)]
 pub struct InitNativeYield<'info> {
+    /// The account that has permission to borrow from the vaults
     #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(has_one = authority)]
     pub permission: Account<'info, Permission>,
 
+    /// The lp vault being borrowed from
     #[account(has_one = vault)]
     pub lp_vault: Account<'info, LpVault>,
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
+    /// The mint of the asset held by the lp vault
     pub currency: Box<InterfaceAccount<'info, Mint>>,
+    /// The mint of the token received for staking the lp vault asset
     pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
+    /// The 'strategy'
     #[account(
         init,
         payer = authority,
@@ -31,6 +36,8 @@ pub struct InitNativeYield<'info> {
         space = 8 + std::mem::size_of::<NativeYield>(),
     )]
     pub native_yield: Account<'info, NativeYield>,
+
+    /// The lp vault's collateral token account
     #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
