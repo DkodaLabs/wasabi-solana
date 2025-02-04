@@ -55,16 +55,7 @@ pub struct InitLpVault<'info> {
     pub shares_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// CHECK
-    #[account(
-        mut,
-        seeds = [
-            b"metadata",
-            token_metadata_program.key().as_ref(),
-            shares_mint.key().as_ref(),
-        ],
-        bump,
-        seeds::program = token_metadata_program.key(),
-    )]
+    #[account(mut)]
     pub shares_metadata: AccountInfo<'info>,
 
     pub asset_token_program: Interface<'info, TokenInterface>,
@@ -88,6 +79,22 @@ impl<'info> InitLpVault<'info> {
         require!(
             ctx.accounts.permission.can_init_vault(),
             ErrorCode::InvalidPermissions
+        );
+
+        let shares_metadata_address = Pubkey::find_program_address(
+            &[
+                b"metadata",
+                ctx.accounts.token_metadata_program.key().as_ref(),
+                ctx.accounts.shares_mint.key().as_ref(),
+            ],
+            &ctx.accounts.token_metadata_program.key(),
+        )
+        .0;
+
+        require_keys_eq!(
+            ctx.accounts.shares_metadata.key(),
+            shares_metadata_address,
+            ErrorCode::InvalidMetadata
         );
         Ok(())
     }

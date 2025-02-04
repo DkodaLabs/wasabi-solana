@@ -63,5 +63,7 @@ pub enum ErrorCode {
     #[msg("The payout token account's associated mint does not match")]
     MintMismatch, // 6029
     #[msg("Value must be greater than 0")]
-    ZeroAmount,
+    ZeroAmount, // 6030
+    #[msg("Invalid metadata accounts")]
+    InvalidMetadata, // 6031
 }

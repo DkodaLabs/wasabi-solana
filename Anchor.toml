@@ -11,7 +11,7 @@ wasabi_solana = "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [[test.genesis]] # TokenSwap program ID
