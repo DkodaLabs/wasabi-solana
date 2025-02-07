@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import { assert } from "chai";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import {assert} from "chai";
+import {WasabiSolana} from "../target/types/wasabi_solana";
 import {
     createTransferInstruction,
     getAssociatedTokenAddressSync,
@@ -20,9 +20,9 @@ import {
     tokenMintB,
     feeWalletKeypair,
 } from "./rootHooks";
-import { getMultipleTokenAccounts } from "./utils";
-import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
-import { web3 } from "@coral-xyz/anchor";
+import {getMultipleTokenAccounts} from "./utils";
+import {TOKEN_SWAP_PROGRAM_ID, TokenSwap} from "@solana/spl-token-swap";
+import {web3} from "@coral-xyz/anchor";
 
 describe("OpenLongPosition", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -427,7 +427,7 @@ describe("OpenLongPosition", () => {
                     })
                     .preInstructions([setupIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .rpc({skipPreflight: true});
                 assert.ok(false);
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
@@ -901,7 +901,7 @@ describe("OpenLongPosition", () => {
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([NON_SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .rpc({skipPreflight: true});
                 assert.ok(false);
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
@@ -912,6 +912,170 @@ describe("OpenLongPosition", () => {
                     console.log(err);
                     assert.ok(false);
                 }
+            }
+        });
+    });
+
+    describe("With same nonce", () => {
+        it("should fail", async () => {
+            // Open first position
+            const nonce = 1;
+
+            const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("position"),
+                    program.provider.publicKey.toBuffer(),
+                    longPoolBKey.toBuffer(),
+                    lpVaultKey.toBuffer(),
+                    new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
+                ],
+                program.programId,
+            );
+            const now = new Date().getTime() / 1_000;
+
+            const downPayment = new anchor.BN(1_000);
+            // amount to be borrowed
+            const principal = new anchor.BN(1_000);
+            const swapAmount = downPayment.add(principal);
+            const minimumAmountOut = new anchor.BN(1_900);
+            const [signerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("admin"),
+                    SWAP_AUTHORITY.publicKey.toBuffer(),
+                ],
+                program.programId,
+            );
+
+            const args = {
+                nonce,
+                minTargetAmount: minimumAmountOut,
+                downPayment,
+                principal,
+                fee: new anchor.BN(10),
+                expiration: new anchor.BN(now + 3_600),
+            }
+
+            const setupIx = await program.methods
+                .openLongPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
+                .accountsPartial({
+                    owner: program.provider.publicKey,
+                    lpVault: lpVaultKey,
+                    pool: longPoolBKey,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
+                    authority: SWAP_AUTHORITY.publicKey,
+                    permission: signerPermission,
+                    feeWallet: feeWalletA,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .instruction();
+            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                [abSwapKey.publicKey.toBuffer()],
+                TOKEN_SWAP_PROGRAM_ID,
+            );
+            const swapIx = TokenSwap.swapInstruction(
+                abSwapKey.publicKey,
+                swapAuthority,
+                SWAP_AUTHORITY.publicKey,
+                longPoolBCurrencyVaultKey,
+                swapTokenAccountA,
+                swapTokenAccountB,
+                longPoolBVaultKey,
+                poolMint,
+                poolFeeAccount,
+                null,
+                tokenMintA,
+                tokenMintB,
+                TOKEN_SWAP_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                BigInt(swapAmount.toString()),
+                BigInt(minimumAmountOut.toString()),
+            );
+            try {
+                await program.methods
+                    .openLongPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        pool: longPoolBKey,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([setupIx, swapIx])
+                    .signers([NON_SWAP_AUTHORITY])
+                    .rpc({skipPreflight: true});
+            } catch (err) {
+                console.error(err);
+                assert.ok(false);
+            }
+
+            // Open second position
+            args.expiration = new anchor.BN(new Date().getTime() / 1_000);
+
+            const setupIxNew = await program.methods
+                .openLongPositionSetup(
+                    args.nonce,
+                    args.minTargetAmount,
+                    args.downPayment,
+                    args.principal,
+                    args.fee,
+                    args.expiration,
+                )
+                .accountsPartial({
+                    owner: program.provider.publicKey,
+                    lpVault: lpVaultKey,
+                    pool: longPoolBKey,
+                    collateral: tokenMintB,
+                    currency: tokenMintA,
+                    authority: SWAP_AUTHORITY.publicKey,
+                    permission: signerPermission,
+                    feeWallet: feeWalletA,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                })
+                .instruction();
+            const swapIxNew = TokenSwap.swapInstruction(
+                abSwapKey.publicKey,
+                swapAuthority,
+                SWAP_AUTHORITY.publicKey,
+                longPoolBCurrencyVaultKey,
+                swapTokenAccountA,
+                swapTokenAccountB,
+                longPoolBVaultKey,
+                poolMint,
+                poolFeeAccount,
+                null,
+                tokenMintA,
+                tokenMintB,
+                TOKEN_SWAP_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                TOKEN_PROGRAM_ID,
+                BigInt(swapAmount.toString()),
+                BigInt(minimumAmountOut.toString()),
+            );
+            try {
+                await program.methods
+                    .openLongPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        pool: longPoolBKey,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([setupIxNew, swapIxNew])
+                    .signers([NON_SWAP_AUTHORITY])
+                    .rpc({skipPreflight: true});
+            } catch (err) {
+                console.error(err);
+                assert.ok(err.toString().includes(`"Account"`));
             }
         });
     });

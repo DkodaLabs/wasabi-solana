@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
-import { SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
+import {WasabiSolana} from "../target/types/wasabi_solana";
+import {SYSVAR_INSTRUCTIONS_PUBKEY} from '@solana/web3.js';
 import {
     abSwapKey,
     NON_SWAP_AUTHORITY,
@@ -22,10 +22,10 @@ import {
     TOKEN_PROGRAM_ID,
     TOKEN_2022_PROGRAM_ID,
 } from "@solana/spl-token";
-import { getMultipleTokenAccounts } from "./utils";
-import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
-import { assert } from "chai";
-import { web3 } from "@coral-xyz/anchor";
+import {getMultipleTokenAccounts} from "./utils";
+import {TOKEN_SWAP_PROGRAM_ID, TokenSwap} from "@solana/spl-token-swap";
+import {assert} from "chai";
+import {web3} from "@coral-xyz/anchor";
 
 describe("OpenShortPosition", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -478,7 +478,7 @@ describe("OpenShortPosition", () => {
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .rpc({skipPreflight: true});
 
             } catch (err) {
                 console.log(err);
@@ -628,7 +628,7 @@ describe("OpenShortPosition", () => {
                     })
                     .preInstructions([setupIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .rpc({skipPreflight: true});
                 assert.ok(false);
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
@@ -971,7 +971,7 @@ describe("OpenShortPosition", () => {
                     })
                     .preInstructions([setupIx, swapIx])
                     .signers([SWAP_AUTHORITY])
-                    .rpc({ skipPreflight: true });
+                    .rpc({skipPreflight: true});
                 assert.ok(false);
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
@@ -1099,6 +1099,226 @@ describe("OpenShortPosition", () => {
                 // is not delegated more than `down_payment` + `principal`.
                 assert.ok(
                     err.toString().includes(`"InstructionError":[2,{"Custom":1}]`),
+                );
+            }
+        });
+    });
+
+    describe("With the same nonce", () => {
+        it("Should fail", async () => {
+            const nonce = 100;
+            const [positionKey] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("position"),
+                    program.provider.publicKey.toBuffer(),
+                    shortPoolAKey.toBuffer(),
+                    lpVaultKey.toBuffer(),
+                    new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
+                ],
+                program.programId,
+            );
+            const now = new Date().getTime() / 1_000;
+
+            const downPayment = new anchor.BN(1_000);
+            // amount to be borrowed
+            const principal = new anchor.BN(1_000);
+            const minTargetAmount = new anchor.BN(0);
+            const transferAmount = 1_000;
+            try {
+                const transferIX = createTransferInstruction(
+                    ownerTokenB,
+                    shortPoolACurrencyVaultKey,
+                    program.provider.publicKey,
+                    transferAmount,
+                );
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
+                const setupIx = await program.methods
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
+                    .accountsPartial({
+                        owner: program.provider.publicKey,
+                        lpVault: lpVaultKey,
+                        pool: shortPoolAKey,
+                        currency: tokenMintB,
+                        collateral: tokenMintA,
+                        permission: coSignerPermission,
+                        authority: SWAP_AUTHORITY.publicKey,
+                        feeWallet: feeWalletA,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .instruction();
+                const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                    [abSwapKey.publicKey.toBuffer()],
+                    TOKEN_SWAP_PROGRAM_ID,
+                );
+
+                const swapIx = TokenSwap.swapInstruction(
+                    abSwapKey.publicKey,
+                    swapAuthority,
+                    SWAP_AUTHORITY.publicKey,
+                    shortPoolACurrencyVaultKey,
+                    swapTokenAccountB,
+                    swapTokenAccountA,
+                    shortPoolAVaultKey,
+                    poolMint,
+                    poolFeeAccount,
+                    null,
+                    tokenMintB,
+                    tokenMintA,
+                    TOKEN_SWAP_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    BigInt(downPayment.add(principal).toString()),
+                    BigInt(0),
+                );
+                const _tx = await program.methods
+                    .openShortPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        pool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([transferIX, setupIx, swapIx])
+                    .transaction();
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+                assert.ok(false);
+            } catch (err) {
+                // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
+                // is not delegated more than `down_payment` + `principal`.
+                assert.ok(
+                    err.toString().includes(`"InstructionError":[2,{"Custom":1}]`),
+                );
+            }
+
+            try {
+                const transferIX = createTransferInstruction(
+                    ownerTokenB,
+                    shortPoolACurrencyVaultKey,
+                    program.provider.publicKey,
+                    transferAmount,
+                );
+                const args = {
+                    nonce,
+                    minTargetAmount,
+                    downPayment,
+                    principal,
+                    fee: new anchor.BN(10),
+                    expiration: new anchor.BN(now + 3_600),
+                };
+                const setupIx = await program.methods
+                    .openShortPositionSetup(
+                        args.nonce,
+                        args.minTargetAmount,
+                        args.downPayment,
+                        args.principal,
+                        args.fee,
+                        args.expiration,
+                    )
+                    .accountsPartial({
+                        owner: program.provider.publicKey,
+                        lpVault: lpVaultKey,
+                        pool: shortPoolAKey,
+                        currency: tokenMintB,
+                        collateral: tokenMintA,
+                        permission: coSignerPermission,
+                        authority: SWAP_AUTHORITY.publicKey,
+                        feeWallet: feeWalletA,
+                        currencyTokenProgram: TOKEN_PROGRAM_ID,
+                        collateralTokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .instruction();
+                const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+                    [abSwapKey.publicKey.toBuffer()],
+                    TOKEN_SWAP_PROGRAM_ID,
+                );
+
+                const swapIx = TokenSwap.swapInstruction(
+                    abSwapKey.publicKey,
+                    swapAuthority,
+                    SWAP_AUTHORITY.publicKey,
+                    shortPoolACurrencyVaultKey,
+                    swapTokenAccountB,
+                    swapTokenAccountA,
+                    shortPoolAVaultKey,
+                    poolMint,
+                    poolFeeAccount,
+                    null,
+                    tokenMintB,
+                    tokenMintA,
+                    TOKEN_SWAP_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    TOKEN_PROGRAM_ID,
+                    BigInt(downPayment.add(principal).toString()),
+                    BigInt(0),
+                );
+                const _tx = await program.methods
+                    .openShortPositionCleanup()
+                    .accounts({
+                        owner: program.provider.publicKey,
+                        pool: shortPoolAKey,
+                        //@ts-ignore
+                        lpVault: lpVaultKey,
+                        collateral: tokenMintA,
+                        currency: tokenMintB,
+                        position: positionKey,
+                        tokenProgram: TOKEN_PROGRAM_ID,
+                    })
+                    .preInstructions([transferIX, setupIx, swapIx])
+                    .transaction();
+                const connection = program.provider.connection;
+                const lookupAccount = await connection
+                    .getAddressLookupTable(openPosLut)
+                    .catch(() => null);
+                const message = new web3.TransactionMessage({
+                    instructions: _tx.instructions,
+                    payerKey: program.provider.publicKey!,
+                    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+                }).compileToV0Message([lookupAccount.value]);
+
+                const tx = new web3.VersionedTransaction(message);
+                await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY], {
+                    skipPreflight: true,
+                });
+                assert.ok(false);
+            } catch (err) {
+                // should fail due to `InsufficientFunds` on the TokenSwap program since the `owner`
+                // is not delegated more than `down_payment` + `principal`.
+                assert.ok(
+                    err.toString().includes(`"Account"`),
                 );
             }
         });
