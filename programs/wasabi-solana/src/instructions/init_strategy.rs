@@ -1,11 +1,11 @@
 use {
-    crate::{error::ErrorCode, LpVault, NativeYield, Permission},
+    crate::{error::ErrorCode, LpVault, Strategy, Permission},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{Mint, TokenAccount},
 };
 
 #[derive(Accounts)]
-pub struct InitNativeYield<'info> {
+pub struct InitStrategy<'info> {
     /// The account that has permission to borrow from the vaults
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -28,14 +28,14 @@ pub struct InitNativeYield<'info> {
         init,
         payer = authority,
         seeds = [
-            b"native_yield", 
+            b"strategy",
             lp_vault.key().as_ref(),
             collateral.key().as_ref(),
         ],
         bump,
-        space = 8 + std::mem::size_of::<NativeYield>(),
+        space = 8 + std::mem::size_of::<Strategy>(),
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
 
     /// The lp vault's collateral token account
     #[account(constraint = collateral_vault.owner == lp_vault.key())]
@@ -44,7 +44,7 @@ pub struct InitNativeYield<'info> {
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> InitNativeYield<'info> {
+impl<'info> InitStrategy<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
@@ -54,9 +54,9 @@ impl<'info> InitNativeYield<'info> {
         Ok(())
     }
 
-    pub fn init_native_yield(&mut self, bumps: &InitNativeYieldBumps) -> Result<()> {
-        self.native_yield.set_inner(NativeYield {
-            bump: bumps.native_yield,
+    pub fn init_strategy(&mut self, bumps: &InitStrategyBumps) -> Result<()> {
+        self.strategy.set_inner(Strategy {
+            bump: bumps.strategy,
             lp_vault: self.lp_vault.key(),
             currency: self.currency.key(),
             collateral: self.collateral.key(),

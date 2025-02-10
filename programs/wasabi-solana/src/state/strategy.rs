@@ -8,7 +8,7 @@ pub struct Strategy {
     pub lp_vault: Pubkey,
     // mint of the token that is being borrowed
     pub currency: Pubkey,
-    // mint of the token that is being held as collateral
+    // mint of the token that is being held as collateral - may not necessarily be a token
     pub collateral: Pubkey,
     // link to the token account holding the collateral
     pub collateral_vault: Pubkey,

@@ -1,11 +1,11 @@
 use {
-    crate::{lp_vault_signer_seeds, LpVault, NativeYield, error::ErrorCode, Permission},
+    crate::{lp_vault_signer_seeds, LpVault, state::Strategy, error::ErrorCode, Permission},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{close_account, CloseAccount, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
-pub struct CloseNativeYield<'info> {
+pub struct CloseStrategy<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -23,13 +23,13 @@ pub struct CloseNativeYield<'info> {
         has_one = lp_vault,
         has_one = collateral_vault,
         seeds = [
-            b"native_yield",
+            b"strategy",
             lp_vault.key().as_ref(),
             collateral.key().as_ref()
         ],
         bump
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
     #[account(mut)]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -37,7 +37,7 @@ pub struct CloseNativeYield<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-impl<'info> CloseNativeYield<'info> {
+impl<'info> CloseStrategy<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
@@ -47,7 +47,7 @@ impl<'info> CloseNativeYield<'info> {
         Ok(())
     }
 
-    pub fn close_native_yield(&mut self) -> Result<()> {
+    pub fn close_strategy(&mut self) -> Result<()> {
         let cpi_accounts = CloseAccount {
             account: self.collateral_vault.to_account_info(),
             destination: self.authority.to_account_info(),

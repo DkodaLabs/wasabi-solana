@@ -1,11 +1,11 @@
 use {
-    crate::{error::ErrorCode, LpVault, NativeYield, Permission, events::NativeStakedYieldClaimed},
+    crate::{error::ErrorCode, events::StrategyClaim, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::TokenAccount,
 };
 
 #[derive(Accounts)]
-pub struct ClaimNativeStakedYield<'info> {
+pub struct StrategyClaimYield<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -22,16 +22,16 @@ pub struct ClaimNativeStakedYield<'info> {
         has_one = collateral,
         has_one = lp_vault,
         seeds = [
-            b"native_yield", 
-            lp_vault.key().as_ref(), 
+            b"strategy",
+            lp_vault.key().as_ref(),
             collateral.key().as_ref()
         ],
         bump
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
 }
 
-impl<'info> ClaimNativeStakedYield<'info> {
+impl<'info> StrategyClaimYield<'info> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
@@ -41,11 +41,11 @@ impl<'info> ClaimNativeStakedYield<'info> {
         Ok(())
     }
 
-    pub fn claim_native_staked_yield(&mut self, new_quote: u64) -> Result<()> {
-        let interest_earned = self.native_yield.calculate_interest(new_quote)?;
+    pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
+        let interest_earned = self.strategy.calculate_interest(new_quote)?;
 
-        self.native_yield.total_borrowed_amount = self
-            .native_yield
+        self.strategy.total_borrowed_amount = self
+            .strategy
             .total_borrowed_amount
             .checked_add(interest_earned)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
@@ -57,15 +57,16 @@ impl<'info> ClaimNativeStakedYield<'info> {
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.lp_vault.total_borrowed = self
-            .lp_vault.total_borrowed
+            .lp_vault
+            .total_borrowed
             .checked_add(interest_earned)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
+        self.strategy.last_updated = Clock::get()?.unix_timestamp;
 
-        emit!(NativeStakedYieldClaimed{
-            native_yield: self.native_yield.key(),
-            vault_address: self.native_yield.currency,
+        emit!(StrategyClaim {
+            strategy: self.strategy.key(),
+            vault_address: self.strategy.currency,
             collateral: self.collateral.key(),
             amount: interest_earned,
         });

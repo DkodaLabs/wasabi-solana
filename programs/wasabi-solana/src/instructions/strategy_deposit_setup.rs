@@ -1,15 +1,17 @@
 use {
-    super::NativeStakeCleanup,
+    super::StrategyDepositCleanup,
     crate::{
-        error::ErrorCode, lp_vault_signer_seeds, utils::setup_transaction_introspection_validation,
-        LpVault, NativeYield, Permission, StakeCache, StakeRequest,
+        error::ErrorCode,
+        lp_vault_signer_seeds,
+        state::{LpVault, Permission, StrategyCache, StrategyRequest, Strategy},
+        utils::setup_transaction_introspection_validation,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::token_interface::{self, Approve, TokenAccount, TokenInterface, Mint},
+    anchor_spl::token_interface::{self, Approve, Mint, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
-pub struct NativeStakeSetup<'info> {
+pub struct StrategyDepositSetup<'info> {
     /// The account that has permission to borrow from the vaults
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -27,15 +29,15 @@ pub struct NativeStakeSetup<'info> {
     /// The mint of the token that will be received for staking the vault asset
     pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
-    /// Temporary 'cache' account to store the state of the stake request between instructions
+    /// Temporary 'cache' account to store the state of the strategy request between instructions
     #[account(
         init,
         payer = authority,
-        seeds = [b"stake_req", native_yield.key().as_ref()],
+        seeds = [b"strategy_request", strategy.key().as_ref()],
         bump,
-        space = 8 + std::mem::size_of::<StakeRequest>()
+        space = 8 + std::mem::size_of::<StrategyRequest>()
     )]
-    pub stake_request: Account<'info, StakeRequest>,
+    pub strategy_request: Account<'info, StrategyRequest>,
 
     /// The 'strategy'
     // Init beforehand
@@ -45,17 +47,17 @@ pub struct NativeStakeSetup<'info> {
         has_one = collateral_vault,
         has_one = lp_vault,
         seeds = [
-            b"native_yield",
+            b"strategy",
             lp_vault.key().as_ref(),
             collateral.key().as_ref()
         ],
         bump,
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
 
-    /// The lp vault's token account 
+    /// The lp vault's token account
     /// Holds the 'collateral' token
-    // Ensure initialised beforehand
+    // Ensure initialized beforehand
     #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
@@ -66,7 +68,7 @@ pub struct NativeStakeSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 
-impl<'info> NativeStakeSetup<'info> {
+impl<'info> StrategyDepositSetup<'info> {
     pub fn validate(ctx: &Context<Self>, amount_in: u64) -> Result<()> {
         require_gt!(amount_in, 0, ErrorCode::ZeroAmount);
 
@@ -75,17 +77,17 @@ impl<'info> NativeStakeSetup<'info> {
             ErrorCode::InvalidPermissions
         );
 
-        // Ensure there is a clean up instruction
+        // Ensure there is a cleanup instruction
         setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
-            NativeStakeCleanup::get_hash(),
+            StrategyDepositCleanup::get_hash(),
             false,
         )?;
 
         Ok(())
     }
 
-    // Approve the authority to stake the given amount on behalf of the lp vault
+    // Approve the authority to strategy the given amount on behalf of the lp vault
     fn approve_authority_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.vault.to_account_info(),
@@ -103,18 +105,18 @@ impl<'info> NativeStakeSetup<'info> {
         token_interface::approve(cpi_ctx, amount)
     }
 
-    pub fn native_stake_setup(&mut self, amount_in: u64, min_target_amount: u64) -> Result<()> {
+    pub fn strategy_deposit_setup(&mut self, amount_in: u64, min_target_amount: u64) -> Result<()> {
         self.approve_authority_delegation(amount_in)?;
 
-        self.stake_request.set_inner(StakeRequest {
-            stake_cache: StakeCache {
+        self.strategy_request.set_inner(StrategyRequest {
+            strategy_cache: StrategyCache {
                 src_bal_before: self.vault.amount,
                 dst_bal_before: self.collateral_vault.amount,
             },
             max_amount_in: amount_in,
             min_target_amount,
             lp_vault_key: self.lp_vault.key(),
-            native_yield: self.native_yield.key(),
+            strategy: self.strategy.key(),
         });
 
         Ok(())

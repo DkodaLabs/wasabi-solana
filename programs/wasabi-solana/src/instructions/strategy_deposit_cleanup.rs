@@ -1,11 +1,14 @@
 use {
-    crate::{error::ErrorCode, NativeYield,  StakeRequest, lp_vault_signer_seeds, LpVault, utils::get_function_hash, events::NativeStaked},
+    crate::{
+        error::ErrorCode, events::StrategyDeposit, lp_vault_signer_seeds, utils::get_function_hash,
+        LpVault, Strategy, StrategyRequest,
+    },
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{Revoke, TokenAccount, TokenInterface, Mint, revoke},
+    anchor_spl::token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
-pub struct NativeStakeCleanup<'info> {
+pub struct StrategyDepositCleanup<'info> {
     /// The account that has permission to borrow from the vaults
     pub authority: Signer<'info>,
 
@@ -24,25 +27,25 @@ pub struct NativeStakeCleanup<'info> {
     #[account(
         mut,
         close = authority,
-        seeds = [b"stake_req", native_yield.key().as_ref()],
+        seeds = [b"strategy_request", strategy.key().as_ref()],
         bump,
     )]
-    pub stake_request: Account<'info, StakeRequest>,
+    pub strategy_request: Account<'info, StrategyRequest>,
 
     /// The 'strategy'
     #[account(
-        mut, 
+        mut,
         has_one = lp_vault,
         has_one = collateral_vault,
         has_one = collateral,
         seeds = [
-            b"native_yield",
+            b"strategy",
             lp_vault.key().as_ref(),
             collateral.key().as_ref(),
         ],
         bump,
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
 
     /// The lp vault's collateral token account
     #[account(
@@ -51,25 +54,24 @@ pub struct NativeStakeCleanup<'info> {
     )]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> NativeStakeCleanup<'info> {
+impl<'info> StrategyDepositCleanup<'info> {
     pub fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "native_stake_cleanup")
+        get_function_hash("global", "strategy_deposit_cleanup")
     }
 
     pub fn validate(&self) -> Result<()> {
-        require_keys_eq!(self.lp_vault.key(), self.stake_request.lp_vault_key);
-        require_keys_eq!(self.native_yield.key(), self.stake_request.native_yield);
+        require_keys_eq!(self.lp_vault.key(), self.strategy_request.lp_vault_key);
+        require_keys_eq!(self.strategy.key(), self.strategy_request.strategy);
         require_gte!(
             self.get_dst_delta()?,
-            self.stake_request.min_target_amount
+            self.strategy_request.min_target_amount
         );
         require_gte!(
-            self.stake_request.max_amount_in,
+            self.strategy_request.max_amount_in,
             self.get_src_delta()?,
             ErrorCode::SwapAmountExceeded
         );
@@ -82,7 +84,7 @@ impl<'info> NativeStakeCleanup<'info> {
         Ok(self
             .collateral_vault
             .amount
-            .checked_sub(self.stake_request.stake_cache.dst_bal_before)
+            .checked_sub(self.strategy_request.strategy_cache.dst_bal_before)
             .ok_or(ErrorCode::DestionationOverflow)?)
     }
 
@@ -90,7 +92,8 @@ impl<'info> NativeStakeCleanup<'info> {
     #[inline]
     fn get_src_delta(&self) -> Result<u64> {
         Ok(self
-            .stake_request.stake_cache
+            .strategy_request
+            .strategy_cache
             .src_bal_before
             .checked_sub(self.vault.amount)
             .ok_or(ErrorCode::SourceOverflow)?)
@@ -113,7 +116,7 @@ impl<'info> NativeStakeCleanup<'info> {
         revoke(cpi_ctx)
     }
 
-    pub fn native_stake_cleanup(&mut self) -> Result<()> {
+    pub fn strategy_deposit_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
 
@@ -121,24 +124,25 @@ impl<'info> NativeStakeCleanup<'info> {
 
         // Increase the total borrowed amount in the lp vault and strategy by
         // the amount that was staked
-        self.native_yield.total_borrowed_amount = self
-            .native_yield
+        self.strategy.total_borrowed_amount = self
+            .strategy
             .total_borrowed_amount
             .checked_add(amount_sent)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.lp_vault.total_borrowed = self
-            .lp_vault.total_borrowed
+            .lp_vault
+            .total_borrowed
             .checked_add(amount_sent)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
+        self.strategy.last_updated = Clock::get()?.unix_timestamp;
 
-        emit!(NativeStaked {
-            native_yield: self.native_yield.key(),
+        emit!(StrategyDeposit {
+            strategy: self.strategy.key(),
             vault_address: self.lp_vault.key(),
             collateral: self.collateral.key(),
-            amount_staked: amount_sent,
+            amount_deposited: amount_sent,
             collateral_received: self.get_dst_delta()?,
         });
 

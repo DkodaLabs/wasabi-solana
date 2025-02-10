@@ -293,49 +293,45 @@ pub mod wasabi_solana {
         ctx.accounts.claim_position()
     }
 
-    #[access_control(InitNativeYield::validate(&ctx))]
-    pub fn init_native_yield(ctx: Context<InitNativeYield>) -> Result<()> {
-        ctx.accounts.init_native_yield(&ctx.bumps)
+    #[access_control(InitStrategy::validate(&ctx))]
+    pub fn init_strategy(ctx: Context<InitStrategy>) -> Result<()> {
+        ctx.accounts.init_strategy(&ctx.bumps)
     }
 
-    #[access_control(NativeStakeSetup::validate(&ctx, amount_in))]
-    pub fn native_stake_setup(
-        ctx: Context<NativeStakeSetup>,
+    #[access_control(StrategyDepositSetup::validate(&ctx, amount_in))]
+    pub fn strategy_deposit_setup(
+        ctx: Context<StrategyDepositSetup>,
+        amount_in: u64,
+        min_target_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts.strategy_deposit_setup(amount_in, min_target_amount)
+    }
+
+    pub fn strategy_deposit_cleanup(ctx: Context<StrategyDepositCleanup>) -> Result<()> {
+        ctx.accounts.strategy_deposit_cleanup()
+    }
+
+    #[access_control(StrategyWithdrawSetup::validate(&ctx, amount_in))]
+    pub fn strategy_withdraw_setup(
+        ctx: Context<StrategyWithdrawSetup>,
         amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
         ctx.accounts
-            .native_stake_setup(amount_in, min_target_amount)
+            .strategy_withdraw_setup(amount_in, min_target_amount)
     }
 
-    pub fn native_stake_cleanup(ctx: Context<NativeStakeCleanup>) -> Result<()> {
-        ctx.accounts.native_stake_cleanup()
+    pub fn strategy_withdraw_cleanup(ctx: Context<StrategyWithdrawCleanup>) -> Result<()> {
+        ctx.accounts.strategy_withdraw_cleanup()
     }
 
-    #[access_control(NativeUnstakeSetup::validate(&ctx, amount_in))]
-    pub fn native_unstake_setup(
-        ctx: Context<NativeUnstakeSetup>,
-        amount_in: u64,
-        min_target_amount: u64,
-    ) -> Result<()> {
-        ctx.accounts
-            .native_unstake_setup(amount_in, min_target_amount)
+    #[access_control(CloseStrategy::validate(&ctx))]
+    pub fn close_strategy(ctx: Context<CloseStrategy>) -> Result<()> {
+        ctx.accounts.close_strategy()
     }
 
-    pub fn native_unstake_cleanup(ctx: Context<NativeUnstakeCleanup>) -> Result<()> {
-        ctx.accounts.native_unstake_cleanup()
-    }
-
-    #[access_control(CloseNativeYield::validate(&ctx))]
-    pub fn close_native_yield(ctx: Context<CloseNativeYield>) -> Result<()> {
-        ctx.accounts.close_native_yield()
-    }
-
-    #[access_control(ClaimNativeStakedYield::validate(&ctx))]
-    pub fn claim_native_staked_yield(
-        ctx: Context<ClaimNativeStakedYield>,
-        new_quote: u64,
-    ) -> Result<()> {
-        ctx.accounts.claim_native_staked_yield(new_quote)
+    #[access_control(StrategyClaimYield::validate(&ctx))]
+    pub fn strategy_claim_yield(ctx: Context<StrategyClaimYield>, new_quote: u64) -> Result<()> {
+        ctx.accounts.strategy_claim_yield(new_quote)
     }
 }

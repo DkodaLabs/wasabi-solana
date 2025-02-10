@@ -1,8 +1,8 @@
 use crate::{
     error::ErrorCode,
-    events::NativeUnstaked,
+    events::StrategyWithdraw,
     lp_vault_signer_seeds,
-    state::{LpVault, NativeYield, StakeRequest},
+    state::{LpVault, Strategy, StrategyRequest},
     utils::get_function_hash,
 };
 
@@ -10,7 +10,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Revoke, TokenAccount, Mint, TokenInterface};
 
 #[derive(Accounts)]
-pub struct NativeUnstakeCleanup<'info> {
+pub struct StrategyWithdrawCleanup<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -27,13 +27,13 @@ pub struct NativeUnstakeCleanup<'info> {
         has_one = collateral_vault,
         has_one = collateral,
         seeds = [
-            b"native_yield",
+            b"strategy",
             lp_vault.key().as_ref(),
             collateral.key().as_ref(),
         ],
         bump
     )]
-    pub native_yield: Account<'info, NativeYield>,
+    pub strategy: Account<'info, Strategy>,
 
     #[account(
         mut,
@@ -44,31 +44,31 @@ pub struct NativeUnstakeCleanup<'info> {
     #[account(
         mut,
         close = authority,
-        seeds = [b"stake_req", native_yield.key().as_ref()],
+        seeds = [b"strategy_request", strategy.key().as_ref()],
         bump,
     )]
-    pub stake_request: Account<'info, StakeRequest>,
+    pub strategy_request: Account<'info, StrategyRequest>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-impl<'info> NativeUnstakeCleanup<'info> {
+impl<'info> StrategyWithdrawCleanup<'info> {
     pub fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "native_unstake_cleanup")
+        get_function_hash("global", "strategy_withdraw_cleanup")
     }
 
     fn get_dst_delta(&self) -> Result<u64> {
         Ok(self
             .vault
             .amount
-            .checked_sub(self.stake_request.stake_cache.dst_bal_before)
+            .checked_sub(self.strategy_request.strategy_cache.dst_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn get_src_delta(&self) -> Result<u64> {
         Ok(self
-            .stake_request
-            .stake_cache
+            .strategy_request
+            .strategy_cache
             .src_bal_before
             .checked_sub(self.collateral_vault.amount)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
@@ -77,19 +77,19 @@ impl<'info> NativeUnstakeCleanup<'info> {
     pub fn validate(&self) -> Result<()> {
         // Validate the same lp vault was used in setup and cleanup
         require_keys_eq!(
-            self.stake_request.lp_vault_key,
+            self.strategy_request.lp_vault_key,
             self.lp_vault.key(),
             ErrorCode::InvalidSwap,
         );
 
         require_gte!(
             self.get_dst_delta()?,
-            self.stake_request.min_target_amount,
+            self.strategy_request.min_target_amount,
             ErrorCode::MinTokensNotMet,
         );
 
         require_gte!(
-            self.stake_request.max_amount_in,
+            self.strategy_request.max_amount_in,
             self.get_src_delta()?,
             ErrorCode::SwapAmountExceeded,
         );
@@ -113,14 +113,14 @@ impl<'info> NativeUnstakeCleanup<'info> {
         token_interface::revoke(cpi_ctx)
     }
 
-    pub fn native_unstake_cleanup(&mut self) -> Result<()> {
+    pub fn strategy_withdraw_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
 
         let amount_received = self.get_dst_delta()?;
 
-        self.native_yield.total_borrowed_amount = self
-            .native_yield
+        self.strategy.total_borrowed_amount = self
+            .strategy
             .total_borrowed_amount
             .checked_sub(amount_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
@@ -131,13 +131,13 @@ impl<'info> NativeUnstakeCleanup<'info> {
             .checked_sub(amount_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
-        self.native_yield.last_updated = Clock::get()?.unix_timestamp;
+        self.strategy.last_updated = Clock::get()?.unix_timestamp;
 
-        emit!(NativeUnstaked {
-            native_yield: self.native_yield.key(),
+        emit!(StrategyWithdraw {
+            strategy: self.strategy.key(),
             vault_address: self.collateral_vault.mint,
             collateral: self.collateral.key(),
-            amount_unstaked: amount_received,
+            amount_withdraw: amount_received,
             collateral_sold: self.get_src_delta()?,
         });
 
