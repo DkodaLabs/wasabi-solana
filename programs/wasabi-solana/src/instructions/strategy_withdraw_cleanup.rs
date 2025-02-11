@@ -126,23 +126,11 @@ impl<'info> StrategyWithdrawCleanup<'info> {
 
         self.strategy.claim_yield(&self.lp_vault, new_quote)?;
 
-        self.strategy.total_borrowed_amount = self
-            .strategy
-            .total_borrowed_amount
-            .checked_sub(amount_received)
-            .ok_or(ErrorCode::ArithmeticUnderflow)?;
-
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self
             .strategy
             .collateral_amount
             .checked_sub(amount_sent)
-            .ok_or(ErrorCode::ArithmeticUnderflow)?;
-
-        self.lp_vault.total_borrowed = self
-            .lp_vault
-            .total_borrowed
-            .checked_sub(amount_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         self.strategy.last_updated = Clock::get()?.unix_timestamp;
