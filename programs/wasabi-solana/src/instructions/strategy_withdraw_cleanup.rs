@@ -7,7 +7,7 @@ use crate::{
 };
 
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{self, Revoke, TokenAccount, Mint, TokenInterface};
+use anchor_spl::token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
 pub struct StrategyWithdrawCleanup<'info> {
@@ -118,11 +118,25 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         self.revoke_delegation()?;
 
         let amount_received = self.get_dst_delta()?;
+        let amount_sent = self.get_src_delta()?;
+
+        let new_quote = amount_received
+            .checked_mul(self.strategy_request.strategy_cache.src_bal_before)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+        self.strategy.claim_yield(&self.lp_vault, new_quote)?;
 
         self.strategy.total_borrowed_amount = self
             .strategy
             .total_borrowed_amount
             .checked_sub(amount_received)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+        // Decrement collateral held by strategy
+        self.strategy.collateral_amount = self
+            .strategy
+            .collateral_amount
+            .checked_sub(amount_sent)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         self.lp_vault.total_borrowed = self

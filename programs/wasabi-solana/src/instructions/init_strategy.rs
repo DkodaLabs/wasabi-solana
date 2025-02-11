@@ -61,6 +61,7 @@ impl<'info> InitStrategy<'info> {
             currency: self.currency.key(),
             collateral: self.collateral.key(),
             collateral_vault: self.collateral_vault.key(),
+            collateral_amount: 0,
             total_borrowed_amount: 0,
             last_updated: Clock::get()?.unix_timestamp,
         });

@@ -1,3 +1,4 @@
+use log::warn;
 use {
     crate::{error::ErrorCode, events::StrategyClaim, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
@@ -42,33 +43,13 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
-        let interest_earned = self.strategy.calculate_interest(new_quote)?;
-
-        self.strategy.total_borrowed_amount = self
-            .strategy
-            .total_borrowed_amount
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
-
-        self.lp_vault.total_assets = self
-            .lp_vault
-            .total_assets
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
-
-        self.lp_vault.total_borrowed = self
-            .lp_vault
-            .total_borrowed
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
-
-        self.strategy.last_updated = Clock::get()?.unix_timestamp;
+        let interest_earned = self.strategy.claim_yield(&self.lp_vault, new_quote)?;
 
         emit!(StrategyClaim {
             strategy: self.strategy.key(),
             vault_address: self.strategy.currency,
             collateral: self.collateral.key(),
-            amount: interest_earned,
+            amount: interest_earned.try_into()?,
         });
 
         Ok(())

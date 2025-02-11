@@ -32,7 +32,7 @@ pub struct StrategyDepositCleanup<'info> {
     )]
     pub strategy_request: Account<'info, StrategyRequest>,
 
-    /// The 'strategy'
+    /// The account that holds the strategy's state
     #[account(
         mut,
         has_one = lp_vault,
@@ -121,6 +121,7 @@ impl<'info> StrategyDepositCleanup<'info> {
         self.revoke_delegation()?;
 
         let amount_sent = self.get_src_delta()?;
+        let amount_received = self.get_dst_delta()?;
 
         // Increase the total borrowed amount in the lp vault and strategy by
         // the amount that was staked
@@ -128,6 +129,13 @@ impl<'info> StrategyDepositCleanup<'info> {
             .strategy
             .total_borrowed_amount
             .checked_add(amount_sent)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+        // Increment collateral held by the strategy
+        self.strategy.collateral_amount = self
+            .strategy
+            .collateral_amount
+            .checked_add(amount_received)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.lp_vault.total_borrowed = self

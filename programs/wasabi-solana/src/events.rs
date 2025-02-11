@@ -254,5 +254,5 @@ pub struct StrategyClaim {
     pub strategy: Pubkey,
     pub vault_address: Pubkey,
     pub collateral: Pubkey,
-    pub amount: u64,
+    pub amount: i64,
 }
