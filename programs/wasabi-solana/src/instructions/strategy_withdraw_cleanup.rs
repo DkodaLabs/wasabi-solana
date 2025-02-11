@@ -121,7 +121,9 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         let amount_sent = self.get_src_delta()?;
 
         let new_quote = amount_received
-            .checked_mul(self.strategy_request.strategy_cache.src_bal_before)
+            .checked_mul(amount_sent)
+            .ok_or(ErrorCode::ArithmeticOverflow)?
+            .checked_div(self.strategy_request.strategy_cache.src_bal_before)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
