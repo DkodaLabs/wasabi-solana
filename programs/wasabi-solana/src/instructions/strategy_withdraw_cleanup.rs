@@ -124,7 +124,7 @@ impl<'info> StrategyWithdrawCleanup<'info> {
             .checked_mul(self.strategy_request.strategy_cache.src_bal_before)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        self.strategy.claim_yield(&self.lp_vault, new_quote)?;
+        self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
 
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self

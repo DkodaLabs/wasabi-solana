@@ -28,7 +28,7 @@ impl Strategy {
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    pub fn claim_yield(&mut self, lp_vault: &Account<LpVault>, new_quote: u64) -> Result<u64> {
+    pub fn claim_yield(&mut self, lp_vault: &mut Account<LpVault>, new_quote: u64) -> Result<u64> {
         let interest_earned = self.calculate_interest(new_quote)?;
 
         self.total_borrowed_amount = self

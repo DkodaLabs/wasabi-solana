@@ -1,4 +1,3 @@
-use log::warn;
 use {
     crate::{error::ErrorCode, events::StrategyClaim, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
@@ -43,7 +42,7 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
-        let interest_earned = self.strategy.claim_yield(&self.lp_vault, new_quote)?;
+        let interest_earned = self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
 
         emit!(StrategyClaim {
             strategy: self.strategy.key(),
