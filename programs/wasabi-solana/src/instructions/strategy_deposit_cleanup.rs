@@ -120,28 +120,28 @@ impl<'info> StrategyDepositCleanup<'info> {
         self.validate()?;
         self.revoke_delegation()?;
 
-        let amount_sent = self.get_src_delta()?;
-        let amount_received = self.get_dst_delta()?;
+        let collateral_spent = self.get_src_delta()?;
+        let principal_received = self.get_dst_delta()?;
 
         // Increase the total borrowed amount in the lp vault and strategy by
         // the amount that was staked
         self.strategy.total_borrowed_amount = self
             .strategy
             .total_borrowed_amount
-            .checked_add(amount_sent)
+            .checked_add(collateral_spent)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         // Increment collateral held by the strategy
         self.strategy.collateral_amount = self
             .strategy
             .collateral_amount
-            .checked_add(amount_received)
+            .checked_add(principal_received)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.lp_vault.total_borrowed = self
             .lp_vault
             .total_borrowed
-            .checked_add(amount_sent)
+            .checked_add(collateral_spent)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
 
         self.strategy.last_updated = Clock::get()?.unix_timestamp;
@@ -150,7 +150,7 @@ impl<'info> StrategyDepositCleanup<'info> {
             strategy: self.strategy.key(),
             vault_address: self.lp_vault.key(),
             collateral: self.collateral.key(),
-            amount_deposited: amount_sent,
+            amount_deposited: principal_received,
             collateral_received: self.get_dst_delta()?,
         });
 

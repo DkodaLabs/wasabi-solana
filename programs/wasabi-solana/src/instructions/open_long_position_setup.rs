@@ -13,7 +13,7 @@ use {
 };
 
 #[derive(Accounts)]
-#[instruction(nonce: u32)]
+#[instruction(nonce: u16)]
 pub struct OpenLongPositionSetup<'info> {
     /// The wallet that owns the assets
     #[account(mut)]
@@ -70,10 +70,10 @@ pub struct OpenLongPositionSetup<'info> {
         init,
         payer = owner,
         seeds = [
-            b"position", 
-            owner.key().as_ref(), 
-            pool.key().as_ref(), 
-            lp_vault.key().as_ref(), 
+            b"position",
+            owner.key().as_ref(),
+            pool.key().as_ref(),
+            lp_vault.key().as_ref(),
             &nonce.to_le_bytes() // Ensures user can have multiple positions for this
             // particular pool
         ],
@@ -193,7 +193,7 @@ impl<'info> OpenLongPositionSetup<'info> {
     pub fn open_long_position_setup(
         &mut self,
         #[allow(unused_variables)]
-        nonce: u32,
+        nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,

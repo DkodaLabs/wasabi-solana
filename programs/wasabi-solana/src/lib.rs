@@ -152,7 +152,7 @@ pub mod wasabi_solana {
     #[access_control(OpenLongPositionSetup::validate(&ctx, expiration))]
     pub fn open_long_position_setup(
         ctx: Context<OpenLongPositionSetup>,
-        nonce: u32,
+        nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
@@ -196,7 +196,7 @@ pub mod wasabi_solana {
     #[access_control(OpenShortPositionSetup::validate(&ctx, expiration))]
     pub fn open_short_position_setup(
         ctx: Context<OpenShortPositionSetup>,
-        nonce: u32,
+        nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,

@@ -8,6 +8,7 @@ use crate::{
 
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface};
+use log::warn;
 
 #[derive(Accounts)]
 pub struct StrategyWithdrawCleanup<'info> {
@@ -117,22 +118,40 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         self.validate()?;
         self.revoke_delegation()?;
 
-        let amount_received = self.get_dst_delta()?;
-        let amount_sent = self.get_src_delta()?;
+        let principal_received = self.get_dst_delta()?;
+        let collateral_spent = self.get_src_delta()?;
+        let principal_before = self.strategy_request.strategy_cache.dst_bal_before;
+        let collateral_before = self.strategy_request.strategy_cache.src_bal_before;
 
-        let new_quote = amount_received
-            .checked_mul(amount_sent)
-            .ok_or(ErrorCode::ArithmeticOverflow)?
-            .checked_div(self.strategy_request.strategy_cache.src_bal_before)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if collateral_spent != collateral_before {
+            let new_quote = principal_before
+                .checked_mul(
+                    collateral_before
+                        .checked_sub(collateral_spent)
+                        .ok_or(ErrorCode::ArithmeticUnderflow)?,
+                )
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_div(
+                    collateral_before
+                        .checked_add(principal_received)
+                        .ok_or(ErrorCode::ArithmeticOverflow)?,
+                )
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
+            self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
+        }
 
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self
             .strategy
             .collateral_amount
-            .checked_sub(amount_sent)
+            .checked_sub(collateral_spent)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+        self.strategy.total_borrowed_amount = self
+            .strategy
+            .total_borrowed_amount
+            .checked_sub(principal_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
         self.strategy.last_updated = Clock::get()?.unix_timestamp;
@@ -141,7 +160,7 @@ impl<'info> StrategyWithdrawCleanup<'info> {
             strategy: self.strategy.key(),
             vault_address: self.collateral_vault.mint,
             collateral: self.collateral.key(),
-            amount_withdraw: amount_received,
+            amount_withdraw: principal_received,
             collateral_sold: self.get_src_delta()?,
         });
 
