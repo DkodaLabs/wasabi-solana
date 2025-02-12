@@ -139,7 +139,8 @@ impl<'info> StrategyWithdrawCleanup<'info> {
 
             self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
         } else {
-            self.strategy.claim_yield(&mut self.lp_vault, principal_received)?;
+            self.strategy
+                .claim_yield(&mut self.lp_vault, principal_received)?;
         }
 
         // Decrement collateral held by strategy
@@ -152,6 +153,12 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         self.strategy.total_borrowed_amount = self
             .strategy
             .total_borrowed_amount
+            .checked_sub(principal_received)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+        self.lp_vault.total_borrowed = self
+            .lp_vault
+            .total_borrowed
             .checked_sub(principal_received)
             .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
