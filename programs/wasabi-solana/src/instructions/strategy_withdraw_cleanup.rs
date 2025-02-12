@@ -4,7 +4,7 @@ use {
         events::StrategyWithdraw,
         lp_vault_signer_seeds,
         state::{LpVault, Strategy, StrategyRequest},
-        utils::get_function_hash,
+        utils::{get_function_hash, get_shares_mint_address},
     },
     anchor_lang::prelude::*,
     anchor_spl::{
@@ -170,11 +170,7 @@ impl<'info> StrategyWithdrawCleanup<'info> {
 
         emit!(StrategyWithdraw {
             strategy: self.strategy.key(),
-            vault_address: get_associated_token_address_with_program_id(
-                &self.lp_vault.key(),
-                &self.strategy.currency,
-                &anchor_spl::token_2022::ID,
-            ),
+            vault_address: get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency),
             collateral: self.collateral.key(),
             amount_withdraw: principal_received,
             collateral_sold: collateral_spent,

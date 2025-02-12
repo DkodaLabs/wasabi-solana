@@ -1,13 +1,14 @@
 use {
     crate::{
         error::ErrorCode, events::StrategyDeposit, lp_vault_signer_seeds, utils::get_function_hash,
-        LpVault, Strategy, StrategyRequest,
+        utils::get_shares_mint_address, LpVault, Strategy, StrategyRequest,
     },
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
+    anchor_spl::{
+        associated_token::get_associated_token_address_with_program_id,
+        token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
+    },
 };
-
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 #[derive(Accounts)]
 pub struct StrategyDepositCleanup<'info> {
@@ -150,11 +151,7 @@ impl<'info> StrategyDepositCleanup<'info> {
 
         emit!(StrategyDeposit {
             strategy: self.strategy.key(),
-            vault_address: get_associated_token_address_with_program_id(
-                &self.lp_vault.key(),
-                &self.strategy.currency,
-                &anchor_spl::token_2022::ID,
-            ),
+            vault_address: get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency),
             collateral: self.collateral.key(),
             amount_deposited,
             collateral_received,

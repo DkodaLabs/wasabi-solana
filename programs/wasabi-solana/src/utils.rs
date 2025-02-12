@@ -20,6 +20,10 @@ fn check_function_hash(hash: &[u8]) -> bool {
     }
 }
 
+pub fn get_shares_mint_address(lp_vault: &Pubkey, mint: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[lp_vault.as_ref(), mint.as_ref()], &crate::ID).0
+}
+
 pub fn setup_transaction_introspection_validation(
     sysvar_info: &AccountInfo,
     clean_up_ix_hash: [u8; 8],

@@ -1,5 +1,10 @@
 use {
-    crate::{error::ErrorCode, events::StrategyClaim, LpVault, Permission, Strategy},
+    crate::{
+        error::ErrorCode,
+        events::StrategyClaim,
+        state::{LpVault, Permission, Strategy},
+        utils::get_shares_mint_address,
+    },
     anchor_lang::prelude::*,
     anchor_spl::{
         associated_token::get_associated_token_address_with_program_id,
@@ -49,11 +54,7 @@ impl<'info> StrategyClaimYield<'info> {
 
         emit!(StrategyClaim {
             strategy: self.strategy.key(),
-            vault_address: get_associated_token_address_with_program_id(
-                &self.lp_vault.key(),
-                &self.strategy.currency,
-                &anchor_spl::token_2022::ID,
-            ),
+            vault_address: get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency),
             collateral: self.collateral.key(),
             amount: interest_earned.try_into()?,
         });
