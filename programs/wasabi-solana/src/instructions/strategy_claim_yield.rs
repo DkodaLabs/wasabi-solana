@@ -1,9 +1,11 @@
 use {
     crate::{error::ErrorCode, events::StrategyClaim, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::TokenAccount,
+    anchor_spl::{
+        associated_token::get_associated_token_address_with_program_id,
+        token_interface::TokenAccount,
+    },
 };
-use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 
 #[derive(Accounts)]
 pub struct StrategyClaimYield<'info> {
