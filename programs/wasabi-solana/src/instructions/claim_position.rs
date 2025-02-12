@@ -2,7 +2,7 @@ use {
     super::close_position_cleanup::CloseAmounts,
     crate::{
         error::ErrorCode, events::PositionClaimed, long_pool_signer_seeds, short_pool_signer_seeds,
-        BasePool, DebtController, GlobalSettings, LpVault, Position
+        BasePool, DebtController, GlobalSettings, LpVault, Position,
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked},

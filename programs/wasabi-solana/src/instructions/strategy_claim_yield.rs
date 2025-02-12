@@ -6,10 +6,7 @@ use {
         utils::get_shares_mint_address,
     },
     anchor_lang::prelude::*,
-    anchor_spl::{
-        associated_token::get_associated_token_address_with_program_id,
-        token_interface::TokenAccount,
-    },
+    anchor_spl::token_interface::Mint,
 };
 
 #[derive(Accounts)]
@@ -23,7 +20,7 @@ pub struct StrategyClaimYield<'info> {
     #[account(mut)]
     pub lp_vault: Account<'info, LpVault>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
