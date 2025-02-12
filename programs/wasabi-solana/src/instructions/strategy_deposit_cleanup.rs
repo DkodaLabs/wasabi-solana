@@ -7,6 +7,8 @@ use {
     anchor_spl::token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
 };
 
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
+
 #[derive(Accounts)]
 pub struct StrategyDepositCleanup<'info> {
     /// The account that has permission to borrow from the vaults
@@ -120,7 +122,7 @@ impl<'info> StrategyDepositCleanup<'info> {
         self.validate()?;
         self.revoke_delegation()?;
 
-        let collateral_received= self.get_dst_delta()?;
+        let collateral_received = self.get_dst_delta()?;
         let amount_deposited = self.get_src_delta()?;
 
         // Increase the total borrowed amount in the lp vault and strategy by
@@ -148,7 +150,11 @@ impl<'info> StrategyDepositCleanup<'info> {
 
         emit!(StrategyDeposit {
             strategy: self.strategy.key(),
-            vault_address: self.strategy.currency,
+            vault_address: get_associated_token_address_with_program_id(
+                &self.lp_vault.key(),
+                &self.strategy.currency,
+                &anchor_spl::token_2022::ID,
+            ),
             collateral: self.collateral.key(),
             amount_deposited,
             collateral_received,

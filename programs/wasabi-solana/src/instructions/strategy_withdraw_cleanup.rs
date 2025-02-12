@@ -7,6 +7,7 @@ use crate::{
 };
 
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
 use anchor_spl::token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
@@ -166,7 +167,11 @@ impl<'info> StrategyWithdrawCleanup<'info> {
 
         emit!(StrategyWithdraw {
             strategy: self.strategy.key(),
-            vault_address: self.collateral_vault.mint,
+            vault_address: get_associated_token_address_with_program_id(
+                &self.lp_vault.key(),
+                &self.strategy.currency,
+                &anchor_spl::token_2022::ID,
+            ),
             collateral: self.collateral.key(),
             amount_withdraw: principal_received,
             collateral_sold: collateral_spent,
