@@ -148,7 +148,7 @@ impl<'info> StrategyDepositCleanup<'info> {
 
         emit!(StrategyDeposit {
             strategy: self.strategy.key(),
-            vault_address: self.lp_vault.key(),
+            vault_address: self.strategy.currency,
             collateral: self.collateral.key(),
             amount_deposited,
             collateral_received,
