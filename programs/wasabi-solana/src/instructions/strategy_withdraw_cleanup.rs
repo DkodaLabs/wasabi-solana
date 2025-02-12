@@ -138,6 +138,8 @@ impl<'info> StrategyWithdrawCleanup<'info> {
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
+        } else {
+            self.strategy.claim_yield(&mut self.lp_vault, principal_received)?;
         }
 
         // Decrement collateral held by strategy
