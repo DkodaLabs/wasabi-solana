@@ -1,11 +1,11 @@
 # Configuration
-wasabi_ts := "/Users/a7rs/Projects/Dkoda/wasabi-solana-ts"
-interest_test_program := "/Users/a7rs/Projects/Solana/interest_bearing_token_test"
+wasabi_ts := env_var('HOME') + "/Projects/Dkoda/wasabi-solana-ts"
+interest_test_program := env_var('HOME') + "Projects/Solana/interest_bearing_token_test"
 
 # Program Configuration
 program_name := "wasabi_solana"
 program_keypair := "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c.json"
-deployment_keypair := "/Users/a7rs/.config/solana/deploy.json"
+deployment_keypair := env_var('HOME') + "/.config/solana/deploy.json"
 
 # Program Parameters
 super_admin := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
@@ -117,7 +117,8 @@ deploy-all CLUSTER: (deploy CLUSTER) configure
 
 build-idl:
     anchor build
-    anchor idl build --out "{{wasabi_ts}}"/src/idl/wasabi_solana.json --out-ts "{{wasabi_ts}}"/src/idl/wasabi_solana.ts
+    cd programs/wasabi-solana
+    anchor idl build --out {{wasabi_ts}}/src/idl/wasabi_solana.json --out-ts {{wasabi_ts}}/src/idl/wasabi_solana.ts
 
 validator:
     solana-test-validator \

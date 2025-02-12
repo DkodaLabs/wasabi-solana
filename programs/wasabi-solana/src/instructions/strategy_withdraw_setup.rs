@@ -40,14 +40,6 @@ pub struct StrategyWithdrawSetup<'info> {
     )]
     pub strategy: Account<'info, Strategy>,
 
-    // Should init beforehand - is owned by the `lp_vault` so only the `lp_vault` can sign
-    // operations
-    #[account(
-        mut,
-        constraint = collateral_vault.owner == lp_vault.key()
-    )]
-    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
     #[account(
         init,
         payer = authority,
@@ -56,6 +48,14 @@ pub struct StrategyWithdrawSetup<'info> {
         space = 8 + std::mem::size_of::<StrategyRequest>(),
     )]
     pub strategy_request: Account<'info, StrategyRequest>,
+
+    // Should init beforehand - is owned by the `lp_vault` so only the `lp_vault` can sign
+    // operations
+    #[account(
+        mut,
+        constraint = collateral_vault.owner == lp_vault.key()
+    )]
+    pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,

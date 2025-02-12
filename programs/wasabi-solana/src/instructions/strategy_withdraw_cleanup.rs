@@ -8,7 +8,6 @@ use crate::{
 
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface};
-use log::warn;
 
 #[derive(Accounts)]
 pub struct StrategyWithdrawCleanup<'info> {
