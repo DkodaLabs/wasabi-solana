@@ -162,7 +162,7 @@ impl<'info> StrategyWithdrawCleanup<'info> {
             vault_address: self.collateral_vault.mint,
             collateral: self.collateral.key(),
             amount_withdraw: principal_received,
-            collateral_sold: self.get_src_delta()?,
+            collateral_sold: collateral_spent,
         });
 
         Ok(())
