@@ -47,14 +47,15 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
-        let interest_earned = self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
-
-        emit!(StrategyClaim {
-            strategy: self.strategy.key(),
-            vault_address: get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency),
-            collateral: self.collateral.key(),
-            amount: interest_earned,
-        });
+        let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
+        let strategy_address = self.strategy.key();
+        self.strategy.claim_yield(
+            &mut self.lp_vault,
+            &strategy_address,
+            &shares_mint,
+            &self.collateral.key(),
+            new_quote,
+        )?;
 
         Ok(())
     }

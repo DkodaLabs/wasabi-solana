@@ -1,6 +1,9 @@
 use crate::error::ErrorCode;
+use crate::events::StrategyClaim;
 use crate::state::LpVault;
 use anchor_lang::prelude::*;
+use anchor_spl::associated_token::get_associated_token_address_with_program_id;
+use log::warn;
 
 #[account]
 pub struct Strategy {
@@ -35,7 +38,14 @@ impl Strategy {
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    pub fn claim_yield(&mut self, lp_vault: &mut Account<LpVault>, new_quote: u64) -> Result<i64> {
+    pub fn claim_yield(
+        &mut self,
+        lp_vault: &mut Account<LpVault>,
+        vault: &Pubkey,
+        collateral: &Pubkey,
+        strategy: &Pubkey,
+        new_quote: u64,
+    ) -> Result<i64> {
         let interest_earned = self.calculate_interest(new_quote)?;
         let mut interest_earned_i64 = interest_earned as i64;
 
@@ -71,6 +81,13 @@ impl Strategy {
                 .checked_add(interest_earned)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
         }
+
+        emit!(StrategyClaim {
+            strategy: *strategy,
+            vault_address: *vault,
+            collateral: *collateral,
+            amount: interest_earned_i64,
+        });
 
         Ok(interest_earned_i64)
     }

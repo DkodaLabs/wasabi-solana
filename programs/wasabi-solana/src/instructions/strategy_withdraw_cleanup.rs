@@ -124,6 +124,9 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         let collateral_before = self.strategy_request.strategy_cache.src_bal_before;
 
         if collateral_spent != collateral_before {
+            let shares_mint =
+                get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
+            let strategy_address = self.strategy.key();
             let new_quote = principal_before
                 .checked_mul(
                     collateral_before
@@ -138,10 +141,24 @@ impl<'info> StrategyWithdrawCleanup<'info> {
                 )
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-            self.strategy.claim_yield(&mut self.lp_vault, new_quote)?;
+            self.strategy.claim_yield(
+                &mut self.lp_vault,
+                &strategy_address,
+                &shares_mint,
+                &self.collateral.key(),
+                new_quote,
+            )?;
         } else {
-            self.strategy
-                .claim_yield(&mut self.lp_vault, principal_received)?;
+            let shares_mint =
+                get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
+            let strategy_address = self.strategy.key();
+            self.strategy.claim_yield(
+                &mut self.lp_vault,
+                &strategy_address,
+                &shares_mint,
+                &self.collateral.key(),
+                principal_received,
+            )?;
         }
 
         // Decrement collateral held by strategy
