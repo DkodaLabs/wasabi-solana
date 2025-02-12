@@ -23,29 +23,55 @@ pub struct Strategy {
 
 impl Strategy {
     pub fn calculate_interest(&self, new_quote: u64) -> Result<u64> {
+        if new_quote <= self.total_borrowed_amount {
+            return Ok(self
+                .total_borrowed_amount
+                .checked_sub(new_quote)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?);
+        }
+
         Ok(new_quote
             .checked_sub(self.total_borrowed_amount)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
-    pub fn claim_yield(&mut self, lp_vault: &mut Account<LpVault>, new_quote: u64) -> Result<u64> {
+    pub fn claim_yield(&mut self, lp_vault: &mut Account<LpVault>, new_quote: u64) -> Result<i64> {
         let interest_earned = self.calculate_interest(new_quote)?;
+        let mut interest_earned_i64 = interest_earned as i64;
 
-        self.total_borrowed_amount = self
-            .total_borrowed_amount
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if new_quote <= self.total_borrowed_amount {
+            self.total_borrowed_amount = self
+                .total_borrowed_amount
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
-        lp_vault.total_assets = lp_vault
-            .total_assets
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+            lp_vault.total_assets = lp_vault
+                .total_assets
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
 
-        lp_vault.total_borrowed = lp_vault
-            .total_borrowed
-            .checked_add(interest_earned)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+            lp_vault.total_borrowed = lp_vault
+                .total_borrowed
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            interest_earned_i64 *= -1i64;
+        } else {
+            self.total_borrowed_amount = self
+                .total_borrowed_amount
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        Ok(interest_earned)
+            lp_vault.total_assets = lp_vault
+                .total_assets
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+            lp_vault.total_borrowed = lp_vault
+                .total_borrowed
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
+
+        Ok(interest_earned_i64)
     }
 }

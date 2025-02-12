@@ -53,7 +53,7 @@ impl<'info> StrategyClaimYield<'info> {
             strategy: self.strategy.key(),
             vault_address: get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency),
             collateral: self.collateral.key(),
-            amount: interest_earned.try_into()?,
+            amount: interest_earned,
         });
 
         Ok(())

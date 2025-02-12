@@ -4,10 +4,7 @@ use {
         utils::get_shares_mint_address, LpVault, Strategy, StrategyRequest,
     },
     anchor_lang::prelude::*,
-    anchor_spl::{
-        associated_token::get_associated_token_address_with_program_id,
-        token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
-    },
+    anchor_spl::token_interface::{revoke, Mint, Revoke, TokenAccount, TokenInterface},
 };
 
 #[derive(Accounts)]
