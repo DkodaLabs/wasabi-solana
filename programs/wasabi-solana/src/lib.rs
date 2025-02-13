@@ -304,7 +304,8 @@ pub mod wasabi_solana {
         amount_in: u64,
         min_target_amount: u64,
     ) -> Result<()> {
-        ctx.accounts.strategy_deposit_setup(amount_in, min_target_amount)
+        ctx.accounts
+            .strategy_deposit_setup(amount_in, min_target_amount)
     }
 
     pub fn strategy_deposit_cleanup(ctx: Context<StrategyDepositCleanup>) -> Result<()> {

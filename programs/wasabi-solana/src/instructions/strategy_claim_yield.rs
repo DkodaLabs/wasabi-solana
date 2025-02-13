@@ -8,6 +8,7 @@ use {
     anchor_lang::prelude::*,
     anchor_spl::token_interface::Mint,
 };
+use crate::utils::get_function_hash;
 
 #[derive(Accounts)]
 pub struct StrategyClaimYield<'info> {
@@ -37,6 +38,10 @@ pub struct StrategyClaimYield<'info> {
 }
 
 impl<'info> StrategyClaimYield<'info> {
+    pub fn get_hash() -> [u8; 8] {
+        get_function_hash("global", "strategy_claim_yield")
+    }
+
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
@@ -48,14 +53,55 @@ impl<'info> StrategyClaimYield<'info> {
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
-        let strategy_address = self.strategy.key();
-        self.strategy.claim_yield(
-            &mut self.lp_vault,
-            &strategy_address,
-            &shares_mint,
-            &self.collateral.key(),
-            new_quote,
-        )?;
+
+        let interest_earned = self.strategy.calculate_interest(new_quote)?;
+        let mut interest_earned_i64: i64 = interest_earned.try_into()?;
+
+        if new_quote <= self.strategy.total_borrowed_amount {
+            self.strategy.total_borrowed_amount = self
+                .strategy
+                .total_borrowed_amount
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+            self.lp_vault.total_assets = self
+                .lp_vault
+                .total_assets
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+            self.lp_vault.total_borrowed = self
+                .lp_vault
+                .total_borrowed
+                .checked_sub(interest_earned)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            interest_earned_i64 *= -1i64;
+        } else {
+            self.strategy.total_borrowed_amount = self
+                .strategy
+                .total_borrowed_amount
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+            self.lp_vault.total_assets = self
+                .lp_vault
+                .total_assets
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+            self.lp_vault.total_borrowed = self
+                .lp_vault
+                .total_borrowed
+                .checked_add(interest_earned)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
+
+        emit!(StrategyClaim {
+            strategy: self.strategy.key(),
+            vault_address: shares_mint,
+            collateral: self.collateral.key(),
+            amount: interest_earned_i64,
+        });
 
         Ok(())
     }

@@ -3,10 +3,11 @@ use {
         error::ErrorCode,
         events::StrategyWithdraw,
         lp_vault_signer_seeds,
-        state::{LpVault, Strategy, StrategyRequest},
+        state::{LpVault, Permission, Strategy, StrategyRequest},
         utils::{get_function_hash, get_shares_mint_address},
+        StrategyClaimYield,
     },
-    anchor_lang::prelude::*,
+    anchor_lang::{prelude::*, solana_program::instruction::Instruction},
     anchor_spl::token_interface::{self, Mint, Revoke, TokenAccount, TokenInterface},
 };
 
@@ -14,6 +15,9 @@ use {
 pub struct StrategyWithdrawCleanup<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
+
+    #[account(has_one = authority)]
+    pub permission: Account<'info, Permission>,
 
     #[account(mut, has_one = vault)]
     pub lp_vault: Box<Account<'info, LpVault>>,
@@ -51,6 +55,10 @@ pub struct StrategyWithdrawCleanup<'info> {
     pub strategy_request: Account<'info, StrategyRequest>,
 
     pub token_program: Interface<'info, TokenInterface>,
+
+    ///CHECK: Applied by constraint
+    #[account(address = crate::ID)]
+    pub wasabi_program: AccountInfo<'info>,
 }
 
 impl<'info> StrategyWithdrawCleanup<'info> {
@@ -123,11 +131,8 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         let principal_before = self.strategy_request.strategy_cache.dst_bal_before;
         let collateral_before = self.strategy_request.strategy_cache.src_bal_before;
 
-        if collateral_spent != collateral_before {
-            let shares_mint =
-                get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
-            let strategy_address = self.strategy.key();
-            let new_quote = principal_before
+        let new_quote = if collateral_spent != collateral_before {
+            principal_before
                 .checked_mul(
                     collateral_before
                         .checked_sub(collateral_spent)
@@ -139,27 +144,61 @@ impl<'info> StrategyWithdrawCleanup<'info> {
                         .checked_add(principal_received)
                         .ok_or(ErrorCode::ArithmeticOverflow)?,
                 )
-                .ok_or(ErrorCode::ArithmeticOverflow)?;
-
-            self.strategy.claim_yield(
-                &mut self.lp_vault,
-                &strategy_address,
-                &shares_mint,
-                &self.collateral.key(),
-                new_quote,
-            )?;
+                .ok_or(ErrorCode::ArithmeticOverflow)?
         } else {
-            let shares_mint =
-                get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
-            let strategy_address = self.strategy.key();
-            self.strategy.claim_yield(
-                &mut self.lp_vault,
-                &strategy_address,
-                &shares_mint,
-                &self.collateral.key(),
-                principal_received,
-            )?;
-        }
+            principal_received
+        };
+
+        // Approach (1)
+        // -- Should emit event, event will probably be in "program data" same as
+        // last approach
+        //let mut strategy_yield_accounts = StrategyClaimYield {
+        //    authority: self.authority.clone(),
+        //    permission: self.permission.clone(),
+        //    lp_vault: *self.lp_vault.clone(),
+        //    collateral: self.collateral.clone(),
+        //    strategy: self.strategy.clone(),
+        //};
+
+        //let claim_yield_ctx = Context::<StrategyClaimYield>::new(
+        //    &crate::ID,
+        //    &mut strategy_yield_accounts,
+        //    &[],
+        //    StrategyClaimYieldBumps {
+        //        strategy: bumps.strategy,
+        //    },
+        //);
+
+        //claim_yield_ctx.accounts.strategy_claim_yield(new_quote)?;
+
+        let sighash = StrategyClaimYield::get_hash();
+        let mut ix_data = Vec::with_capacity(16);
+
+        ix_data.extend_from_slice(&sighash);
+        ix_data.extend_from_slice(&new_quote.to_le_bytes());
+        let ix = Instruction {
+            program_id: self.wasabi_program.key(),
+            accounts: vec![
+                AccountMeta::new(self.authority.key(), true),
+                AccountMeta::new_readonly(self.permission.key(), false),
+                AccountMeta::new(self.lp_vault.key(), false),
+                AccountMeta::new_readonly(self.collateral.key(), false),
+                AccountMeta::new(self.strategy.key(), false),
+            ],
+            data: ix_data,
+        };
+
+        // Re-invoke the program to emit the `StrategyClaim` event
+        anchor_lang::solana_program::program::invoke(
+            &ix,
+            &[
+                self.authority.to_account_info(),
+                self.permission.to_account_info(),
+                self.lp_vault.to_account_info(),
+                self.collateral.to_account_info(),
+                self.strategy.to_account_info(),
+            ],
+        )?;
 
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self
