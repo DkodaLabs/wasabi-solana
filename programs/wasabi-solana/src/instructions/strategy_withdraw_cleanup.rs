@@ -131,6 +131,11 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         let principal_before = self.strategy_request.strategy_cache.dst_bal_before;
         let collateral_before = self.strategy_request.strategy_cache.src_bal_before;
 
+        // If everything is withdrawn then record interest for the full amount received
+        //
+        // If partial withdrawal adjust the received amount and remaining amount to compute
+        // the interest amount (new_quote = principal_before * x + principal_received where x is the
+        // percentage of the collateral not sold.)
         let new_quote = if collateral_spent != collateral_before {
             principal_before
                 .checked_mul(
@@ -148,28 +153,6 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         } else {
             principal_received
         };
-
-        // Approach (1)
-        // -- Should emit event, event will probably be in "program data" same as
-        // last approach
-        //let mut strategy_yield_accounts = StrategyClaimYield {
-        //    authority: self.authority.clone(),
-        //    permission: self.permission.clone(),
-        //    lp_vault: *self.lp_vault.clone(),
-        //    collateral: self.collateral.clone(),
-        //    strategy: self.strategy.clone(),
-        //};
-
-        //let claim_yield_ctx = Context::<StrategyClaimYield>::new(
-        //    &crate::ID,
-        //    &mut strategy_yield_accounts,
-        //    &[],
-        //    StrategyClaimYieldBumps {
-        //        strategy: bumps.strategy,
-        //    },
-        //);
-
-        //claim_yield_ctx.accounts.strategy_claim_yield(new_quote)?;
 
         let sighash = StrategyClaimYield::get_hash();
         let mut ix_data = Vec::with_capacity(16);
