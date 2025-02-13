@@ -18,9 +18,3 @@ pub struct Strategy {
     // `unix_timestamp` when the total_amount_borrowed was updated
     pub last_updated: i64,
 }
-
-impl Strategy {
-    pub fn calculate_interest(&self, new_quote: u64) -> Result<u64> {
-        Ok(new_quote.abs_diff(self.total_borrowed_amount))
-    }
-}
