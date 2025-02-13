@@ -1,4 +1,4 @@
-use {crate::error::ErrorCode, anchor_lang::prelude::*};
+use anchor_lang::prelude::*;
 
 #[account]
 pub struct Strategy {
