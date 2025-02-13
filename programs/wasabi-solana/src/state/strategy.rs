@@ -21,15 +21,6 @@ pub struct Strategy {
 
 impl Strategy {
     pub fn calculate_interest(&self, new_quote: u64) -> Result<u64> {
-        if new_quote <= self.total_borrowed_amount {
-            return Ok(self
-                .total_borrowed_amount
-                .checked_sub(new_quote)
-                .ok_or(ErrorCode::ArithmeticUnderflow)?);
-        }
-
-        Ok(new_quote
-            .checked_sub(self.total_borrowed_amount)
-            .ok_or(ErrorCode::ArithmeticUnderflow)?)
+        Ok(new_quote.abs_diff(self.total_borrowed_amount))
     }
 }

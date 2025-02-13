@@ -1,14 +1,14 @@
+use crate::utils::get_function_hash;
 use {
     crate::{
         error::ErrorCode,
         events::StrategyClaim,
         state::{LpVault, Permission, Strategy},
-        utils::get_shares_mint_address,
+        utils::{get_shares_mint_address, validate_difference},
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::Mint,
 };
-use crate::utils::get_function_hash;
 
 #[derive(Accounts)]
 pub struct StrategyClaimYield<'info> {
@@ -52,6 +52,8 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
+        validate_difference(self.strategy.total_borrowed_amount, new_quote, 1)?;
+
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
 
         let interest_earned = self.strategy.calculate_interest(new_quote)?;
