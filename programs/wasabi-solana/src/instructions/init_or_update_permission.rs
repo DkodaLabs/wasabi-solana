@@ -1,6 +1,6 @@
 use {
     crate::{
-        AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_POOL_PERMISSION,
+        AuthorityStatus, Permission, BUNDLE_AUTHORITY, COSIGN_PERMISSION, INIT_POOL_PERMISSION,
         INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION,
     },
     anchor_lang::prelude::*,
@@ -18,7 +18,7 @@ pub struct InitOrUpdatePermission<'info> {
         has_one = authority,
         constraint = super_admin_permission.status == AuthorityStatus::Active,
         constraint = super_admin_permission.is_super_authority,
-        seeds = [b"super_admin"], 
+        seeds = [b"super_admin"],
         bump
     )]
     pub super_admin_permission: Account<'info, Permission>,
@@ -46,6 +46,7 @@ pub struct InitOrUpdatePermissionArgs {
     can_cosign_swaps: bool,
     can_init_pools: bool,
     can_borrow_from_vaults: bool,
+    can_bundle_txs: bool,
 }
 
 impl InitOrUpdatePermissionArgs {
@@ -66,6 +67,9 @@ impl InitOrUpdatePermissionArgs {
         if self.can_borrow_from_vaults {
             res += VAULT_BORROW_PERMISSION
         }
+        if self.can_bundle_txs {
+            res += BUNDLE_AUTHORITY
+        }
         res
     }
 }
@@ -82,4 +86,3 @@ impl<'info> InitOrUpdatePermission<'info> {
         Ok(())
     }
 }
-

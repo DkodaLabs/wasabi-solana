@@ -12,6 +12,7 @@ pub const LIQUIDATE_PERMISSION: u8 = 0b00000010;
 pub const COSIGN_PERMISSION: u8 = 0b00000100;
 pub const INIT_POOL_PERMISSION: u8 = 0b00001000;
 pub const VAULT_BORROW_PERMISSION: u8 = 0b00010000;
+pub const BUNDLE_AUTHORITY: u8 = 0b00100000;
 
 #[account]
 pub struct Permission {
@@ -48,5 +49,9 @@ impl Permission {
     pub fn can_borrow_from_vaults(&self) -> bool {
         self.permissions_map & VAULT_BORROW_PERMISSION == VAULT_BORROW_PERMISSION
             || self.is_super_authority
+    }
+
+    pub fn bundle_authority(&self) -> bool {
+        self.permissions_map & BUNDLE_AUTHORITY == BUNDLE_AUTHORITY
     }
 }

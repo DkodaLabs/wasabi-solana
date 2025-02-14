@@ -85,7 +85,7 @@ impl<'info> StrategyDepositCleanup<'info> {
             .collateral_vault
             .amount
             .checked_sub(self.strategy_request.strategy_cache.dst_bal_before)
-            .ok_or(ErrorCode::DestionationOverflow)?)
+            .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     // The difference between the lp vault's asset token account before and after staking
@@ -96,7 +96,7 @@ impl<'info> StrategyDepositCleanup<'info> {
             .strategy_cache
             .src_bal_before
             .checked_sub(self.vault.amount)
-            .ok_or(ErrorCode::SourceOverflow)?)
+            .ok_or(ErrorCode::ArithmeticOverflow)?)
     }
 
     // Revoke the authority's permission to stake on behalf of the lp vault
