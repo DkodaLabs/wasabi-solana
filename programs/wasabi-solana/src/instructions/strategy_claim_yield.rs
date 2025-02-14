@@ -1,10 +1,9 @@
-use crate::utils::get_function_hash;
 use {
     crate::{
         error::ErrorCode,
         events::StrategyClaim,
         state::{LpVault, Permission, Strategy},
-        utils::{get_shares_mint_address, validate_difference},
+        utils::{get_shares_mint_address, validate_difference, get_function_hash},
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::Mint,
