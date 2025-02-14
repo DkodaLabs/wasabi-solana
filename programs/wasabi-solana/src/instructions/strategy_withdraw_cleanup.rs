@@ -144,11 +144,9 @@ impl<'info> StrategyWithdrawCleanup<'info> {
                         .ok_or(ErrorCode::ArithmeticUnderflow)?,
                 )
                 .ok_or(ErrorCode::ArithmeticOverflow)?
-                .checked_div(
-                    collateral_before
-                        .checked_add(principal_received)
-                        .ok_or(ErrorCode::ArithmeticOverflow)?,
-                )
+                .checked_div(collateral_before)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_add(principal_received)
                 .ok_or(ErrorCode::ArithmeticOverflow)?
         } else {
             principal_received
