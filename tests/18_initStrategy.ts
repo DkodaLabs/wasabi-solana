@@ -1,14 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { createAssociatedTokenAccountIdempotentInstruction, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { SystemProgram, SYSVAR_INSTRUCTIONS_PUBKEY } from "@solana/web3.js";
+import { SystemProgram } from "@solana/web3.js";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
 import {
-    SWAP_AUTHORITY,
-    NON_SWAP_AUTHORITY,
     superAdminProgram,
     tokenMintA,
     tokenMintB,
+    NON_BORROW_AUTHORITY,
 } from "./rootHooks";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
@@ -50,7 +49,7 @@ describe("InitStrategy", () => {
         );
 
         const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-            SWAP_AUTHORITY.publicKey,
+            NON_BORROW_AUTHORITY.publicKey,
             collateralVault,
             lpVault,
             collateral,
@@ -72,7 +71,7 @@ describe("InitStrategy", () => {
 
             })
                 .preInstructions([collateralVaultAtaIx])
-                .signers([SWAP_AUTHORITY])
+                .signers([NON_BORROW_AUTHORITY])
                 .rpc();
 
             const strategyAccount = await superAdminProgram.account.strategy.fetchNullable(strategy);
@@ -91,61 +90,133 @@ describe("InitStrategy", () => {
         }
     })
 
+    describe("Strategy account already exists", () => {
+        it("should fail", async () => {
+            const currency = tokenMintA;
+            const collateral = tokenMintB;
+
+            const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+                superAdminProgram.programId
+            );
+
+            const vaultAta = getAssociatedTokenAddressSync(
+                tokenMintA,
+                lpVault,
+                true,
+                TOKEN_PROGRAM_ID
+            );
+
+            const collateralVault = getAssociatedTokenAddressSync(
+                tokenMintB,
+                lpVault,
+                true,
+                TOKEN_PROGRAM_ID,
+            );
+
+            const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
+                superAdminProgram.programId,
+            );
+
+            const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+                NON_BORROW_AUTHORITY.publicKey,
+                collateralVault,
+                lpVault,
+                collateral,
+                TOKEN_PROGRAM_ID
+            );
+
+            try {
+                await superAdminProgram.methods.initStrategy().accountsPartial({
+                    //@ts-ignore
+                    authority: superAdminProgram.provider.publicKey,
+                    permission: superAdminPermissionKey,
+                    lpVault: lpVault,
+                    vault: vaultAta,
+                    currency,
+                    collateral,
+                    strategy: strategy,
+                    collateralVault,
+                    systemProgram: SystemProgram.programId,
+
+                })
+                    .preInstructions([collateralVaultAtaIx])
+                    .signers([NON_BORROW_AUTHORITY])
+                    .rpc();
+
+
+                assert.ok(false);
+            } catch (err) {
+                assert.ok(true);
+            }
+        });
+    })
+
     describe("non permissioned signer", () => {
         it("should fail", async () => {
-            const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
+            const collateral = tokenMintA;
+            const currency = tokenMintB;
+
+            const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
                 [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
                 superAdminProgram.programId,
             );
 
             const vaultAta = getAssociatedTokenAddressSync(
-                tokenMintB,
-                lpVaultKey,
+                currency,
+                lpVault,
                 true,
                 TOKEN_PROGRAM_ID)
 
             const collateralVault = getAssociatedTokenAddressSync(
-                tokenMintA,
-                lpVaultKey,
+                collateral,
+                lpVault,
                 true,
                 TOKEN_PROGRAM_ID,
             );
 
-            const collateral = tokenMintA;
-
-            const [strategyKey] = anchor.web3.PublicKey.findProgramAddressSync(
-                [anchor.utils.bytes.utf8.encode("strategy"), lpVaultKey.toBuffer(), collateral.toBuffer()],
+            const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
+                [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
                 superAdminProgram.programId,
             );
 
             const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-                SWAP_AUTHORITY.publicKey,
+                NON_BORROW_AUTHORITY.publicKey,
                 collateralVault,
-                lpVaultKey,
-                tokenMintA,
+                lpVault,
+                collateral,
                 TOKEN_PROGRAM_ID
+            );
+
+            const [nonBorrowPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+                [
+                    anchor.utils.bytes.utf8.encode("admin"),
+                    NON_BORROW_AUTHORITY.publicKey.toBuffer()
+                ],
+                program.programId
             );
 
             try {
                 await program.methods.initStrategy().accountsPartial({
-                    authority: program.provider.publicKey,
-                    permission: superAdminPermissionKey,
-                    lpVault: lpVaultKey,
+                    authority: NON_BORROW_AUTHORITY.publicKey,
+                    permission: nonBorrowPermission,
+                    lpVault,
                     vault: vaultAta,
-                    currency: tokenMintA,
-                    collateral: tokenMintB,
-                    strategy: strategyKey,
+                    currency,
+                    collateral,
+                    strategy,
                     collateralVault,
                     systemProgram: SystemProgram.programId,
                 })
                     .preInstructions([collateralVaultAtaIx])
-                    .signers([SWAP_AUTHORITY])
+                    .signers([NON_BORROW_AUTHORITY])
                     .rpc()
 
                 assert.ok(false);
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
-                    assert.equal(err.error.errorCode.number, 2001);
+                    assert.equal(err.error.errorCode.number, 6000);
 
                 } else {
                     assert.ok(false);

@@ -47,6 +47,7 @@ export const SWAP_AUTHORITY = web3.Keypair.generate();
 /** Can liquidate AND init vaults */
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const CAN_SWAP_CANT_LIQ_AUTH = web3.Keypair.generate();
+export const NON_BORROW_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 
 export const feeWalletKeypair = web3.Keypair.generate();
@@ -97,6 +98,10 @@ export const mochaHooks = {
                 NON_SWAP_AUTHORITY.publicKey,
                 100_000_000_000
             ),
+            superAdminProgram.provider.connection.requestAirdrop(
+                NON_BORROW_AUTHORITY.publicKey,
+                100_000_000_000
+            )
         ]);
 
         const tx = new web3.Transaction();

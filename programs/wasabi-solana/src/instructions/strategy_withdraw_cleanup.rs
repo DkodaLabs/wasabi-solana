@@ -130,6 +130,13 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         let collateral_spent = self.get_src_delta()?;
         let principal_before = self.strategy_request.strategy_cache.dst_bal_before;
         let collateral_before = self.strategy_request.strategy_cache.src_bal_before;
+        msg!("Principal received: {}", principal_received);
+        msg!("Collateral spent: {}", collateral_spent);
+        msg!("Principal before: {}", principal_before);
+        msg!("Collateral before: {}", collateral_before);
+        msg!("Lp vault total borrwed: {}", self.lp_vault.total_borrowed);
+        msg!("Strategy total borrowed: {}", self.strategy.total_borrowed_amount);
+        msg!("Strategy collateral amount: {}", self.strategy.collateral_amount);
 
         // If everything is withdrawn then record interest for the full amount received
         //
@@ -137,7 +144,8 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         // the interest amount (new_quote = principal_before * x + principal_received where x is the
         // percentage of the collateral not sold.)
         let new_quote = if collateral_spent != collateral_before {
-            principal_before
+            self.strategy
+                .total_borrowed_amount
                 .checked_mul(
                     collateral_before
                         .checked_sub(collateral_spent)
@@ -180,6 +188,14 @@ impl<'info> StrategyWithdrawCleanup<'info> {
                 self.strategy.to_account_info(),
             ],
         )?;
+
+        // Must reload vault / strategy else underflow 
+        self.strategy.reload()?;
+        self.lp_vault.reload()?;
+
+        msg!("Strategy borrowed amount after: {}", self.strategy.total_borrowed_amount);
+        msg!("Lp vault borrowed amount after: {}", self.lp_vault.total_borrowed);
+
 
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self

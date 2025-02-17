@@ -51,6 +51,8 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
+        msg!("Total borrowed amount: {:?}", self.strategy.total_borrowed_amount);
+        msg!("New quote: {:?}", new_quote);
         validate_difference(self.strategy.total_borrowed_amount, new_quote, 1)?;
 
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);

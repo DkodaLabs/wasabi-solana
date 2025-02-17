@@ -6,8 +6,7 @@ import {
     superAdminProgram,
     tokenMintA,
     tokenMintB,
-    SWAP_AUTHORITY,
-    NON_SWAP_AUTHORITY
+    NON_SWAP_AUTHORITY,
 } from "./rootHooks";
 import {
     getAssociatedTokenAddressSync,
@@ -64,7 +63,7 @@ describe("StrategyDeposit", () => {
                 new anchor.BN(100),
                 new anchor.BN(100)
             ).accountsPartial({
-                authority: SWAP_AUTHORITY.publicKey,
+                authority: NON_SWAP_AUTHORITY.publicKey,
                 permission: superAdminPermissionKey,
                 lpVault,
                 vault: vaultAta,
@@ -75,7 +74,7 @@ describe("StrategyDeposit", () => {
                 tokenProgram: TOKEN_PROGRAM_ID,
             }).instruction();
 
-            const burnIx = createBurnInstruction(vaultAta, tokenMintA, SWAP_AUTHORITY.publicKey, 100);
+            const burnIx = createBurnInstruction(vaultAta, tokenMintA, NON_SWAP_AUTHORITY.publicKey, 100);
             const mintIx = createMintToInstruction(tokenMintB, collateralVault, program.provider.publicKey, 100);
 
             try {
@@ -92,7 +91,7 @@ describe("StrategyDeposit", () => {
                     tokenProgram: TOKEN_PROGRAM_ID,
                 })
                     .preInstructions([setupIx, burnIx, mintIx])
-                    .signers([SWAP_AUTHORITY])
+                    .signers([NON_SWAP_AUTHORITY])
                     .rpc();
             } catch (err) {
                 console.log(err);
