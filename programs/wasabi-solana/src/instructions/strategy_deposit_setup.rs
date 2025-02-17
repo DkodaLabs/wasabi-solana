@@ -3,7 +3,7 @@ use {
     crate::{
         error::ErrorCode,
         lp_vault_signer_seeds,
-        state::{LpVault, Permission, StrategyCache, StrategyRequest, Strategy},
+        state::{LpVault, Permission, Strategy, StrategyCache, StrategyRequest},
         utils::setup_transaction_introspection_validation,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},

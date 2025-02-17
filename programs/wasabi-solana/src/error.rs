@@ -74,4 +74,6 @@ pub enum ErrorCode {
     SourceOverflow, // 6034
     #[msg("Destionation overflow")]
     DestionationOverflow, // 6035
+    #[msg("Strategy cannot be closed if the collateral vault is not empty")]
+    VaultNotEmpty, // 6036
 }

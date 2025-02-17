@@ -15,6 +15,7 @@ describe("InitOrUpdatePermission", () => {
                 canInitVaults: true, // 1
                 canLiquidate: true, // 2
                 canInitPools: true, // 8
+                canBorrowFromVaults: true,
                 status: { active: {} }
             })
             .accounts({
@@ -28,6 +29,7 @@ describe("InitOrUpdatePermission", () => {
             canInitVaults: false,
             canLiquidate: false,
             canInitPools: false,
+            canBorrowFromVaults: false,
             status: { active: {} }
         }).accounts({
             payer: superAdminProgram.provider.publicKey,
@@ -38,6 +40,6 @@ describe("InitOrUpdatePermission", () => {
         assert.ok(!permissionAfter.isSuperAuthority);
         assert.equal(permissionAfter.authority.toString(), newAuthority.toString());
         assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({ active: {} }));
-        assert.equal(permissionAfter.permissionsMap, 11);
+        assert.equal(permissionAfter.permissionsMap, 27);
     });
 });

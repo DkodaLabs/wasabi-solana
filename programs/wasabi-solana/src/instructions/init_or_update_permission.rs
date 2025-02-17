@@ -82,4 +82,3 @@ impl<'info> InitOrUpdatePermission<'info> {
         Ok(())
     }
 }
-

@@ -37,4 +37,3 @@ impl<'info> SetLiqudationFee<'info> {
         Ok(())
     }
 }
-

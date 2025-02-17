@@ -1,7 +1,9 @@
 use {
-    crate::{lp_vault_signer_seeds, LpVault, state::Strategy, error::ErrorCode, Permission},
+    crate::{error::ErrorCode, lp_vault_signer_seeds, state::Strategy, LpVault, Permission},
     anchor_lang::prelude::*,
-    anchor_spl::token_interface::{close_account, CloseAccount, TokenAccount, TokenInterface},
+    anchor_spl::token_interface::{
+        close_account, CloseAccount, Mint, TokenAccount, TokenInterface,
+    },
 };
 
 #[derive(Accounts)]
@@ -14,7 +16,7 @@ pub struct CloseStrategy<'info> {
 
     pub lp_vault: Account<'info, LpVault>,
 
-    pub collateral: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub collateral: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         mut,
@@ -42,6 +44,12 @@ impl<'info> CloseStrategy<'info> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),
             ErrorCode::InvalidPermissions
+        );
+
+        require_eq!(
+            ctx.accounts.collateral_vault.amount,
+            0,
+            ErrorCode::VaultNotEmpty
         );
 
         Ok(())

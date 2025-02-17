@@ -69,6 +69,7 @@ describe("InitLongPool", () => {
     describe("non permissioned signer", () => {
         it("should fail", async () => {
             const NO_AUTH = anchor.web3.Keypair.generate();
+            //@ts-ignore
             const _noPermissionTxn = await superAdminProgram.methods.initOrUpdatePermission({
                 canCosignSwaps: true,
                 canInitVaults: false,

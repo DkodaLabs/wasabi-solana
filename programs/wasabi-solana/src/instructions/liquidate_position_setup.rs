@@ -44,11 +44,12 @@ impl<'info> LiquidatePositionSetup<'info> {
                     &[long_pool_signer_seeds!(self.close_position_setup.pool)],
                 )?;
         } else {
-            self.close_position_setup.approve_swap_authority_delegation(
-            self.close_position_setup.position.collateral_amount,
-                self.close_position_setup.pool.to_account_info(),
-                &[short_pool_signer_seeds!(self.close_position_setup.pool)],
-            )?;
+            self.close_position_setup
+                .approve_swap_authority_delegation(
+                    self.close_position_setup.position.collateral_amount,
+                    self.close_position_setup.pool.to_account_info(),
+                    &[short_pool_signer_seeds!(self.close_position_setup.pool)],
+                )?;
         }
 
         self.close_position_setup.set_close_position_request(

@@ -2,8 +2,8 @@ use {
     super::OpenShortPositionCleanup,
     crate::{
         error::ErrorCode, lp_vault_signer_seeds, short_pool_signer_seeds,
-        utils::setup_transaction_introspection_validation, BasePool, GlobalSettings,
-        LpVault, OpenPositionRequest, Permission, Position, SwapCache,
+        utils::setup_transaction_introspection_validation, BasePool, GlobalSettings, LpVault,
+        OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
     anchor_spl::token_interface::{

@@ -55,13 +55,12 @@ impl<'info> StopLossSetup<'info> {
                 )?;
         }
 
-        self.close_position_setup
-            .set_close_position_request(
-                min_target_amount,
-                interest,
-                execution_fee,
-                expiration,
-            )?;
+        self.close_position_setup.set_close_position_request(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )?;
 
         Ok(())
     }

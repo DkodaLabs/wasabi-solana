@@ -3,7 +3,7 @@ use {
         error::ErrorCode,
         events::StrategyClaim,
         state::{LpVault, Permission, Strategy},
-        utils::{get_shares_mint_address, validate_difference, get_function_hash},
+        utils::{get_function_hash, get_shares_mint_address, validate_difference},
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::Mint,

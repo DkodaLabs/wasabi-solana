@@ -1,8 +1,8 @@
 use {
     crate::{
-        debt_controller::LEVERAGE_DENOMINATOR,
-        error::ErrorCode, events::PositionOpened, short_pool_signer_seeds,
-        utils::get_function_hash, BasePool, DebtController, LpVault, OpenPositionRequest, Position,
+        debt_controller::LEVERAGE_DENOMINATOR, error::ErrorCode, events::PositionOpened,
+        short_pool_signer_seeds, utils::get_function_hash, BasePool, DebtController, LpVault,
+        OpenPositionRequest, Position,
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{
@@ -73,14 +73,16 @@ impl<'info> OpenShortPositionCleanup<'info> {
     }
 
     fn get_collateral_delta(&self) -> Result<u64> {
-        Ok(self.collateral_vault
+        Ok(self
+            .collateral_vault
             .amount
             .checked_sub(self.open_position_request.swap_cache.taker_bal_before)
             .ok_or(ErrorCode::ArithmeticUnderflow)?)
     }
 
     fn get_principal_delta(&self) -> Result<u64> {
-        Ok(self.open_position_request
+        Ok(self
+            .open_position_request
             .swap_cache
             .maker_bal_before
             .checked_sub(self.currency_vault.amount)

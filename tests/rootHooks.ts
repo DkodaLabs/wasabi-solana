@@ -56,6 +56,9 @@ export let openPosLut: web3.PublicKey;
 
 export let globalSettingsKey: web3.PublicKey;
 
+export let strategyKeyA: web3.PublicKey;
+export let strategykeyB: web3.PublicKey;
+
 export const mochaHooks = {
     beforeAll: async () => {
         const program = workspace.WasabiSolana as Program<WasabiSolana>;
