@@ -8,6 +8,7 @@ import {
     tokenMintA,
     tokenMintB,
     NON_BORROW_AUTHORITY,
+    BORROW_AUTHORITY,
 } from "./rootHooks";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
@@ -49,18 +50,26 @@ describe("InitStrategy", () => {
         );
 
         const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-            NON_BORROW_AUTHORITY.publicKey,
+            BORROW_AUTHORITY.publicKey,
             collateralVault,
             lpVault,
             collateral,
             TOKEN_PROGRAM_ID
         );
 
+        const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
+            [
+                anchor.utils.bytes.utf8.encode("admin"),
+                BORROW_AUTHORITY.publicKey.toBuffer(),
+            ],
+            program.programId,
+        );
+
         try {
             await superAdminProgram.methods.initStrategy().accountsPartial({
                 //@ts-ignore
-                authority: superAdminProgram.provider.publicKey,
-                permission: superAdminPermissionKey,
+                authority: BORROW_AUTHORITY.publicKey,
+                permission,
                 lpVault: lpVault,
                 vault: vaultAta,
                 currency,
@@ -71,7 +80,7 @@ describe("InitStrategy", () => {
 
             })
                 .preInstructions([collateralVaultAtaIx])
-                .signers([NON_BORROW_AUTHORITY])
+                .signers([BORROW_AUTHORITY])
                 .rpc();
 
             const strategyAccount = await superAdminProgram.account.strategy.fetchNullable(strategy);
@@ -152,8 +161,8 @@ describe("InitStrategy", () => {
 
     describe("non permissioned signer", () => {
         it("should fail", async () => {
-            const collateral = tokenMintA;
             const currency = tokenMintB;
+            const collateral = tokenMintA;
 
             const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
                 [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
@@ -212,9 +221,9 @@ describe("InitStrategy", () => {
 
                 assert.ok(false);
             } catch (err) {
+                console.log(err);
                 if (err instanceof anchor.AnchorError) {
                     assert.equal(err.error.errorCode.number, 6000);
-
                 } else {
                     assert.ok(false);
                 }

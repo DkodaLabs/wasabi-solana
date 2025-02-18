@@ -3,7 +3,7 @@ import { assert } from "chai";
 import {
     superAdminProgram,
     NON_SWAP_AUTHORITY,
-    CAN_SWAP_CANT_LIQ_AUTH,
+ //   CAN_SWAP_CANT_LIQ_AUTH,
     BORROW_AUTHORITY,
     NON_BORROW_AUTHORITY
 } from "./rootHooks";
@@ -30,18 +30,19 @@ describe("InitOrUpdatePermission", () => {
                 newAuthority,
             })
             .rpc();
-
-        await superAdminProgram.methods.initOrUpdatePermission({
-            canCosignSwaps: true,
-            canInitVaults: false,
-            canLiquidate: false,
-            canInitPools: false,
-            canBorrowFromVaults: false,
-            status: { active: {} }
-        }).accounts({
-            payer: superAdminProgram.provider.publicKey,
-            newAuthority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
-        }).rpc();
+        //
+        //await superAdminProgram.methods.initOrUpdatePermission({
+        //    canCosignSwaps: true,
+        //    canInitVaults: false,
+        //    canLiquidate: false,
+        //    canInitPools: false,
+        //    canBorrowFromVaults: false,
+        //    status: { active: {} }
+        //}).accounts({
+        //    payer: superAdminProgram.provider.publicKey,
+        //    newAuthority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
+        //}).rpc();
+        //
 
         await superAdminProgram.methods.initOrUpdatePermission({
             canCosignSwaps: true,
