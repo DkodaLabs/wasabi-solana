@@ -62,7 +62,6 @@ describe("CloseStrategy", () => {
                 } else {
                     assert.ok(false);
                 }
-
             }
         });
     })

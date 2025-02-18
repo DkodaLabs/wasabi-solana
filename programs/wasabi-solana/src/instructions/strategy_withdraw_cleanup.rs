@@ -196,7 +196,6 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         msg!("Strategy borrowed amount after: {}", self.strategy.total_borrowed_amount);
         msg!("Lp vault borrowed amount after: {}", self.lp_vault.total_borrowed);
 
-
         // Decrement collateral held by strategy
         self.strategy.collateral_amount = self
             .strategy

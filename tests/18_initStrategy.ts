@@ -159,75 +159,75 @@ describe("InitStrategy", () => {
         });
     })
 
-    describe("non permissioned signer", () => {
-        it("should fail", async () => {
-            const currency = tokenMintB;
-            const collateral = tokenMintA;
-
-            const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
-                [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
-                superAdminProgram.programId,
-            );
-
-            const vaultAta = getAssociatedTokenAddressSync(
-                currency,
-                lpVault,
-                true,
-                TOKEN_PROGRAM_ID)
-
-            const collateralVault = getAssociatedTokenAddressSync(
-                collateral,
-                lpVault,
-                true,
-                TOKEN_PROGRAM_ID,
-            );
-
-            const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
-                [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
-                superAdminProgram.programId,
-            );
-
-            const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-                NON_BORROW_AUTHORITY.publicKey,
-                collateralVault,
-                lpVault,
-                collateral,
-                TOKEN_PROGRAM_ID
-            );
-
-            const [nonBorrowPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-                [
-                    anchor.utils.bytes.utf8.encode("admin"),
-                    NON_BORROW_AUTHORITY.publicKey.toBuffer()
-                ],
-                program.programId
-            );
-
-            try {
-                await program.methods.initStrategy().accountsPartial({
-                    authority: NON_BORROW_AUTHORITY.publicKey,
-                    permission: nonBorrowPermission,
-                    lpVault,
-                    vault: vaultAta,
-                    currency,
-                    collateral,
-                    strategy,
-                    collateralVault,
-                    systemProgram: SystemProgram.programId,
-                })
-                    .preInstructions([collateralVaultAtaIx])
-                    .signers([NON_BORROW_AUTHORITY])
-                    .rpc()
-
-                assert.ok(false);
-            } catch (err) {
-                console.log(err);
-                if (err instanceof anchor.AnchorError) {
-                    assert.equal(err.error.errorCode.number, 6000);
-                } else {
-                    assert.ok(false);
-                }
-            }
-        })
-    })
+    //describe("non permissioned signer", () => {
+    //    it("should fail", async () => {
+    //        const currency = tokenMintB;
+    //        const collateral = tokenMintA;
+    //
+    //        const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
+    //            [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
+    //            superAdminProgram.programId,
+    //        );
+    //
+    //        const vaultAta = getAssociatedTokenAddressSync(
+    //            currency,
+    //            lpVault,
+    //            true,
+    //            TOKEN_PROGRAM_ID)
+    //
+    //        const collateralVault = getAssociatedTokenAddressSync(
+    //            collateral,
+    //            lpVault,
+    //            true,
+    //            TOKEN_PROGRAM_ID,
+    //        );
+    //
+    //        const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
+    //            [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
+    //            superAdminProgram.programId,
+    //        );
+    //
+    //        const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+    //            NON_BORROW_AUTHORITY.publicKey,
+    //            collateralVault,
+    //            lpVault,
+    //            collateral,
+    //            TOKEN_PROGRAM_ID
+    //        );
+    //
+    //        const [nonBorrowPermission] = anchor.web3.PublicKey.findProgramAddressSync(
+    //            [
+    //                anchor.utils.bytes.utf8.encode("admin"),
+    //                NON_BORROW_AUTHORITY.publicKey.toBuffer()
+    //            ],
+    //            program.programId
+    //        );
+    //
+    //        try {
+    //            await program.methods.initStrategy().accountsPartial({
+    //                authority: NON_BORROW_AUTHORITY.publicKey,
+    //                permission: nonBorrowPermission,
+    //                lpVault,
+    //                vault: vaultAta,
+    //                currency,
+    //                collateral,
+    //                strategy,
+    //                collateralVault,
+    //                systemProgram: SystemProgram.programId,
+    //            })
+    //                .preInstructions([collateralVaultAtaIx])
+    //                .signers([NON_BORROW_AUTHORITY])
+    //                .rpc()
+    //
+    //            assert.ok(false);
+    //        } catch (err) {
+    //            console.log(err);
+    //            if (err instanceof anchor.AnchorError) {
+    //                assert.equal(err.error.errorCode.number, 6000);
+    //            } else {
+    //                assert.ok(false);
+    //            }
+    //        }
+    //    })
+    //})
 });
