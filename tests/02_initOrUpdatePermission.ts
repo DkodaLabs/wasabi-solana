@@ -1,6 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { NON_SWAP_AUTHORITY, CAN_SWAP_CANT_LIQ_AUTH, superAdminProgram, NON_BORROW_AUTHORITY } from "./rootHooks";
+import {
+    superAdminProgram,
+    NON_SWAP_AUTHORITY,
+    CAN_SWAP_CANT_LIQ_AUTH,
+    BORROW_AUTHORITY,
+    NON_BORROW_AUTHORITY
+} from "./rootHooks";
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {
@@ -9,7 +15,8 @@ describe("InitOrUpdatePermission", () => {
             [anchor.utils.bytes.utf8.encode("admin"), newAuthority.toBuffer()],
             superAdminProgram.programId,
         );
-        const tx = await superAdminProgram.methods
+
+        await superAdminProgram.methods
             .initOrUpdatePermission({
                 canCosignSwaps: false, // 4
                 canInitVaults: true, // 1
@@ -46,6 +53,18 @@ describe("InitOrUpdatePermission", () => {
         }).accounts({
             payer: superAdminProgram.provider.publicKey,
             newAuthority: NON_BORROW_AUTHORITY.publicKey
+        }).rpc();
+
+        await superAdminProgram.methods.initOrUpdatePermission({
+            canCosignSwaps: false,
+            canInitVaults: false,
+            canLiquidate: false,
+            canInitPools: false,
+            canBorrowFromVaults: true,
+            status: { active: {} }
+        }).accounts({
+            payer: superAdminProgram.provider.publicKey,
+            newAuthority: BORROW_AUTHORITY.publicKey
         }).rpc();
 
         const permissionAfter = await superAdminProgram.account.permission.fetch(adminKey);

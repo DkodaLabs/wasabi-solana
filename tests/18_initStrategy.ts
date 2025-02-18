@@ -85,7 +85,6 @@ describe("InitStrategy", () => {
             assert(strategyAccount.collateral.equals(tokenMintB));
             assert(strategyAccount.lpVault.equals(lpVault));
         } catch (err) {
-            console.log(err);
             assert.ok(false);
         }
     })
@@ -144,8 +143,6 @@ describe("InitStrategy", () => {
                     .preInstructions([collateralVaultAtaIx])
                     .signers([NON_BORROW_AUTHORITY])
                     .rpc();
-
-
                 assert.ok(false);
             } catch (err) {
                 assert.ok(true);

@@ -48,6 +48,7 @@ export const SWAP_AUTHORITY = web3.Keypair.generate();
 export const NON_SWAP_AUTHORITY = web3.Keypair.generate();
 export const CAN_SWAP_CANT_LIQ_AUTH = web3.Keypair.generate();
 export const NON_BORROW_AUTHORITY = web3.Keypair.generate();
+export const BORROW_AUTHORITY = web3.Keypair.generate();
 export const user2 = web3.Keypair.generate();
 
 export const feeWalletKeypair = web3.Keypair.generate();
@@ -100,6 +101,10 @@ export const mochaHooks = {
             ),
             superAdminProgram.provider.connection.requestAirdrop(
                 NON_BORROW_AUTHORITY.publicKey,
+                100_000_000_000
+            ),
+            superAdminProgram.provider.connection.requestAirdrop(
+                BORROW_AUTHORITY.publicKey,
                 100_000_000_000
             )
         ]);
@@ -447,7 +452,7 @@ export const mochaHooks = {
             TOKEN_PROGRAM_ID,
         );
         protocolWalletsTx.add(createLiqWalletAtaB);
-        let txn = await program.provider.sendAndConfirm(protocolWalletsTx);
+        await program.provider.sendAndConfirm(protocolWalletsTx);
 
         const extendLookupTableIx =
             web3.AddressLookupTableProgram.extendLookupTable({
@@ -482,6 +487,6 @@ export const mochaHooks = {
         const _tx = new web3.Transaction()
             .add(createLookupTableIx)
             .add(extendLookupTableIx);
-        const txId = await provider.sendAndConfirm(_tx, [], { skipPreflight: true });
+        await provider.sendAndConfirm(_tx, [], { skipPreflight: true });
     },
 };
