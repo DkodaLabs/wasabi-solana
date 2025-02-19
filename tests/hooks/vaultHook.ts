@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { setupTestEnvironment, superAdminProgram, lpVaultA, lpVaultB, tokenMintA, tokenMintB, vaultA as _vaultA } from "./allHook";
+import { SWAP_AUTHORITY, setupTestEnvironment, superAdminProgram, lpVaultA, lpVaultB, tokenMintA, tokenMintB, vaultA as _vaultA } from "./allHook";
 import { initWasabi } from "./initWasabi";
 import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { getMultipleTokenAccounts, getMultipleMintAccounts } from '../utils';
@@ -9,9 +9,32 @@ import { getMultipleTokenAccounts, getMultipleMintAccounts } from '../utils';
 const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
 
 export const deposit = async (amount: bigint) => {
-    return await superAdminProgram.methods
+    return await program.methods
         .deposit(new anchor.BN(amount.toString()))
         .accountsPartial(vaultAccounts())
+        .rpc();
+};
+
+export const withdraw = async (amount: bigint) => {
+    return await program.methods
+        .withdraw(new anchor.BN(amount.toString()))
+        .accountsPartial(vaultAccounts())
+        .rpc();
+};
+
+export const donate = async (amount: bigint) => {
+    return await program.methods
+        .donate(new anchor.BN(amount.toString()))
+        .accountsPartial({
+            owner: program.provider.publicKey,
+            permission: anchor.web3.PublicKey.findProgramAddressSync(
+                [Buffer.from("admin"), program.provider.publicKey.toBuffer()],
+                program.programId
+            )[0],
+            currency: tokenMintA,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            ...vaultAccounts()
+        })
         .rpc();
 };
 
@@ -88,7 +111,7 @@ export const vaultAccountStates = async () => {
     };
 };
 
-export const validateVaultStates = async (
+export const validateDepositVaultStates = async (
     beforePromise: ReturnType<typeof vaultAccountStates>,
     afterPromise: ReturnType<typeof vaultAccountStates>,
     amount: bigint,
@@ -120,7 +143,89 @@ export const validateDeposit = async (amount: bigint) => {
 
     const statesAfter = vaultAccountStates();
 
-    validateVaultStates(statesBefore, statesAfter, amount);
+    validateDepositVaultStates(statesBefore, statesAfter, amount);
+};
+
+export const validateWithdrawVaultStates = async (
+    beforePromise: ReturnType<typeof vaultAccountStates>,
+    afterPromise: ReturnType<typeof vaultAccountStates>,
+    amount: bigint,
+) => {
+    const [before, after] = await Promise.all([beforePromise, afterPromise]);
+    const amountBN = new anchor.BN(amount.toString());
+
+    const roundingProtection = amountBN.div(new anchor.BN(1000)).lt(new anchor.BN(1))
+        ? new anchor.BN(1)
+        : amountBN.div(new anchor.BN(1000));
+
+    const expectedSharesBurned = amountBN
+        .mul(new anchor.BN(before.sharesMint.supply.toString()))
+        .add(roundingProtection)
+        .div(before.lpVault.totalAssets);
+
+    const ownerADiff = after.ownerToken.amount - before.ownerToken.amount;
+    assert.equal(ownerADiff, amount);
+    const vaultADiff = after.vault.amount - before.vault.amount;
+    assert.equal(-vaultADiff, amount);
+
+    // Validate shares were burned from the user's account
+    const ownerSharesDiff = after.ownerShares.amount - before.ownerShares.amount;
+    assert.equal(
+        ownerSharesDiff,
+        BigInt(expectedSharesBurned.neg().toString())
+    );
+    const sharesSupplyDiff = after.sharesMint.supply - before.sharesMint.supply;
+    assert.equal(
+        sharesSupplyDiff,
+        BigInt(expectedSharesBurned.neg().toString())
+    );
+
+    // Validate the LpVault total assets was decremented properly
+    const lpVaultAssetCountDiff = after.lpVault.totalAssets.sub(
+        before.lpVault.totalAssets
+    );
+    assert.equal(
+        BigInt(lpVaultAssetCountDiff.toString()),
+        -amount
+    );
+}
+
+export const validateWithdraw = async (amount: bigint) => {
+    const statesBefore = vaultAccountStates();
+    await withdraw(amount);
+    const statesAfter = vaultAccountStates();
+    validateWithdrawVaultStates(statesBefore, statesAfter, amount);
+};
+
+export const validateDonateVaultStates = async (
+    beforePromise: ReturnType<typeof vaultAccountStates>,
+    afterPromise: ReturnType<typeof vaultAccountStates>,
+    amount: bigint
+) => {
+    const [before, after] = await Promise.all([beforePromise, afterPromise]);
+
+    // Validate no shares were minted
+    assert.equal(after.sharesMint.supply, before.sharesMint.supply);
+
+    // Validate tokens were transfered from the user's account to the vault
+    const ownerADiff = after.ownerToken.amount - before.ownerToken.amount;
+    assert.equal(-ownerADiff, amount);
+    const vaultADiff = after.vault.amount - before.vault.amount;
+    assert.equal(vaultADiff, amount);
+
+    // Validate the LpVault total assets was incremented properly
+    const lpVaultAssetCountDiff = after.lpVault.totalAssets.sub(
+        before.lpVault.totalAssets
+    );
+    assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
+};
+
+
+export const validateDonate = async (amount: bigint) => {
+    const statesBefore = vaultAccountStates();
+    await donate(amount);
+    const statesAfter = vaultAccountStates();
+    validateDonateVaultStates(statesBefore, statesAfter, amount);
 };
 
 export const mochaHooks = {
