@@ -10,6 +10,7 @@ import {
     createMintToInstruction
 } from '@solana/spl-token';
 import {
+    WASABI_PROGRAM_ID,
     BORROW_AUTHORITY,
     NON_BORROW_AUTHORITY,
     tokenMintB,
@@ -20,7 +21,6 @@ import {
 import { initWasabi } from './initWasabi';
 import { WasabiSolana } from '../../target/types/wasabi_solana';
 
-const PROGRAM_ID = new PublicKey("spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c");
 
 export const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
 
@@ -29,7 +29,7 @@ export const collateral = tokenMintB;
 
 export const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    PROGRAM_ID
+    WASABI_PROGRAM_ID
 );
 export const vault = getAssociatedTokenAddressSync(
     tokenMintA,
@@ -54,11 +54,11 @@ export const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstru
 
 export const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
-    PROGRAM_ID,
+    WASABI_PROGRAM_ID,
 );
 const [strategyRequest] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("strategy_request"), strategy.toBuffer()],
-    PROGRAM_ID,
+    WASABI_PROGRAM_ID,
 );
 
 const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -66,7 +66,7 @@ const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
         anchor.utils.bytes.utf8.encode("admin"),
         BORROW_AUTHORITY.publicKey.toBuffer(),
     ],
-    PROGRAM_ID,
+    WASABI_PROGRAM_ID,
 );
 
 export const accountStates = async () => {

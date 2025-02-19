@@ -15,7 +15,8 @@ import {
     superAdminProgram,
     feeWalletKeypair,
     liquidationWalletKeypair,
-    SWAP_AUTHORITY
+    SWAP_AUTHORITY,
+    WASABI_PROGRAM_ID
 } from "./allHook";
 import { WasabiSolana } from '../../target/types/wasabi_solana';
 
@@ -156,7 +157,7 @@ export const initWasabi = async () => {
 
 const [superAdminPermissionKey] = anchor.web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("super_admin")],
-    superAdminProgram.programId,
+    WASABI_PROGRAM_ID,
 );
 
 export const poolAccounts = () => {
@@ -197,7 +198,7 @@ const [longPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
         tokenMintA.toBuffer(),
         tokenMintB.toBuffer(),
     ],
-    superAdminProgram.programId
+    WASABI_PROGRAM_ID
 );
 
 const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -206,7 +207,7 @@ const [shortPoolKey] = anchor.web3.PublicKey.findProgramAddressSync(
         tokenMintA.toBuffer(),
         tokenMintB.toBuffer(),
     ],
-    superAdminProgram.programId
+    WASABI_PROGRAM_ID
 );
 
 export const poolAtas = (isLong: boolean) => {

@@ -27,6 +27,8 @@ import {
 } from "@solana/spl-token";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 
+export const WASABI_PROGRAM_ID = new web3.PublicKey("spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c");
+
 export let superAdminProgram: Program<WasabiSolana>;
 
 export const tokenAKeypair = web3.Keypair.generate();
