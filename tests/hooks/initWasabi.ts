@@ -146,14 +146,14 @@ export const initWasabi = async () => {
     const ownerSharesAccountAIx = createAssociatedTokenAccountIdempotentInstruction(
         SWAP_AUTHORITY.publicKey,
         ownerSharesAccountA,
-        lpVaultA,
+        program.provider.publicKey,
         lpVaultAData.sharesMint,
         TOKEN_2022_PROGRAM_ID
     );
     const ownerSharesAccountBIx = createAssociatedTokenAccountIdempotentInstruction(
         SWAP_AUTHORITY.publicKey,
         ownerSharesAccountB,
-        lpVaultB,
+        program.provider.publicKey,
         lpVaultBData.sharesMint,
         TOKEN_2022_PROGRAM_ID
     );
