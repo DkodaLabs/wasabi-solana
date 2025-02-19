@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
-import { NON_SWAP_AUTHORITY, SWAP_AUTHORITY, tokenMintA } from "./rootHooks";
+import { NON_SWAP_AUTHORITY, SWAP_AUTHORITY, tokenMintA } from "./hooks/allHook";
 import { assert } from "chai";
 
 describe("UpdateVaultMaxBorrow", () => {

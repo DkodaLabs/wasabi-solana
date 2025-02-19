@@ -7,7 +7,7 @@ import {
     SWAP_AUTHORITY, 
     feeWalletKeypair, 
     liquidationWalletKeypair 
-} from "./rootHooks";
+} from "./hooks/allHook";
 
 describe("wasabi-solana", () => {
     // Configure the client to use the local cluster.

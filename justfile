@@ -187,3 +187,8 @@ update C buffer_len="0":
         --program-keypair "{{program_keypair}}" \
         --provider.cluster "$(just get-cluster)" \
         --provider.wallet "{{deployment_keypair}}" \
+
+test suite:
+    sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/{{suite}}/*.ts --require tests/hooks/{{suite}}Hook.ts"#' Anchor.toml
+    sed -i '' 's#cluster = ".*#cluster = "localnet"#' Anchor.toml
+    anchor test

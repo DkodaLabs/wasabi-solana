@@ -27,4 +27,4 @@ address = "9gLx3yq5Py6bbSVfLEYcpqjfhM4WVpj3AHUMfPdiX4hk"
 program = "tests/deps/interest_test.so"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/rootHooks.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/strategy-tests/21_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"

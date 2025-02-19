@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
-import { superAdminProgram } from "./rootHooks";
+import { superAdminProgram } from "./hooks/allHook";
 
 describe("setDebtControllerMaxLeverage", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -21,7 +21,6 @@ describe("setDebtControllerMaxLeverage", () => {
         } catch (err) {
             if (err.message.includes("Expected error")) {
                 assert.fail("Expected error");
-                return
             }
             assert.ok(true);
         }
