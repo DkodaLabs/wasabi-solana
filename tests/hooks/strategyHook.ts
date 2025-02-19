@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { assert } from 'chai';
-import { SystemProgram, PublicKey } from '@solana/web3.js';
+import { SystemProgram } from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -16,30 +16,26 @@ import {
     tokenMintB,
     tokenMintA,
     setupTestEnvironment,
-    superAdminProgram
+    superAdminProgram,
+    lpVaultA
 } from './allHook';
 import { initWasabi } from './initWasabi';
 import { WasabiSolana } from '../../target/types/wasabi_solana';
-
 
 export const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
 
 export const currency = tokenMintA;
 export const collateral = tokenMintB;
 
-export const [lpVault] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-    WASABI_PROGRAM_ID
-);
 export const vault = getAssociatedTokenAddressSync(
     tokenMintA,
-    lpVault,
+    lpVaultA,
     true,
     TOKEN_PROGRAM_ID
 );
 export const collateralVault = getAssociatedTokenAddressSync(
     tokenMintB,
-    lpVault,
+    lpVaultA,
     true,
     TOKEN_PROGRAM_ID,
 );
@@ -47,13 +43,13 @@ export const collateralVault = getAssociatedTokenAddressSync(
 export const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
     BORROW_AUTHORITY.publicKey,
     collateralVault,
-    lpVault,
+    lpVaultA,
     collateral,
     TOKEN_PROGRAM_ID
 );
 
 export const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("strategy"), lpVault.toBuffer(), collateral.toBuffer()],
+    [anchor.utils.bytes.utf8.encode("strategy"), lpVaultA.toBuffer(), collateral.toBuffer()],
     WASABI_PROGRAM_ID,
 );
 const [strategyRequest] = anchor.web3.PublicKey.findProgramAddressSync(
@@ -71,7 +67,7 @@ const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
 
 export const accountStates = async () => {
     const [lpVaultState, strategyState, vaultState, collateralVaultState] = await Promise.all([
-        superAdminProgram.account.lpVault.fetch(lpVault),
+        superAdminProgram.account.lpVault.fetch(lpVaultA),
         superAdminProgram.account.strategy.fetch(strategy),
         superAdminProgram.provider.connection.getAccountInfo(vault),
         superAdminProgram.provider.connection.getAccountInfo(collateralVault),
@@ -150,7 +146,7 @@ export const strategyAccounts = () => {
     return {
         authority: BORROW_AUTHORITY.publicKey,
         permission,
-        lpVault,
+        lpVault: lpVaultA,
         vault,
         collateral,
         strategy,
@@ -242,7 +238,7 @@ export const claimAccounts = () => {
     return {
         authority: BORROW_AUTHORITY.publicKey,
         permission,
-        lpVault,
+        lpVault: lpVaultA,
         collateral,
         strategy,
     };
@@ -336,7 +332,7 @@ export const closeAccounts = () => {
     return {
         authority: BORROW_AUTHORITY.publicKey,
         permission,
-        lpVault,
+        lpVault: lpVaultA,
         collateral,
         strategy,
         collateralVault,
@@ -373,7 +369,7 @@ export const setupStrategy = async () => {
         //@ts-ignore
         authority: BORROW_AUTHORITY.publicKey,
         permission,
-        lpVault,
+        lpVault: lpVaultA,
         vault,
         currency,
         collateral,

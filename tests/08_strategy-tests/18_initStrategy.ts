@@ -1,6 +1,7 @@
 import { assert } from "chai";
 import {
     superAdminProgram,
+    lpVaultA
 } from "../hooks/allHook";
 import {
     setupStrategy,
@@ -8,7 +9,6 @@ import {
     collateralVault,
     currency,
     collateral,
-    lpVault
 } from "../hooks/strategyHook";
 
 describe("InitStrategy", () => {
@@ -21,7 +21,7 @@ describe("InitStrategy", () => {
             assert(strategyAccount.collateralVault.equals(collateralVault));
             assert(strategyAccount.currency.equals(currency));
             assert(strategyAccount.collateral.equals(collateral));
-            assert(strategyAccount.lpVault.equals(lpVault));
+            assert(strategyAccount.lpVault.equals(lpVaultA));
         } catch (err) {
             assert.ok(false);
         }

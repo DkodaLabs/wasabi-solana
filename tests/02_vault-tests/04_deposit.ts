@@ -1,221 +1,39 @@
 import * as anchor from "@coral-xyz/anchor";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, createMintToCheckedInstruction } from "@solana/spl-token";
-import { tokenMintA } from "./rootHooks";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import { TOKEN_PROGRAM_ID, createMintToCheckedInstruction } from "@solana/spl-token";
+import { tokenMintA } from "../hooks/allHook";
 import {
-    createAssociatedTokenAccountInstruction,
     getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
 import { assert } from "chai";
-import { getMultipleMintAccounts, getMultipleTokenAccounts } from "./utils";
+import { validateDeposit } from '../hooks/vaultHook';
+
 
 describe("Deposit", () => {
-    const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-    const [lpVaultKey] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-        program.programId
-    );
-    let lpVault: anchor.IdlAccounts<WasabiSolana>["lpVault"];
-    let ownerSharesAccount: anchor.web3.PublicKey;
-
-    before(async () => {
-        lpVault = await program.account.lpVault.fetch(lpVaultKey);
-        // Create the user's shares mint accounts
-        const tx = new anchor.web3.Transaction();
-        ownerSharesAccount = getAssociatedTokenAddressSync(
-            lpVault.sharesMint,
-            program.provider.publicKey,
-            false,
-            TOKEN_2022_PROGRAM_ID,
-        );
-        const createAtaIx = createAssociatedTokenAccountInstruction(
-            program.provider.publicKey,
-            ownerSharesAccount,
-            program.provider.publicKey,
-            lpVault.sharesMint,
-            TOKEN_2022_PROGRAM_ID,
-        );
-        tx.add(createAtaIx);
-        await program.provider.sendAndConfirm(tx);
-    });
-
     it("should have a successful initial deposit", async () => {
-        const amount = new anchor.BN(1_000_000);
-        const tokenAAta = getAssociatedTokenAddressSync(
-            tokenMintA,
-            program.provider.publicKey,
-            false,
-            TOKEN_PROGRAM_ID,
-        );
-        const [
-            [ownerTokenABefore, vaultABefore],
-            [ownerSharesBefore],
-            [sharesMintBefore],
-        ] = await Promise.all([
-            getMultipleTokenAccounts(program.provider.connection, [
-                tokenAAta,
-                lpVault.vault,
-            ], TOKEN_PROGRAM_ID),
-            getMultipleTokenAccounts(program.provider.connection, [
-                ownerSharesAccount,
-            ], TOKEN_2022_PROGRAM_ID),
-            getMultipleMintAccounts(program.provider.connection, [
-                lpVault.sharesMint,
-            ], TOKEN_2022_PROGRAM_ID),
-        ]);
-        await program.methods
-            .deposit(amount)
-            .accounts({
-                owner: program.provider.publicKey,
-                lpVault: lpVaultKey,
-                assetMint: tokenMintA,
-                assetTokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .rpc();
-
-        const [
-            [ownerTokenAAfter, vaultAAfter],
-            [ownerSharesAfter],
-            lpVaultAfter,
-            [sharesMintAfter],
-        ] = await Promise.all([
-            getMultipleTokenAccounts(program.provider.connection, [
-                tokenAAta,
-                lpVault.vault,
-            ], TOKEN_PROGRAM_ID),
-            getMultipleTokenAccounts(program.provider.connection, [
-                ownerSharesAccount,
-            ], TOKEN_2022_PROGRAM_ID),
-            program.account.lpVault.fetch(lpVaultKey),
-            getMultipleMintAccounts(program.provider.connection, [
-                lpVault.sharesMint,
-            ], TOKEN_2022_PROGRAM_ID),
-        ]);
-
-        // Validate tokens were transfered from the user's account to the vault
-        const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-        assert.equal(-ownerADiff, BigInt(amount.toString()));
-        const vaultADiff = vaultAAfter.amount - vaultABefore.amount;
-        assert.equal(vaultADiff, BigInt(amount.toString()));
-
-        // Validate the LpVault total assets was incremented properly
-        const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
-            lpVault.totalAssets
-        );
-        assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
-
-        // Validate shares were minted to the user's account
-        const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
-        assert.equal(ownerSharesDiff, BigInt(amount.toString()));
-        const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
-        assert.equal(sharesSupplyDiff, BigInt(amount.toString()));
+        try {
+            await validateDeposit(BigInt(1_000_000));
+        } catch (err) {
+            console.error(err);
+            assert.ok(false);
+        }
     });
 
     // Case for another user depositing when shares already exist
     it("should have a successful second deposit", async () => {
-        const amount = new anchor.BN(2_000_000);
-        const tokenAAta = getAssociatedTokenAddressSync(
-            tokenMintA,
-            program.provider.publicKey,
-            false,
-            TOKEN_PROGRAM_ID,
-        );
-        const [
-            [ownerTokenABefore, vaultABefore],
-            [ownerSharesBefore],
-            [sharesMintBefore],
-            lpVaultBefore,
-        ] = await Promise.all([
-            getMultipleTokenAccounts(program.provider.connection, [
-                tokenAAta,
-                lpVault.vault,
-            ], TOKEN_PROGRAM_ID),
-            getMultipleTokenAccounts(program.provider.connection, [
-                ownerSharesAccount,
-            ], TOKEN_2022_PROGRAM_ID),
-            getMultipleMintAccounts(program.provider.connection, [
-                lpVault.sharesMint,
-            ], TOKEN_2022_PROGRAM_ID),
-            program.account.lpVault.fetch(lpVaultKey),
-        ]);
-
-        const expectedSharesAmount =
-            (sharesMintBefore.supply * BigInt(amount.toString())) /
-            BigInt(lpVaultBefore.totalAssets.toString());
-        await program.methods
-            .deposit(amount)
-            .accounts({
-                owner: program.provider.publicKey,
-                lpVault: lpVaultKey,
-                assetMint: tokenMintA,
-                assetTokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .rpc();
-
-        const [
-            [ownerTokenAAfter, vaultAAfter],
-            [ownerSharesAfter],
-            lpVaultAfter,
-            [sharesMintAfter],
-        ] = await Promise.all([
-            getMultipleTokenAccounts(program.provider.connection, [
-                tokenAAta,
-                lpVault.vault,
-            ], TOKEN_PROGRAM_ID),
-            getMultipleTokenAccounts(program.provider.connection, [
-                ownerSharesAccount,
-            ], TOKEN_2022_PROGRAM_ID),
-            program.account.lpVault.fetch(lpVaultKey),
-            getMultipleMintAccounts(program.provider.connection, [
-                lpVault.sharesMint,
-            ], TOKEN_2022_PROGRAM_ID),
-        ]);
-
-        // Validate tokens were transfered from the user's account to the vault
-        const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-        assert.equal(-ownerADiff, BigInt(amount.toString()));
-        const vaultADiff = vaultAAfter.amount - vaultABefore.amount;
-        assert.equal(vaultADiff, BigInt(amount.toString()));
-
-        // Validate the LpVault total assets was incremented properly
-        const lpVaultAssetCountDiff = lpVaultAfter.totalAssets.sub(
-            lpVaultBefore.totalAssets
-        );
-        assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
-
-        // Validate shares were minted to the user's account
-        const ownerSharesDiff = ownerSharesAfter.amount - ownerSharesBefore.amount;
-        assert.equal(ownerSharesDiff, BigInt(expectedSharesAmount.toString()));
-        const sharesSupplyDiff = sharesMintAfter.supply - sharesMintBefore.supply;
-        assert.equal(sharesSupplyDiff, BigInt(expectedSharesAmount.toString()));
+        try {
+            await validateDeposit(BigInt(500_000));
+        } catch (err) {
+            console.error(err);
+            assert.ok(false);
+        }
     });
 
     it("should handle deposits near u64 max", async () => {
-        // First deposit to establish initial shares
-        const initialAmount = new anchor.BN(1_000_000);
-        await program.methods
-            .deposit(initialAmount)
-            .accounts({
-                owner: program.provider.publicKey,
-                lpVault: lpVaultKey,
-                assetMint: tokenMintA,
-                assetTokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .rpc();
-
         // Try deposit with amount close to u64 max
-        const largeAmount = new anchor.BN("18446744073709551615"); // u64::MAX
+        const largeAmount = BigInt("18446744073709551615"); // u64::MAX
 
         try {
-            await program.methods
-                .deposit(largeAmount)
-                .accounts({
-                    owner: program.provider.publicKey,
-                    lpVault: lpVaultKey,
-                    assetMint: tokenMintA,
-                    assetTokenProgram: TOKEN_PROGRAM_ID,
-                })
-                .rpc();
+            await validateDeposit(largeAmount);
             assert.fail("Should have thrown error");
         } catch (e) {
             assert.include(e.message, "insufficient funds");

@@ -60,8 +60,29 @@ export let openPosLut: web3.PublicKey;
 
 export let globalSettingsKey: web3.PublicKey;
 
-export let strategyKeyA: web3.PublicKey;
-export let strategykeyB: web3.PublicKey;
+export const [lpVaultA] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
+    WASABI_PROGRAM_ID
+);
+
+export const vaultA = getAssociatedTokenAddressSync(
+    tokenMintA,
+    lpVaultA,
+    true,
+    TOKEN_PROGRAM_ID
+);
+
+export const [lpVaultB] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
+    WASABI_PROGRAM_ID
+);
+
+export const vaultB = getAssociatedTokenAddressSync(
+    tokenMintB,
+    lpVaultB,
+    true,
+    TOKEN_PROGRAM_ID
+);
 
 export const mochaHooks = {
     beforeAll: async () => setupTestEnvironment(),
@@ -493,7 +514,4 @@ export const setupTestEnvironment = async () => {
         .add(createLookupTableIx)
         .add(extendLookupTableIx);
     await provider.sendAndConfirm(_tx, [], { skipPreflight: true });
-};
-
-export const initWasabi = async () => {
 };

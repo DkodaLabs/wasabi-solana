@@ -4,12 +4,15 @@ import { PublicKey, SYSVAR_INSTRUCTIONS_PUBKEY } from "@solana/web3.js";
 import {
     TOKEN_PROGRAM_ID,
     getAssociatedTokenAddressSync,
-    createAssociatedTokenAccountIdempotentInstruction
+    createAssociatedTokenAccountIdempotentInstruction,
+    TOKEN_2022_PROGRAM_ID
 } from "@solana/spl-token";
 import {
     MPL_TOKEN_METADATA_PROGRAM_ID
 } from '@metaplex-foundation/mpl-token-metadata';
 import {
+    lpVaultA,
+    lpVaultB,
     tokenMintA,
     tokenMintB,
     superAdminProgram,
@@ -62,16 +65,6 @@ export const initWasabi = async () => {
     }).preInstructions([initGlobalSettingsIx, initDebtControllerIx]).rpc();
 
     // Vaults
-    const [lpVaultA] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-        superAdminProgram.programId,
-    )
-
-    const [lpVaultB] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
-        superAdminProgram.programId,
-    )
-
     const vaultAAta = getAssociatedTokenAddressSync(
         tokenMintA,
         lpVaultA,
@@ -130,29 +123,61 @@ export const initWasabi = async () => {
         sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
     }).preInstructions([vaultAAtaIx, vaultBAtaIx, initLpVaultAIx]).signers([SWAP_AUTHORITY]).rpc();
 
-    const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
-        [anchor.utils.bytes.utf8.encode("admin"), program.provider.publicKey.toBuffer()],
-        superAdminProgram.programId,
+    // Seed vaults
+    const [lpVaultAData, lpVaultBData] = await Promise.all([
+        superAdminProgram.account.lpVault.fetch(lpVaultA),
+        superAdminProgram.account.lpVault.fetch(lpVaultB),
+    ]);
+
+    const ownerSharesAccountA = getAssociatedTokenAddressSync(
+        lpVaultAData.sharesMint,
+        program.provider.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
+    );
+    const ownerSharesAccountB = getAssociatedTokenAddressSync(
+        lpVaultBData.sharesMint,
+        program.provider.publicKey,
+        false,
+        TOKEN_2022_PROGRAM_ID,
     );
 
-    // Seed vaults
-    const donateAIx = await program.methods.donate(new anchor.BN(1_000_000))
+    // Create shares atas
+    const ownerSharesAccountAIx = createAssociatedTokenAccountIdempotentInstruction(
+        SWAP_AUTHORITY.publicKey,
+        ownerSharesAccountA,
+        lpVaultA,
+        lpVaultAData.sharesMint,
+        TOKEN_2022_PROGRAM_ID
+    );
+    const ownerSharesAccountBIx = createAssociatedTokenAccountIdempotentInstruction(
+        SWAP_AUTHORITY.publicKey,
+        ownerSharesAccountB,
+        lpVaultB,
+        lpVaultBData.sharesMint,
+        TOKEN_2022_PROGRAM_ID
+    );
+    const depositAIx = await program.methods.deposit(new anchor.BN(1_000_000))
         .accountsPartial({
             owner: program.provider.publicKey,
             lpVault: lpVaultA,
-            currency: tokenMintA,
-            permission,
-            tokenProgram: TOKEN_PROGRAM_ID,
+            assetMint: tokenMintA,
+            assetTokenProgram: TOKEN_PROGRAM_ID,
         }).instruction();
 
-    await program.methods.donate(new anchor.BN(1_000_000))
+    await program.methods.deposit(new anchor.BN(1_000_000))
         .accountsPartial({
             owner: program.provider.publicKey,
             lpVault: lpVaultB,
-            currency: tokenMintB,
-            permission,
-            tokenProgram: TOKEN_PROGRAM_ID,
-        }).preInstructions([donateAIx]).rpc();
+            assetMint: tokenMintB,
+            assetTokenProgram: TOKEN_PROGRAM_ID,
+        }).preInstructions([
+            ownerSharesAccountAIx,
+            ownerSharesAccountBIx,
+            depositAIx
+        ])
+        .signers([SWAP_AUTHORITY])
+        .rpc();
 };
 
 const [superAdminPermissionKey] = anchor.web3.PublicKey.findProgramAddressSync(
