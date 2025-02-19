@@ -60,7 +60,7 @@ export let openPosLut: web3.PublicKey;
 
 export let globalSettingsKey: web3.PublicKey;
 
-export const [lpVaultA] = anchor.web3.PublicKey.findProgramAddressSync(
+export const [lpVaultA] = web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
     WASABI_PROGRAM_ID
 );
@@ -72,7 +72,7 @@ export const vaultA = getAssociatedTokenAddressSync(
     TOKEN_PROGRAM_ID
 );
 
-export const [lpVaultB] = anchor.web3.PublicKey.findProgramAddressSync(
+export const [lpVaultB] = web3.PublicKey.findProgramAddressSync(
     [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
     WASABI_PROGRAM_ID
 );
