@@ -7,25 +7,27 @@ import {
     strategyWithdrawClaimBefore,
     strategyWithdrawClaimAfter,
     validateWithdraw,
+    resetStrategyState,
+    validateSetup,
 } from "../hooks/strategyHook";
 
 describe("StrategyWithdraw", () => {
-    before(async () => {
-        await setupStrategy();
-        await strategyDeposit({ amountIn: 1000, amountOut: 1000 });
-    });
-
     describe("an equal amount sent and received and no interest accrued", () => {
         describe("partial withdraw", () => {
+            before(async () => {
+                await validateSetup();
+                await strategyDeposit({ amountIn: 1000, amountOut: 1000 });
+            });
+
             it("should withdraw a partial amount and update strategy/lp_vault accounts", async () => {
                 await validateWithdraw({ amountIn: 500, amountOut: 500 });
             });
         });
-
         describe("full withdraw", () => {
             before(async () => {
-                await strategyDeposit({ amountIn: 500, amountOut: 500 });
+                await resetStrategyState({ amountIn: 1000, amountOut: 1000 });
             });
+
             it("should withdraw the full amount and update strategy/lp_vault accounts", async () => {
                 await validateWithdraw({ amountIn: 1000, amountOut: 1000 });
             });
@@ -36,7 +38,7 @@ describe("StrategyWithdraw", () => {
         describe("full withdraw", () => {
             describe("receiving more than expected", () => {
                 before(async () => {
-                    await strategyDeposit({ amountIn: 1000, amountOut: 1000 });
+                    await resetStrategyState({ amountIn: 1000, amountOut: 1000 });
                 });
 
                 it("should fail", async () => {
@@ -53,6 +55,10 @@ describe("StrategyWithdraw", () => {
                 });
             });
             describe("receiving less than expected", () => {
+                before(async () => {
+                    await resetStrategyState({ amountIn: 1000, amountOut: 1000 });
+                });
+
                 it("should fail", async () => {
                     try {
                         await strategyWithdraw({ amountIn: 1000, amountOut: 500 });
@@ -69,6 +75,10 @@ describe("StrategyWithdraw", () => {
         });
         describe("partial withdraw", () => {
             describe("receiving more than expected", () => {
+                before(async () => {
+                    await resetStrategyState({ amountIn: 1000, amountOut: 1000 });
+                });
+
                 it("should fail", async () => {
                     try {
                         await strategyWithdraw({ amountIn: 500, amountOut: 600 });
@@ -83,6 +93,10 @@ describe("StrategyWithdraw", () => {
                 });
             });
             describe("receiving less than expected", () => {
+                before(async () => {
+                    await resetStrategyState({ amountIn: 1000, amountOut: 1000 });
+                });
+
                 it("should fail", async () => {
                     try {
                         await strategyWithdraw({ amountIn: 500, amountOut: 400 });

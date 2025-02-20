@@ -32,7 +32,7 @@ pub struct CloseStrategy<'info> {
         bump
     )]
     pub strategy: Account<'info, Strategy>,
-    #[account(mut)]
+    #[account(mut, constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // The token program that controls the collateral token

@@ -12,9 +12,9 @@ describe("StrategyDeposit", () => {
             const statesBefore = await accountStates();
 
             try {
-                const [sendAmount, receiveAmount, maxIn, minOut] = [1000, 1000, 1000, 1000];
+                const [sendAmount, receiveAmount] = [1000, 1000];
 
-                await strategyDeposit({ sendAmount, receiveAmount, maxIn, minOut });
+                await strategyDeposit({ amountIn: sendAmount, amountOut: receiveAmount });
 
                 const statesAfter = await accountStates();
 
@@ -50,5 +50,9 @@ describe("StrategyDeposit", () => {
                 assert.ok(false);
             }
         })
+    });
+    describe("a second is made", () => {
+        it("should correctly increment the borrowed values of the strategy and lp vault", async () => {
+        });
     });
 });

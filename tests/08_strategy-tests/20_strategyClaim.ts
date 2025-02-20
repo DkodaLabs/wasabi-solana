@@ -1,4 +1,3 @@
-import { assert } from 'chai';
 import { setupStrategy, strategyDeposit, validateClaim, strategyClaim } from '../hooks/strategyHook';
 
 describe("StrategyClaim", () => {
@@ -15,7 +14,6 @@ describe("StrategyClaim", () => {
         it("should correctly increment strategy and lp_vault balances", async () => {
             const newQuote = 1005;
             await validateClaim(newQuote);
-            assert.ok(true);
         })
     })
     describe("new quote is less than old quote", () => {
@@ -23,7 +21,6 @@ describe("StrategyClaim", () => {
 
             const newQuote = 995;
             await validateClaim(newQuote);
-            assert.ok(true);
         });
     });
 
@@ -31,7 +28,6 @@ describe("StrategyClaim", () => {
         it("should fail", async () => {
             const newQuote = 2000;
             await validateClaim(newQuote);
-            assert.ok(true);
         });
     });
 
@@ -39,7 +35,6 @@ describe("StrategyClaim", () => {
         it("should fail", async () => {
             const newQuote = 100;
             await validateClaim(newQuote);
-            assert.ok(true);
         });
     });
 });

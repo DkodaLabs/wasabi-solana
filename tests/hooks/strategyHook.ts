@@ -7,7 +7,8 @@ import {
     getAssociatedTokenAddressSync,
     createAssociatedTokenAccountIdempotentInstruction,
     createBurnInstruction,
-    createMintToInstruction
+    createMintToInstruction,
+    ASSOCIATED_TOKEN_PROGRAM_ID
 } from '@solana/spl-token';
 import {
     WASABI_PROGRAM_ID,
@@ -325,8 +326,15 @@ export const strategyWithdrawClaimAfter = async (
 export const closeStrategy = async () => {
     await program.methods.closeStrategy().accountsPartial(
         closeAccounts()
-    ).rpc();
+    ).signers([BORROW_AUTHORITY]).rpc();
 }
+
+export const validateCloseStrategy = async () => {
+    await closeStrategy();
+
+    const st = await superAdminProgram.account.strategy.fetchNullable(strategy);
+    assert.isNull(st);
+};
 
 export const closeAccounts = () => {
     return {
@@ -340,7 +348,93 @@ export const closeAccounts = () => {
     }
 }
 
+export const resetStrategyState = async ({
+    amountIn,
+    amountOut
+}: {
+    amountIn: number,
+    amountOut: number
+}) => {
+    try {
+        // drain strategy
+        await drainStrategy();
+        // close strategy - zeroes account data
+        await validateCloseStrategy();
+        // validate zero values of strategy and lp vault
+        await validateSetup();
+        // deposit
+        await strategyDeposit({ amountIn, amountOut });
+    } catch (err) {
+        console.error("Error resetting strategy - all subsequent tests are invalid");
+        console.error(err);
+    }
+};
+
+export const validateCleanStrategyState = async () => {
+    const [strategyState, lpVaultState, collatVaultState] = await Promise.all([
+        superAdminProgram.account.strategy.fetch(strategy),
+        superAdminProgram.account.lpVault.fetch(lpVaultA),
+        superAdminProgram.provider.connection.getAccountInfo(collateralVault),
+    ]);
+
+    assert(strategyState.collateralVault.equals(collateralVault));
+    assert(strategyState.currency.equals(currency));
+    assert(strategyState.collateral.equals(collateral));
+    assert(strategyState.lpVault.equals(lpVaultA));
+    assert.equal(strategyState.totalBorrowedAmount.toNumber(), 0);
+    assert.equal(lpVaultState.totalBorrowed.toNumber(), 0);
+
+    if (collateralVault) {
+        assert.equal(AccountLayout.decode(collatVaultState.data).amount, BigInt(0));
+    }
+
+    return;
+};
+
+export const validateSetup = async () => {
+    await setupStrategy();
+    return await validateCleanStrategyState();
+};
+
+export const drainStrategy = async () => {
+    const cV = await superAdminProgram.provider.connection.getAccountInfo(collateralVault);
+
+    if (!cV) {
+        console.log("collateralVault not found, this might affect the test");
+        return;
+    }
+    const fullWithdrawAmount = AccountLayout.decode(cV.data).amount;
+
+    if (fullWithdrawAmount === BigInt(0)) {
+        return;
+    }
+
+    return await strategyWithdraw({
+        amountIn: Number(fullWithdrawAmount),
+        amountOut: Number(fullWithdrawAmount)
+    });
+};
+
 export const setupStrategy = async () => {
+    return await superAdminProgram.methods.initStrategy().accountsPartial({
+        //@ts-ignore
+        authority: BORROW_AUTHORITY.publicKey,
+        permission,
+        lpVault: lpVaultA,
+        vault,
+        currency,
+        collateral,
+        strategy,
+        collateralVault,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+    })
+        .signers([BORROW_AUTHORITY])
+        .rpc();
+};
+
+export const initStrategyPermissions = async () => {
     const borrowPermissionIx = await superAdminProgram.methods.initOrUpdatePermission({
         canCosignSwaps: true,
         canInitVaults: true,
@@ -353,7 +447,7 @@ export const setupStrategy = async () => {
         newAuthority: BORROW_AUTHORITY.publicKey,
     }).instruction();
 
-    const nonBorrowPermissionIx = await superAdminProgram.methods.initOrUpdatePermission({
+    return await superAdminProgram.methods.initOrUpdatePermission({
         canCosignSwaps: true,
         canInitVaults: true,
         canLiquidate: true,
@@ -363,22 +457,8 @@ export const setupStrategy = async () => {
     }).accounts({
         payer: superAdminProgram.provider.publicKey,
         newAuthority: NON_BORROW_AUTHORITY.publicKey,
-    }).instruction();
-
-    await superAdminProgram.methods.initStrategy().accountsPartial({
-        //@ts-ignore
-        authority: BORROW_AUTHORITY.publicKey,
-        permission,
-        lpVault: lpVaultA,
-        vault,
-        currency,
-        collateral,
-        strategy: strategy,
-        collateralVault,
-        systemProgram: SystemProgram.programId,
-
     })
-        .preInstructions([borrowPermissionIx, nonBorrowPermissionIx, collateralVaultAtaIx])
+        .preInstructions([borrowPermissionIx, collateralVaultAtaIx])
         .signers([BORROW_AUTHORITY])
         .rpc();
 };
@@ -387,5 +467,6 @@ export const mochaHooks = {
     beforeAll: async () => {
         await setupTestEnvironment();
         await initWasabi();
+        await initStrategyPermissions();
     },
 }

@@ -10,6 +10,7 @@ name = "wasabi_solana"
 
 [features]
 default = []
+anchor-debug = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
