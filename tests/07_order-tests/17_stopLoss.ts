@@ -1,3 +1,62 @@
+import { assert } from "chai";
+import {
+    initStopLossOrder,
+    validateExecuteStopLossOrder,
+    cancelStopLossOrderWithInvalidPermission,
+    cancelStopLossOrderWithUser,
+    cancelStopLossOrderWithAdmin,
+    executeStopLossOrderWithInvalidAuthority,
+    executeStopLossOrderWithInvalidTakerAmount
+} from '../hooks/orderHook';
+
+describe("StopLoss", () => {
+    describe("Long position", async () => {
+        it("should init the SL order", async () => {
+            await initStopLossOrder();
+        });
+        it("should fail to close the SL order without proper permissions", async () => {
+            await cancelStopLossOrderWithInvalidPermission();
+        });
+        it("should close the SL order when invoked by the user", async () => {
+            await cancelStopLossOrderWithUser();
+        });
+        it("should close the SL order when invoked by the admin", async () => {
+            await cancelStopLossOrderWithAdmin();
+        });
+        it("should fail when the authority cannot co-sign swaps", async () => {
+            await executeStopLossOrderWithInvalidAuthority();
+        });
+        it("should fail when the SL taker amount is exceeded", async () => {
+            await executeStopLossOrderWithInvalidTakerAmount();
+        });
+        it("should execute SL order", async () => {
+            await validateExecuteStopLossOrder();
+        });
+    });
+    describe("Short position", async () => {
+        it("should init the SL order", async () => {
+            await initStopLossOrder();
+        });
+        it("should fail to close the SL order without proper permissions", async () => {
+            await cancelStopLossOrderWithInvalidPermission();
+        });
+        it("should close the SL order when invoked by the user", async () => {
+            await cancelStopLossOrderWithUser();
+        });
+        it("should close the SL order when invoked by the admin", async () => {
+            await cancelStopLossOrderWithAdmin();
+        });
+        it("should fail when the authority cannot co-sign swaps", async () => {
+            await executeStopLossOrderWithInvalidAuthority();
+        });
+        it("should fail when the SL taker amount is exceeded", async () => {
+            await executeStopLossOrderWithInvalidTakerAmount();
+        });
+        it("should execute SL order", async () => {
+        });
+    });
+})
+
 //import * as anchor from "@coral-xyz/anchor";
 //import { WasabiSolana } from "../target/types/wasabi_solana";
 //import {
@@ -25,204 +84,7 @@
 //import { getMultipleTokenAccounts } from "./utils";
 //
 //describe("stopLoss", () => {
-//    const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-//
-//    const feeWallet = getAssociatedTokenAddressSync(tokenMintA, feeWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID)
-//
-//    const liquidationWallet = getAssociatedTokenAddressSync(tokenMintA, liquidationWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
-//
-//    const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("admin"),
-//            SWAP_AUTHORITY.publicKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const [nonSwapAuthSignerPermission] =
-//        anchor.web3.PublicKey.findProgramAddressSync(
-//            [
-//                anchor.utils.bytes.utf8.encode("admin"),
-//                NON_SWAP_AUTHORITY.publicKey.toBuffer(),
-//            ],
-//            program.programId
-//        );
-//    const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-//        program.programId
-//    );
-//    const [lpVaultTokenBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
-//        program.programId
-//    );
-//    const ownerTokenA = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        user2.publicKey,
-//        false
-//    );
-//    const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("long_pool"),
-//            tokenMintB.toBuffer(),
-//            tokenMintA.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const longPoolBVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        longPoolBKey,
-//        true
-//    );
-//    const longPoolBCurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        longPoolBKey,
-//        true
-//    );
-//    const [shortPoolAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("short_pool"),
-//            tokenMintA.toBuffer(),
-//            tokenMintB.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const shortPoolAVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        shortPoolAKey,
-//        true
-//    );
-//    const shortPoolACurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        shortPoolAKey,
-//        true
-//    );
-//    const nonce = 17;
-//    const [longPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            longPoolBKey.toBuffer(),
-//            lpVaultTokenAKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//    const [shortPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            shortPoolAKey.toBuffer(),
-//            lpVaultTokenBKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//    const [longStopLossOrderKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("stop_loss_order"),
-//            longPositionKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const [shortStopLossOrderKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("stop_loss_order"),
-//            shortPositionKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//
 //    describe("Long", () => {
-//        before(async () => {
-//            // Create Long position that will have a TP order
-//            const fee = new anchor.BN(10);
-//            const now = new Date().getTime() / 1_000;
-//            const downPayment = new anchor.BN(1_000);
-//            // amount to be borrowed
-//            const principal = new anchor.BN(1_000);
-//            const swapAmount = downPayment.add(principal);
-//            const minimumAmountOut = new anchor.BN(1_900);
-//
-//            const args = {
-//                nonce,
-//                minTargetAmount: minimumAmountOut,
-//                downPayment,
-//                principal,
-//                fee,
-//                expiration: new anchor.BN(now + 3_600),
-//            };
-//            const setupIx = await program.methods
-//                .openLongPositionSetup(
-//                    args.nonce,
-//                    args.minTargetAmount,
-//                    args.downPayment,
-//                    args.principal,
-//                    args.fee,
-//                    args.expiration
-//                )
-//                .accounts({
-//                    owner: user2.publicKey,
-//                    lpVault: lpVaultTokenAKey,
-//                    pool: longPoolBKey,
-//                    currency: tokenMintA,
-//                    collateral: tokenMintB,
-//                    //@ts-ignore
-//                    authority: SWAP_AUTHORITY.publicKey,
-//                    permission: coSignerPermission,
-//                    feeWallet,
-//                    tokenProgram: TOKEN_PROGRAM_ID,
-//                })
-//                .instruction();
-//            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-//                [abSwapKey.publicKey.toBuffer()],
-//                TOKEN_SWAP_PROGRAM_ID
-//            );
-//            const swapIx = TokenSwap.swapInstruction(
-//                abSwapKey.publicKey,
-//                swapAuthority,
-//                SWAP_AUTHORITY.publicKey,
-//                longPoolBCurrencyVaultKey,
-//                swapTokenAccountA,
-//                swapTokenAccountB,
-//                longPoolBVaultKey,
-//                poolMint,
-//                poolFeeAccount,
-//                null,
-//                tokenMintA,
-//                tokenMintB,
-//                TOKEN_SWAP_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                BigInt(swapAmount.toString()),
-//                BigInt(minimumAmountOut.toString())
-//            );
-//            const _tx = await program.methods
-//                .openLongPositionCleanup()
-//                .accounts({
-//                    owner: user2.publicKey,
-//                    pool: longPoolBKey,
-//                    position: longPositionKey,
-//                    tokenProgram: TOKEN_PROGRAM_ID,
-//                })
-//                .preInstructions([setupIx, swapIx])
-//                .transaction();
-//
-//            const connection = program.provider.connection;
-//            const lookupAccount = await connection
-//                .getAddressLookupTable(openPosLut)
-//                .catch(() => null);
-//            const message = new anchor.web3.TransactionMessage({
-//                instructions: _tx.instructions,
-//                payerKey: program.provider.publicKey!,
-//                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-//            }).compileToV0Message([lookupAccount.value]);
-//
-//            const tx = new anchor.web3.VersionedTransaction(message);
-//            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY, user2], {
-//                skipPreflight: false,
-//            });
-//        });
-//
 //        it("should init SL order", async () => {
 //            const makerAmount = new anchor.BN(100);
 //            const takerAmount = new anchor.BN(200);

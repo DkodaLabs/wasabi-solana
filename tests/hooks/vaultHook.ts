@@ -220,7 +220,6 @@ export const validateDonateVaultStates = async (
     assert.equal(lpVaultAssetCountDiff.toString(), amount.toString());
 };
 
-
 export const validateDonate = async (amount: bigint) => {
     const statesBefore = vaultAccountStates();
     await donate(amount);

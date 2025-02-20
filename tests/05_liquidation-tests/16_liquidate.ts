@@ -1,129 +1,39 @@
-//import * as anchor from "@coral-xyz/anchor";
-//import { WasabiSolana } from "../target/types/wasabi_solana";
-//import {
-//    abSwapKey,
-//    NON_SWAP_AUTHORITY,
-//    CAN_SWAP_CANT_LIQ_AUTH,
-//    openPosLut,
-//    poolFeeAccount,
-//    poolMint,
-//    SWAP_AUTHORITY,
-//    swapTokenAccountA,
-//    swapTokenAccountB,
-//    tokenMintA,
-//    tokenMintB,
-//    user2,
-//    feeWalletKeypair,
-//    liquidationWalletKeypair,
-//} from "./rootHooks";
-//import {
-//    getAssociatedTokenAddressSync,
-//    TOKEN_PROGRAM_ID,
-//} from "@solana/spl-token";
-//import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
-//import { assert } from "chai";
-//import { getMultipleTokenAccounts } from "./utils";
-//
+import { assert } from "chai";
+import {
+    liquidateLongPositionWithInvalidPermission,
+    liquidateLongPositionWithoutExceedingThreshold,
+    validateLiquidateLongPosition,
+    liquidateShortPositionWithInvalidPermission,
+    liquidateShortPositionWithoutExceedingThreshold,
+    validateLiquidateShortPosition,
+} from '../hooks/liquidationHook';
+
+describe("Liqudiations", () => {
+    describe("Long position", () => {
+        it("should fail without a liquidation permission", async () => {
+            await liquidateLongPositionWithInvalidPermission();
+        });
+        it("should fail if the liquidation threshold is not exceeded", async () => {
+            await liquidateLongPositionWithoutExceedingThreshold();
+        });
+        it("should liquidate the position", async () => {
+            await validateLiquidateLongPosition();
+        });
+    });
+    describe("Short position", () => {
+        it("should fail without a liquidation permission", async () => {
+            await liquidateShortPositionWithInvalidPermission();
+        });
+        it("should fail if the liquidation threshold is not exceeded", async () => {
+            await liquidateShortPositionWithoutExceedingThreshold();
+        });
+        it("should liquidate the position", async () => {
+            await validateLiquidateShortPosition();
+        });
+    });
+});
+
 //describe("liquidate", () => {
-//    const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-//    const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("admin"),
-//            SWAP_AUTHORITY.publicKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const [liquidateSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("admin"),
-//            NON_SWAP_AUTHORITY.publicKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//
-//    const feeWallet = getAssociatedTokenAddressSync(tokenMintA, feeWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
-//
-//    const liquidationWallet = getAssociatedTokenAddressSync(tokenMintA, liquidationWalletKeypair.publicKey, true, TOKEN_PROGRAM_ID);
-//
-//    const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-//        program.programId
-//    );
-//
-//    const [lpVaultTokenBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
-//        program.programId
-//    );
-//
-//    const ownerTokenA = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        user2.publicKey,
-//        false
-//    );
-//
-//    const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("long_pool"),
-//            tokenMintB.toBuffer(),
-//            tokenMintA.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const longPoolBVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        longPoolBKey,
-//        true
-//    );
-//    const longPoolBCurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        longPoolBKey,
-//        true
-//    );
-//    const [shortPoolAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("short_pool"),
-//            tokenMintA.toBuffer(),
-//            tokenMintB.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const shortPoolAVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        shortPoolAKey,
-//        true
-//    );
-//    const shortPoolACurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        shortPoolAKey,
-//        true
-//    );
-//    const nonce = 16;
-//    const [longPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            longPoolBKey.toBuffer(),
-//            lpVaultTokenAKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//    const [shortPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            shortPoolAKey.toBuffer(),
-//            lpVaultTokenBKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//
-//    const [noLiqPerm] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("admin"), CAN_SWAP_CANT_LIQ_AUTH.publicKey.toBuffer()],
-//        program.programId,
-//    );
-//
 //    describe("Long", () => {
 //        before(async () => {
 //            // Create Long position that will have a TP order

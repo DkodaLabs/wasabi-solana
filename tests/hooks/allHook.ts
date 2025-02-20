@@ -39,6 +39,7 @@ const swapTokenAccountBKeypair = web3.Keypair.generate();
 export const tokenMintA = tokenAKeypair.publicKey;
 export const tokenMintB = tokenBKeypair.publicKey;
 
+
 export const abSwapKey = web3.Keypair.generate();
 export const swapTokenAccountA = swapTokenAccountAKeypair.publicKey;
 export const swapTokenAccountB = swapTokenAccountBKeypair.publicKey;
@@ -80,6 +81,42 @@ export const [lpVaultB] = web3.PublicKey.findProgramAddressSync(
 export const vaultB = getAssociatedTokenAddressSync(
     tokenMintB,
     lpVaultB,
+    true,
+    TOKEN_PROGRAM_ID
+);
+
+export const [coSignerPermission] = web3.PublicKey.findProgramAddressSync(
+    [
+        utils.bytes.utf8.encode("admin"),
+        SWAP_AUTHORITY.publicKey.toBuffer(),
+    ],
+    WASABI_PROGRAM_ID
+);
+
+export const feeWalletA = getAssociatedTokenAddressSync(
+    tokenMintA,
+    feeWalletKeypair.publicKey,
+    true,
+    TOKEN_PROGRAM_ID
+);
+
+export const feeWalletB = getAssociatedTokenAddressSync(
+    tokenMintB,
+    feeWalletKeypair.publicKey,
+    true,
+    TOKEN_PROGRAM_ID
+);
+
+export const liquidationWalletA = getAssociatedTokenAddressSync(
+    tokenMintA,
+    liquidationWalletKeypair.publicKey,
+    true,
+    TOKEN_PROGRAM_ID
+);
+
+export const liquidationWalletB = getAssociatedTokenAddressSync(
+    tokenMintB,
+    liquidationWalletKeypair.publicKey,
     true,
     TOKEN_PROGRAM_ID
 );
@@ -161,28 +198,28 @@ export const setupTestEnvironment = async () => {
         false,
         TOKEN_PROGRAM_ID,
     );
-    const createAtaTokanAIx = createAssociatedTokenAccountInstruction(
+    const createAtaTokenAIx = createAssociatedTokenAccountInstruction(
         program.provider.publicKey,
         ataTokenA,
         program.provider.publicKey,
         tokenAKeypair.publicKey,
         TOKEN_PROGRAM_ID,
     );
-    mintTx.add(createAtaTokanAIx);
+    mintTx.add(createAtaTokenAIx);
     const ataTokenB = getAssociatedTokenAddressSync(
         tokenBKeypair.publicKey,
         program.provider.publicKey,
         false,
         TOKEN_PROGRAM_ID,
     );
-    const createAtaTokanBIx = createAssociatedTokenAccountInstruction(
+    const createAtaTokenBIx = createAssociatedTokenAccountInstruction(
         program.provider.publicKey,
         ataTokenB,
         program.provider.publicKey,
         tokenBKeypair.publicKey,
         TOKEN_PROGRAM_ID,
     );
-    mintTx.add(createAtaTokanBIx);
+    mintTx.add(createAtaTokenBIx);
     const mintTokenAToOwnerIx = createMintToCheckedInstruction(
         tokenAKeypair.publicKey,
         ataTokenA,

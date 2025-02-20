@@ -1,12 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import {
-    superAdminProgram,
-    NON_SWAP_AUTHORITY,
- //   CAN_SWAP_CANT_LIQ_AUTH,
-    BORROW_AUTHORITY,
-    NON_BORROW_AUTHORITY
-} from "./rootHooks";
+import { superAdminProgram, NON_SWAP_AUTHORITY } from "../hooks/allHook";
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {
@@ -30,43 +24,6 @@ describe("InitOrUpdatePermission", () => {
                 newAuthority,
             })
             .rpc();
-        //
-        //await superAdminProgram.methods.initOrUpdatePermission({
-        //    canCosignSwaps: true,
-        //    canInitVaults: false,
-        //    canLiquidate: false,
-        //    canInitPools: false,
-        //    canBorrowFromVaults: false,
-        //    status: { active: {} }
-        //}).accounts({
-        //    payer: superAdminProgram.provider.publicKey,
-        //    newAuthority: CAN_SWAP_CANT_LIQ_AUTH.publicKey,
-        //}).rpc();
-        //
-
-        await superAdminProgram.methods.initOrUpdatePermission({
-            canCosignSwaps: true,
-            canInitVaults: true,
-            canLiquidate: true,
-            canInitPools: true,
-            canBorrowFromVaults: false,
-            status: { active: {} }
-        }).accounts({
-            payer: superAdminProgram.provider.publicKey,
-            newAuthority: NON_BORROW_AUTHORITY.publicKey
-        }).rpc();
-
-        await superAdminProgram.methods.initOrUpdatePermission({
-            canCosignSwaps: false,
-            canInitVaults: false,
-            canLiquidate: false,
-            canInitPools: false,
-            canBorrowFromVaults: true,
-            status: { active: {} }
-        }).accounts({
-            payer: superAdminProgram.provider.publicKey,
-            newAuthority: BORROW_AUTHORITY.publicKey
-        }).rpc();
 
         const permissionAfter = await superAdminProgram.account.permission.fetch(adminKey);
         assert.ok(!permissionAfter.isSuperAuthority);

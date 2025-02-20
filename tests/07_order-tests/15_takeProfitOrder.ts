@@ -1,241 +1,64 @@
-//import * as anchor from "@coral-xyz/anchor";
-//import { WasabiSolana } from "../target/types/wasabi_solana";
-//import {
-//    abSwapKey,
-//    NON_SWAP_AUTHORITY,
-//    openPosLut,
-//    poolFeeAccount,
-//    poolMint,
-//    SWAP_AUTHORITY,
-//    swapTokenAccountA,
-//    swapTokenAccountB,
-//    tokenMintA,
-//    tokenMintB,
-//    user2,
-//    superAdminProgram,
-//    feeWalletKeypair,
-//    liquidationWalletKeypair,
-//} from "./rootHooks";
-//import {
-//    getAssociatedTokenAddressSync,
-//    TOKEN_PROGRAM_ID,
-//} from "@solana/spl-token";
-//import { TOKEN_SWAP_PROGRAM_ID, TokenSwap } from "@solana/spl-token-swap";
-//import { assert } from "chai";
-//import { getMultipleTokenAccounts } from "./utils";
-//import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
-//
+import { assert } from "chai";
+import {
+    initTakeProfitOrder,
+    validateExecuteTakeProfitOrder,
+    cancelTakeProfitOrderWithInvalidPermission,
+    cancelTakeProfitOrderWithUser,
+    cancelTakeProfitOrderWithAdmin,
+    executeTakeProfitOrderWithInvalidAuthority,
+    executeTakeProfitOrderWithInvalidTakerAmount
+} from '../hooks/orderHook';
+
+describe("TakeProfit", () => {
+    describe("Long position", () => {
+        it("should init the TP order", async () => {
+            await initTakeProfitOrder();
+        });
+        it("should fail to close the TP order without proper permissions", async () => {
+            await cancelTakeProfitOrderWithInvalidPermission();
+        });
+        it("should close the TP order when invoked by the user", async () => {
+            await cancelTakeProfitOrderWithUser();
+        });
+        it("should close the TP order when invoked by the admin", async () => {
+            await cancelTakeProfitOrderWithAdmin();
+        });
+        it("should fail when the authority cannot co-sign swaps", async () => {
+            await executeTakeProfitOrderWithInvalidAuthority();
+        });
+        it("should fail when the TP taker amount is exceeded", async () => {
+            await executeTakeProfitOrderWithInvalidTakerAmount();
+        });
+        it("should execute TP order", async () => {
+            await validateExecuteTakeProfitOrder();
+        });
+    });
+    describe("Short position", () => {
+        it("should init the TP order", async () => {
+            await initTakeProfitOrder();
+        });
+        it("should fail to close the TP order without proper permissions", async () => {
+            await cancelTakeProfitOrderWithInvalidPermission();
+        });
+        it("should close the TP order when invoked by the user", async () => {
+            await cancelTakeProfitOrderWithUser();
+        });
+        it("should close the TP order when invoked by the admin", async () => {
+            await cancelTakeProfitOrderWithAdmin();
+        });
+        it("should fail when the authority cannot co-sign swaps", async () => {
+            await executeTakeProfitOrderWithInvalidAuthority();
+        });
+        it("should fail when the TP taker amount is exceeded", async () => {
+            await executeTakeProfitOrderWithInvalidTakerAmount();
+        });
+        it("should execute TP order", async () => {
+            await validateExecuteTakeProfitOrder();
+        });
+    });
+});
+
 //describe("takeProfitOrder", () => {
-//    const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-//    const [coSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("admin"),
-//            SWAP_AUTHORITY.publicKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const [nonSwapAuthSignerPermission] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("admin"),
-//            NON_SWAP_AUTHORITY.publicKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//
-//    const feeWallet = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        feeWalletKeypair.publicKey,
-//        true,
-//        TOKEN_PROGRAM_ID
-//    );
-//
-//    const liquidationWallet = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        liquidationWalletKeypair.publicKey,
-//        true,
-//        TOKEN_PROGRAM_ID
-//    );
-//
-//    const [lpVaultTokenAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintA.toBuffer()],
-//        program.programId
-//    );
-//    const [lpVaultTokenBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [anchor.utils.bytes.utf8.encode("lp_vault"), tokenMintB.toBuffer()],
-//        program.programId
-//    );
-//    const ownerTokenA = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        user2.publicKey,
-//        false
-//    );
-//    const [longPoolBKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("long_pool"),
-//            tokenMintB.toBuffer(),
-//            tokenMintA.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const longPoolBVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        longPoolBKey,
-//        true
-//    );
-//    const longPoolBCurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        longPoolBKey,
-//        true
-//    );
-//    const [shortPoolAKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("short_pool"),
-//            tokenMintA.toBuffer(),
-//            tokenMintB.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const shortPoolAVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintA,
-//        shortPoolAKey,
-//        true
-//    );
-//    const shortPoolACurrencyVaultKey = getAssociatedTokenAddressSync(
-//        tokenMintB,
-//        shortPoolAKey,
-//        true
-//    );
-//    const nonce = 15;
-//    const [longPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            longPoolBKey.toBuffer(),
-//            lpVaultTokenAKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//    const [shortPositionKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("position"),
-//            user2.publicKey.toBuffer(),
-//            shortPoolAKey.toBuffer(),
-//            lpVaultTokenBKey.toBuffer(),
-//            new anchor.BN(nonce).toArrayLike(Buffer, "le", 2),
-//        ],
-//        program.programId
-//    );
-//    const [longTakeProfitOrderKey] = anchor.web3.PublicKey.findProgramAddressSync(
-//        [
-//            anchor.utils.bytes.utf8.encode("take_profit_order"),
-//            longPositionKey.toBuffer(),
-//        ],
-//        program.programId
-//    );
-//    const [shortTakeProfitOrderKey] =
-//        anchor.web3.PublicKey.findProgramAddressSync(
-//            [
-//                anchor.utils.bytes.utf8.encode("take_profit_order"),
-//                shortPositionKey.toBuffer(),
-//            ],
-//            program.programId
-//        );
-//
-//    describe("Long", () => {
-//        before(async () => {
-//            // Create Long position that will have a TP order
-//            const fee = new anchor.BN(10);
-//            const now = new Date().getTime() / 1_000;
-//
-//            const downPayment = new anchor.BN(1_000);
-//            // amount to be borrowed
-//            const principal = new anchor.BN(1_000);
-//            const swapAmount = downPayment.add(principal);
-//            const minimumAmountOut = new anchor.BN(1_900);
-//
-//            const args = {
-//                nonce,
-//                minTargetAmount: minimumAmountOut,
-//                downPayment,
-//                principal,
-//                fee,
-//                expiration: new anchor.BN(now + 3_600),
-//            };
-//            const setupIx = await program.methods
-//                .openLongPositionSetup(
-//                    args.nonce,
-//                    args.minTargetAmount,
-//                    args.downPayment,
-//                    args.principal,
-//                    args.fee,
-//                    args.expiration,
-//                )
-//                .accounts({
-//                    owner: user2.publicKey,
-//                    lpVault: lpVaultTokenAKey,
-//                    pool: longPoolBKey,
-//                    collateral: tokenMintB,
-//                    currency: tokenMintA,
-//                    permission: coSignerPermission,
-//                    //@ts-ignore
-//                    authority: SWAP_AUTHORITY.publicKey,
-//                    feeWallet,
-//                    tokenProgram: TOKEN_PROGRAM_ID,
-//                    systemProgram: SYSTEM_PROGRAM_ID,
-//                })
-//                .instruction();
-//            const [swapAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
-//                [abSwapKey.publicKey.toBuffer()],
-//                TOKEN_SWAP_PROGRAM_ID
-//            );
-//            const swapIx = TokenSwap.swapInstruction(
-//                abSwapKey.publicKey,
-//                swapAuthority,
-//                SWAP_AUTHORITY.publicKey,
-//                longPoolBCurrencyVaultKey,
-//                swapTokenAccountA,
-//                swapTokenAccountB,
-//                longPoolBVaultKey,
-//                poolMint,
-//                poolFeeAccount,
-//                null,
-//                tokenMintA,
-//                tokenMintB,
-//                TOKEN_SWAP_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                TOKEN_PROGRAM_ID,
-//                BigInt(swapAmount.toString()),
-//                BigInt(minimumAmountOut.toString())
-//            );
-//            const _tx = await program.methods
-//                .openLongPositionCleanup()
-//                .accounts({
-//                    owner: user2.publicKey,
-//                    pool: longPoolBKey,
-//                    position: longPositionKey,
-//                    tokenProgram: TOKEN_PROGRAM_ID,
-//                })
-//                .preInstructions([setupIx, swapIx])
-//                .transaction();
-//
-//            const connection = program.provider.connection;
-//            const lookupAccount = await connection
-//                .getAddressLookupTable(openPosLut)
-//                .catch(() => null);
-//            const message = new anchor.web3.TransactionMessage({
-//                instructions: _tx.instructions,
-//                payerKey: program.provider.publicKey!,
-//                recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-//            }).compileToV0Message([lookupAccount.value]);
-//
-//            const tx = new anchor.web3.VersionedTransaction(message);
-//            await program.provider.sendAndConfirm(tx, [SWAP_AUTHORITY, user2], {
-//                skipPreflight: false,
-//            });
-//        });
-//
 //        it("should init TP order", async () => {
 //            const makerAmount = new anchor.BN(100);
 //            const takerAmount = new anchor.BN(200);
