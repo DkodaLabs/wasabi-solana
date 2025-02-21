@@ -18,7 +18,7 @@ describe("StrategyWithdraw", () => {
 
             it("should withdraw a partial amount and update strategy/lp_vault accounts", async () => {
                 await validateWithdraw(ctx, {
-                    amountIn: 500,
+                    amountIn: 400,
                     amountOut: 500
                 });
             });
@@ -31,7 +31,7 @@ describe("StrategyWithdraw", () => {
 
             it("should withdraw the full amount and update strategy/lp_vault accounts", async () => {
                 await validateWithdraw(ctx, {
-                    amountIn: 1000,
+                    amountIn: 800,
                     amountOut: 1000
                 });
             });
@@ -48,7 +48,7 @@ describe("StrategyWithdraw", () => {
                 it("should fail", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 1000,
+                            amountIn: 800,
                             amountOut: 1100
                         });
                         assert.ok(false);
@@ -69,7 +69,7 @@ describe("StrategyWithdraw", () => {
                 it("should fail", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 1000,
+                            amountIn: 800,
                             amountOut: 500
                         });
                         assert.ok(false);
@@ -92,7 +92,7 @@ describe("StrategyWithdraw", () => {
                 it("should fail", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 500,
+                            amountIn: 400,
                             amountOut: 600
                         });
                         assert.ok(false);
@@ -113,7 +113,7 @@ describe("StrategyWithdraw", () => {
                 it("should fail", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 500,
+                            amountIn: 300,
                             amountOut: 400
                         });
                         assert.ok(false);
@@ -139,8 +139,8 @@ describe("StrategyWithdraw", () => {
                 it("should succeed", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 1000,
-                            amountOut: 1005
+                            amountIn: 800,
+                            amountOut: 1009
                         });
                     } catch (err) {
                         console.error(err);
@@ -156,8 +156,8 @@ describe("StrategyWithdraw", () => {
                 it("should succeed", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 1000,
-                            amountOut: 995
+                            amountIn: 800,
+                            amountOut: 992
                         });
                     } catch (err) {
                         console.error(err);
@@ -175,8 +175,8 @@ describe("StrategyWithdraw", () => {
                 it("should succeed", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 723,
-                            amountOut: 729,
+                            amountIn: 523,
+                            amountOut: 655,
                         });
                     } catch (err) {
                         console.error(err);
@@ -192,8 +192,8 @@ describe("StrategyWithdraw", () => {
                 it("should succeed", async () => {
                     try {
                         await validate(ctx, strategyWithdraw, {
-                            amountIn: 724,
-                            amountOut: 719
+                            amountIn: 524,
+                            amountOut: 656,
                         });
                     } catch (err) {
                         console.error(err);

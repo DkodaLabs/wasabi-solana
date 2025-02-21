@@ -23,10 +23,12 @@ export class StrategyContext extends TestContext {
     collateralVault: PublicKey;
     strategy: PublicKey;
     strategyRequest: PublicKey;
-    strategyClaimListener;
-    strategyWithdrawListener;
+    strategyClaimListener: number;
+    strategyWithdrawListener: number;
+    strategyDepositListener: number;
     strategyClaimEvent;
     strategyWithdrawEvent;
+    strategyDepositEvent;
 
     skip = true;
 
@@ -68,7 +70,7 @@ export class StrategyContext extends TestContext {
 
     async generateWithdrawTestDefault() {
         await this.generate();
-        await strategyDeposit(this, { amountIn: 1_000, amountOut: 1_000 });
+        await strategyDeposit(this, { amountIn: 1_000, amountOut: 800 });
 
         return this;
     }
@@ -176,6 +178,10 @@ export class StrategyContext extends TestContext {
 
         this.strategyWithdrawListener = this.program.addEventListener('strategyWithdraw', (event) => {
             this.strategyWithdrawEvent = event;
+        });
+
+        this.strategyDepositListener = this.program.addEventListener('strategyDeposit', (event) => {
+            this.strategyDepositEvent = event;
         });
 
         // (optional) init strategy
@@ -418,22 +424,14 @@ export const validateStates = async (
     const collateralVaultBalanceAfter =
         AccountLayout.decode(after.collateralVault.data).amount;
 
-
+    //principal
     const vaultDiff = new anchor.BN((vaultBalanceAfter - vaultBalanceBefore).toString());
-
-    const lpVaultDiff = before.lpVault.totalBorrowed
-        .sub(after.lpVault.totalBorrowed);
-
-    const collateralVaultDiff = new anchor.BN(collateralVaultBalanceBefore.toString())
-        .sub(new anchor.BN(collateralVaultBalanceAfter.toString()));
-
-    const strategyDiff = before.strategy.totalBorrowedAmount
-        .sub(after.strategy.totalBorrowedAmount);
 
     // Replicates `let new_quote = if collateral_spent != collateral_before 
     let newQuote: anchor.BN;
 
-    if (vaultDiff.eq(new anchor.BN(collateralVaultBalanceBefore.toString()))) {
+    // Everything was withdrawn
+    if (collateralVaultBalanceAfter === BigInt(0)) {
         newQuote = new anchor.BN(vaultDiff);
     } else {
         newQuote = before.strategy.totalBorrowedAmount
@@ -443,35 +441,16 @@ export const validateStates = async (
     }
 
     // Replicates `strategy_claim_yield(new_quote)`
-    let intermediateStrategyTotalBorrowed = before.strategy.totalBorrowedAmount;
-    let intermediateLpVaultTotalBorrowed = before.lpVault.totalBorrowed;
-
-    const interestEarned = before.strategy.totalBorrowedAmount.sub(newQuote).abs()
+    const interestEarned = newQuote.sub(before.strategy.totalBorrowedAmount);
 
     console.log('New quote: ', newQuote.toString());
     console.log('Interested earned: ', interestEarned);
-    console.log('Interested earned (event): ', ctx.strategyClaimEvent.amount.abs());
+    console.log('Interested earned (event): ', ctx.strategyClaimEvent.amount);
 
-    if (newQuote.lte(before.strategy.totalBorrowedAmount)) {
-        const interestEarnedSigned = interestEarned.neg();
-        intermediateStrategyTotalBorrowed =
-            before.strategy.totalBorrowedAmount.add(interestEarnedSigned);
-
-        intermediateLpVaultTotalBorrowed =
-            before.lpVault.totalBorrowed.add(interestEarnedSigned);
-    } else {
-        intermediateStrategyTotalBorrowed =
-            before.strategy.totalBorrowedAmount.add(interestEarned);
-        intermediateLpVaultTotalBorrowed =
-            before.lpVault.totalBorrowed.add(interestEarned);
-    }
-
-    const newLpVaultTotalBorrowed = intermediateLpVaultTotalBorrowed.sub(new anchor.BN(vaultDiff));
-    const newStrategyTotalBorrowed = intermediateStrategyTotalBorrowed.sub(new anchor.BN(vaultDiff));
-
+    // Event Data
     assert.equal(
-        interestEarned.abs().toString(),
-        ctx.strategyClaimEvent.amount.abs().toString(),
+        interestEarned.toString(),
+        ctx.strategyClaimEvent.amount.toString(),
         "Interest earned mismatch"
     );
 
@@ -481,44 +460,40 @@ export const validateStates = async (
         "Vault diff does not match emitted event"
     );
 
+    const collateralVaultDiff = new anchor.BN(collateralVaultBalanceBefore.toString())
+        .sub(new anchor.BN(collateralVaultBalanceAfter.toString()));
+
     assert.equal(
         ctx.strategyWithdrawEvent.collateralSold.toString(),
         collateralVaultDiff.toString(),
         "Collateral sold mismatch"
     );
 
+    // State Data
     assert.equal(
-        newLpVaultTotalBorrowed.toString(),
-        after.lpVault.totalBorrowed.toString(),
-        "LP vault total borrowed mismatch"
-    );
-
-    assert.equal(
-        newStrategyTotalBorrowed.toString(),
-        after.strategy.totalBorrowedAmount.toString(),
-        "Strategy total borrowed mismatch"
-    );
-
-    assert.equal(
-        lpVaultDiff.toString(),
-        amountIn,
+        before.lpVault.totalBorrowed.sub(after.lpVault.totalBorrowed).toString(),
+        new anchor.BN(amountOut).sub(interestEarned).toString(),
         "LP vault diff mismatch"
     );
+
     assert.equal(
-        strategyDiff.toString(),
-        amountIn,
+        before.strategy.totalBorrowedAmount
+            .sub(after.strategy.totalBorrowedAmount).toString(),
+        new anchor.BN(amountOut).sub(interestEarned).toString(),
         "Strategy diff mismatch"
     );
+
+    // Token Balances
+    assert.equal(
+        vaultDiff.toString(),
+        amountOut, // already includes the interest
+        "Vault diff mismatch"
+    );
+
     assert.equal(
         collateralVaultDiff.toString(),
         amountIn,
         "Collateral vault diff mismatch"
-    );
-
-    assert.equal(
-        vaultDiff.toString(),
-        amountOut,
-        "Vault diff mismatch"
     );
 };
 
@@ -562,6 +537,65 @@ export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
         }
     };
 }
+
+export const validateDeposit = async (
+    ctx: StrategyContext,
+    {
+        amountIn,
+        amountOut
+    }: {
+        amountIn: number,
+        amountOut: number
+    }) => {
+    const statesBefore = accountStates(ctx);
+    await strategyDeposit(ctx, {
+        amountIn,
+        amountOut,
+    });
+    return await validateDepositStates(
+        statesBefore,
+        accountStates(ctx),
+        amountIn,
+        amountOut,
+    );
+};
+
+export const validateDepositStates = async (
+    beforePromise: ReturnType<typeof accountStates>,
+    afterPromise: ReturnType<typeof accountStates>,
+    amountIn: number,
+    amountOut: number,
+) => {
+    const [before, after] = await Promise.all([beforePromise, afterPromise]);
+
+    const vaultBeforeData = AccountLayout.decode(before.vault.data);
+    const vaultAfterData = AccountLayout.decode(after.vault.data);
+
+    const collateralVaultBalanceBefore =
+        AccountLayout.decode(before.collateralVault.data).amount;
+    const collateralVaultBalanceAfter =
+        AccountLayout.decode(after.collateralVault.data).amount;
+
+    assert.equal(
+        after.lpVault.totalBorrowed.toNumber(),
+        (before.lpVault.totalBorrowed.add(new anchor.BN(amountIn)).toNumber())
+    );
+
+    assert.equal(
+        after.strategy.totalBorrowedAmount.toNumber(),
+        (before.strategy.totalBorrowedAmount.add(new anchor.BN(amountOut)).toNumber())
+    );
+
+    assert.equal(
+        Number(vaultAfterData.amount),
+        Number(vaultBeforeData.amount - BigInt(amountIn))
+    );
+
+    assert.equal(
+        Number(collateralVaultBalanceAfter),
+        Number(collateralVaultBalanceBefore + BigInt(amountOut))
+    );
+};
 
 export const validateClaimStates = async (
     afterPromise: ReturnType<typeof accountStates>,
