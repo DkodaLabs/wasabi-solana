@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
-import { assert } from 'chai';
-import { Keypair, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import {assert} from 'chai';
+import {Keypair, SystemProgram, PublicKey, LAMPORTS_PER_SOL} from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -16,8 +16,8 @@ import {
     superAdminProgram,
     NON_SWAP_AUTHORITY
 } from './allHook';
-import { initWasabi } from './initWasabi';
-import { TestContext } from './tester';
+import {initWasabi} from './initWasabi';
+import {TestContext} from './tester';
 
 export class StrategyContext extends TestContext {
     collateralVault: PublicKey;
@@ -58,19 +58,19 @@ export class StrategyContext extends TestContext {
         return this;
     }
 
-    async generateWithInitialDeposit({ amountIn, amountOut }: {
+    async generateWithInitialDeposit({amountIn, amountOut}: {
         amountIn: number,
         amountOut: number
     }) {
         await this.generate();
-        await strategyDeposit(this, { amountIn, amountOut });
+        await strategyDeposit(this, {amountIn, amountOut});
 
         return this;
     }
 
     async generateWithdrawTestDefault() {
         await this.generate();
-        await strategyDeposit(this, { amountIn: 1_000, amountOut: 800 });
+        await strategyDeposit(this, {amountIn: 1_000, amountOut: 800});
 
         return this;
     }
@@ -145,7 +145,7 @@ export class StrategyContext extends TestContext {
             canLiquidate: false,
             canInitPools: false,
             canBorrowFromVaults: true,
-            status: { active: {} }
+            status: {active: {}}
         }).accounts({
             payer: superAdminProgram.provider.publicKey,
             newAuthority: this.BORROW_AUTHORITY.publicKey,
@@ -163,7 +163,7 @@ export class StrategyContext extends TestContext {
             canLiquidate: true,
             canInitPools: true,
             canBorrowFromVaults: false,
-            status: { active: {} }
+            status: {active: {}}
         }).accounts({
             payer: superAdminProgram.provider.publicKey,
             newAuthority: this.NON_BORROW_AUTHORITY.publicKey,
@@ -374,7 +374,7 @@ export const validateWithdraw = async (
     try {
         const statesBefore = accountStates(ctx);
 
-        await strategyWithdraw(ctx, { amountIn, amountOut });
+        await strategyWithdraw(ctx, {amountIn, amountOut});
 
         await validateStates(
             ctx,
@@ -543,7 +543,8 @@ export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
         } else {
             assert.ok(false);
         }
-    };
+    }
+    ;
 }
 
 export const validateDeposit = async (
@@ -575,6 +576,8 @@ export const validateDepositStates = async (
     amountOut: number,
 ) => {
     const [before, after] = await Promise.all([beforePromise, afterPromise]);
+    const actualAmountIn = amountIn * LAMPORTS_PER_SOL;
+    const actualAmountOut = amountOut * LAMPORTS_PER_SOL;
 
     const vaultBeforeData = AccountLayout.decode(before.vault.data);
     const vaultAfterData = AccountLayout.decode(after.vault.data);
@@ -591,7 +594,7 @@ export const validateDepositStates = async (
 
     assert.equal(
         after.strategy.totalBorrowedAmount.toNumber(),
-        (before.strategy.totalBorrowedAmount.add(new anchor.BN(amountOut)).toNumber())
+        (before.strategy.totalBorrowedAmount.add(new anchor.BN(actualAmountOut)).toNumber())
     );
 
     assert.equal(
@@ -601,7 +604,7 @@ export const validateDepositStates = async (
 
     assert.equal(
         Number(collateralVaultBalanceAfter),
-        Number(collateralVaultBalanceBefore + BigInt(amountOut))
+        Number(collateralVaultBalanceBefore + BigInt(actualAmountOut))
     );
 };
 
