@@ -200,11 +200,14 @@ export const strategyDeposit = async (
         amountIn: number,
         amountOut: number,
     }) => {
+    const actualAmountIn = amountIn * Math.pow(10, 6);
+    const actualAmountOut = amountOut * Math.pow(10, 6);
+
     await ctx.program.methods.strategyDepositCleanup()
         .accountsPartial(strategyAccounts(ctx))
         .preInstructions([
-            await strategyDepositSetup(ctx, amountIn, amountOut),
-            ...depositSwapInstructions(ctx, amountIn, amountOut)
+            await strategyDepositSetup(ctx, actualAmountIn, actualAmountOut),
+            ...depositSwapInstructions(ctx, actualAmountIn, actualAmountOut)
         ])
         .signers([ctx.BORROW_AUTHORITY])
         .rpc();
@@ -219,11 +222,14 @@ export const strategyWithdraw = async (
         amountIn: number,
         amountOut: number,
     }) => {
+    const actualAmountIn = amountIn * Math.pow(10, 6);
+    const actualAmountOut = amountOut * Math.pow(10, 6);
+
     await ctx.program.methods.strategyWithdrawCleanup()
         .accountsPartial(strategyAccounts(ctx))
         .preInstructions([
-            await strategyWithdrawSetup(ctx, amountIn, amountOut),
-            ...withdrawSwapInstructions(ctx, amountIn, amountOut)
+            await strategyWithdrawSetup(ctx, actualAmountIn, actualAmountOut),
+            ...withdrawSwapInstructions(ctx, actualAmountIn, actualAmountOut)
         ])
         .signers([ctx.BORROW_AUTHORITY])
         .rpc();
