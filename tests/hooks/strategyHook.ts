@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { assert } from 'chai';
-import { Keypair, SystemProgram, PublicKey } from '@solana/web3.js';
+import { Keypair, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -117,7 +117,7 @@ export class StrategyContext extends TestContext {
             TOKEN_2022_PROGRAM_ID
         );
 
-        await this.program.methods.deposit(new anchor.BN(5_000)).accountsPartial({
+        await this.program.methods.deposit(new anchor.BN(5_000 * LAMPORTS_PER_SOL)).accountsPartial({
             owner: this.program.provider.publicKey,
             lpVault: this.lpVault,
             assetMint: this.currency,
@@ -200,8 +200,8 @@ export const strategyDeposit = async (
         amountIn: number,
         amountOut: number,
     }) => {
-    const actualAmountIn = amountIn * Math.pow(10, 6);
-    const actualAmountOut = amountOut * Math.pow(10, 6);
+    const actualAmountIn = amountIn * LAMPORTS_PER_SOL;
+    const actualAmountOut = amountOut * LAMPORTS_PER_SOL;
 
     await ctx.program.methods.strategyDepositCleanup()
         .accountsPartial(strategyAccounts(ctx))
@@ -222,8 +222,8 @@ export const strategyWithdraw = async (
         amountIn: number,
         amountOut: number,
     }) => {
-    const actualAmountIn = amountIn * Math.pow(10, 6);
-    const actualAmountOut = amountOut * Math.pow(10, 6);
+    const actualAmountIn = amountIn * LAMPORTS_PER_SOL;
+    const actualAmountOut = amountOut * LAMPORTS_PER_SOL;
 
     await ctx.program.methods.strategyWithdrawCleanup()
         .accountsPartial(strategyAccounts(ctx))
@@ -419,6 +419,8 @@ export const validateStates = async (
     amountOut: string,
 ) => {
     const [before, after] = await Promise.all([beforePromise, afterPromise]);
+    const actualAmountIn = Number(amountIn) * LAMPORTS_PER_SOL;
+    const actualAmountOut = Number(amountOut) * LAMPORTS_PER_SOL;
 
     const vaultBalanceBefore =
         AccountLayout.decode(before.vault.data).amount;
@@ -441,7 +443,7 @@ export const validateStates = async (
         newQuote = new anchor.BN(vaultDiff);
     } else {
         newQuote = before.strategy.totalBorrowedAmount
-            .mul(new anchor.BN((collateralVaultBalanceBefore - BigInt(amountIn)).toString()))
+            .mul(new anchor.BN((collateralVaultBalanceBefore - BigInt(actualAmountIn)).toString()))
             .div(new anchor.BN(collateralVaultBalanceBefore.toString()))
             .add(new anchor.BN(vaultDiff));
     }
@@ -478,27 +480,27 @@ export const validateStates = async (
     // State Data
     assert.equal(
         before.lpVault.totalBorrowed.sub(after.lpVault.totalBorrowed).toString(),
-        new anchor.BN(amountOut).sub(interestEarned).toString(),
+        new anchor.BN(actualAmountOut).sub(interestEarned).toString(),
         "LP vault diff mismatch"
     );
 
     assert.equal(
         before.strategy.totalBorrowedAmount
             .sub(after.strategy.totalBorrowedAmount).toString(),
-        new anchor.BN(amountOut).sub(interestEarned).toString(),
+        new anchor.BN(actualAmountOut).sub(interestEarned).toString(),
         "Strategy diff mismatch"
     );
 
     // Token Balances
     assert.equal(
         vaultDiff.toString(),
-        amountOut, // already includes the interest
+        actualAmountOut.toString(), // already includes the interest
         "Vault diff mismatch"
     );
 
     assert.equal(
         collateralVaultDiff.toString(),
-        amountIn,
+        actualAmountIn.toString(),
         "Collateral vault diff mismatch"
     );
 };
@@ -584,7 +586,7 @@ export const validateDepositStates = async (
 
     assert.equal(
         after.lpVault.totalBorrowed.toNumber(),
-        (before.lpVault.totalBorrowed.add(new anchor.BN(amountIn)).toNumber())
+        (before.lpVault.totalBorrowed.add(new anchor.BN(actualAmountIn)).toNumber())
     );
 
     assert.equal(
@@ -594,7 +596,7 @@ export const validateDepositStates = async (
 
     assert.equal(
         Number(vaultAfterData.amount),
-        Number(vaultBeforeData.amount - BigInt(amountIn))
+        Number(vaultBeforeData.amount - BigInt(actualAmountIn))
     );
 
     assert.equal(

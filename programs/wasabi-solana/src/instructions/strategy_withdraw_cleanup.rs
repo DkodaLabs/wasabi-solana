@@ -136,18 +136,35 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         // the interest amount (new_quote = principal_before * x + principal_received where x is the
         // percentage of the collateral not sold.)
         let new_quote = if collateral_spent != collateral_before {
-            self.strategy
-                .total_borrowed_amount
+            let strategy_borrowed_u128 = self.strategy.total_borrowed_amount as u128;
+            let collateral_before_u128 = collateral_before as u128;
+            let principal_received = principal_received as u128;
+            let collateral_spent_u128 = collateral_spent as u128;
+
+            //self.strategy
+            //    .total_borrowed_amount
+            //    .checked_mul(
+            //        collateral_before
+            //            .checked_sub(collateral_spent)
+            //            .ok_or(ErrorCode::ArithmeticUnderflow)?,
+            //    )
+            //    .ok_or(ErrorCode::ArithmeticOverflow)?
+            //    .checked_div(collateral_before)
+            //    .ok_or(ErrorCode::ArithmeticOverflow)?
+            //    .checked_add(principal_received)
+            //    .ok_or(ErrorCode::ArithmeticOverflow)?
+            strategy_borrowed_u128
                 .checked_mul(
-                    collateral_before
-                        .checked_sub(collateral_spent)
+                    collateral_before_u128
+                        .checked_sub(collateral_spent_u128)
                         .ok_or(ErrorCode::ArithmeticUnderflow)?,
                 )
                 .ok_or(ErrorCode::ArithmeticOverflow)?
-                .checked_div(collateral_before)
+                .checked_div(collateral_before_u128)
                 .ok_or(ErrorCode::ArithmeticOverflow)?
                 .checked_add(principal_received)
                 .ok_or(ErrorCode::ArithmeticOverflow)?
+                .try_into()?
         } else {
             principal_received
         };
@@ -181,7 +198,7 @@ impl<'info> StrategyWithdrawCleanup<'info> {
             ],
         )?;
 
-        // Must reload vault / strategy else underflow 
+        // Must reload vault / strategy else underflow
         self.strategy.reload()?;
         self.lp_vault.reload()?;
 
