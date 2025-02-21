@@ -51,14 +51,11 @@ impl<'info> StrategyClaimYield<'info> {
     }
 
     pub fn strategy_claim_yield(&mut self, new_quote: u64) -> Result<()> {
-        msg!("Total borrowed amount: {:?}", self.strategy.total_borrowed_amount);
-        msg!("New quote: {:?}", new_quote);
         validate_difference(self.strategy.total_borrowed_amount, new_quote, 1)?;
 
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
 
         let interest_earned = self.strategy.total_borrowed_amount.abs_diff(new_quote);
-        msg!("Interest earned: {:?}", interest_earned);
         let mut interest_earned_i64: i64 = interest_earned.try_into()?;
 
         if new_quote <= self.strategy.total_borrowed_amount {

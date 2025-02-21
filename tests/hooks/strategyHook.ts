@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { assert } from 'chai';
-import { Keypair, SystemProgram, PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, SystemProgram, PublicKey } from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -23,6 +23,10 @@ export class StrategyContext extends TestContext {
     collateralVault: PublicKey;
     strategy: PublicKey;
     strategyRequest: PublicKey;
+    strategyClaimListener;
+    strategyWithdrawListener;
+    strategyClaimEvent;
+    strategyWithdrawEvent;
 
     skip = true;
 
@@ -111,7 +115,7 @@ export class StrategyContext extends TestContext {
             TOKEN_2022_PROGRAM_ID
         );
 
-        await this.program.methods.deposit(new anchor.BN(1_000_000)).accountsPartial({
+        await this.program.methods.deposit(new anchor.BN(5_000)).accountsPartial({
             owner: this.program.provider.publicKey,
             lpVault: this.lpVault,
             assetMint: this.currency,
@@ -166,6 +170,14 @@ export class StrategyContext extends TestContext {
             .preInstructions([permissionIx, collateralVaultAtaIx, transferIx])
             .rpc();
 
+        this.strategyClaimListener = this.program.addEventListener('strategyClaim', (event) => {
+            this.strategyClaimEvent = event;
+        });
+
+        this.strategyWithdrawListener = this.program.addEventListener('strategyWithdraw', (event) => {
+            this.strategyWithdrawEvent = event;
+        });
+
         // (optional) init strategy
         await validateSetup(this);
 
@@ -202,7 +214,6 @@ export const strategyWithdraw = async (
         amountOut: number,
     }) => {
     await ctx.program.methods.strategyWithdrawCleanup()
-        //@ts-ignore
         .accountsPartial(strategyAccounts(ctx))
         .preInstructions([
             await strategyWithdrawSetup(ctx, amountIn, amountOut),
@@ -354,9 +365,11 @@ export const validateWithdraw = async (
         await strategyWithdraw(ctx, { amountIn, amountOut });
 
         await validateStates(
+            ctx,
             statesBefore,
             accountStates(ctx),
-            amountIn.toString()
+            amountIn.toString(),
+            amountOut.toString(),
         );
     } catch (err) {
         console.error(err);
@@ -364,10 +377,34 @@ export const validateWithdraw = async (
     }
 }
 
+export type ValidationParams = {
+    amountIn: number,
+    amountOut: number,
+    newQuote?: number
+}
+
+export const validate = async (
+    ctx: StrategyContext,
+    f: (ctx: StrategyContext, params: ValidationParams) => Promise<void>,
+    params: ValidationParams
+) => {
+    const statesBefore = accountStates(ctx);
+    await f(ctx, params);
+    await validateStates(
+        ctx,
+        statesBefore,
+        accountStates(ctx),
+        params.amountIn.toString(),
+        params.amountOut.toString()
+    );
+};
+
 export const validateStates = async (
+    ctx: StrategyContext,
     beforePromise: ReturnType<typeof accountStates>,
     afterPromise: ReturnType<typeof accountStates>,
-    predicate: string,
+    amountIn: string,
+    amountOut: string,
 ) => {
     const [before, after] = await Promise.all([beforePromise, afterPromise]);
 
@@ -381,8 +418,8 @@ export const validateStates = async (
     const collateralVaultBalanceAfter =
         AccountLayout.decode(after.collateralVault.data).amount;
 
-    const vaultDiff = new anchor.BN(vaultBalanceAfter.toString())
-        .sub(new anchor.BN(vaultBalanceBefore.toString()));
+
+    const vaultDiff = new anchor.BN((vaultBalanceAfter - vaultBalanceBefore).toString());
 
     const lpVaultDiff = before.lpVault.totalBorrowed
         .sub(after.lpVault.totalBorrowed);
@@ -393,24 +430,94 @@ export const validateStates = async (
     const strategyDiff = before.strategy.totalBorrowedAmount
         .sub(after.strategy.totalBorrowedAmount);
 
+    // Replicates `let new_quote = if collateral_spent != collateral_before 
+    let newQuote: anchor.BN;
+
+    if (vaultDiff.eq(new anchor.BN(collateralVaultBalanceBefore.toString()))) {
+        newQuote = new anchor.BN(vaultDiff);
+    } else {
+        newQuote = before.strategy.totalBorrowedAmount
+            .mul(new anchor.BN((collateralVaultBalanceBefore - BigInt(amountIn)).toString()))
+            .div(new anchor.BN(collateralVaultBalanceBefore.toString()))
+            .add(new anchor.BN(vaultDiff));
+    }
+
+    // Replicates `strategy_claim_yield(new_quote)`
+    let intermediateStrategyTotalBorrowed = before.strategy.totalBorrowedAmount;
+    let intermediateLpVaultTotalBorrowed = before.lpVault.totalBorrowed;
+
+    const interestEarned = before.strategy.totalBorrowedAmount.sub(newQuote).abs()
+
+    console.log('New quote: ', newQuote.toString());
+    console.log('Interested earned: ', interestEarned);
+    console.log('Interested earned (event): ', ctx.strategyClaimEvent.amount.abs());
+
+    if (newQuote.lte(before.strategy.totalBorrowedAmount)) {
+        const interestEarnedSigned = interestEarned.neg();
+        intermediateStrategyTotalBorrowed =
+            before.strategy.totalBorrowedAmount.add(interestEarnedSigned);
+
+        intermediateLpVaultTotalBorrowed =
+            before.lpVault.totalBorrowed.add(interestEarnedSigned);
+    } else {
+        intermediateStrategyTotalBorrowed =
+            before.strategy.totalBorrowedAmount.add(interestEarned);
+        intermediateLpVaultTotalBorrowed =
+            before.lpVault.totalBorrowed.add(interestEarned);
+    }
+
+    const newLpVaultTotalBorrowed = intermediateLpVaultTotalBorrowed.sub(new anchor.BN(vaultDiff));
+    const newStrategyTotalBorrowed = intermediateStrategyTotalBorrowed.sub(new anchor.BN(vaultDiff));
+
+    assert.equal(
+        interestEarned.abs().toString(),
+        ctx.strategyClaimEvent.amount.abs().toString(),
+        "Interest earned mismatch"
+    );
+
+    assert.equal(
+        ctx.strategyWithdrawEvent.amountWithdraw.toString(),
+        vaultDiff.toString(),
+        "Vault diff does not match emitted event"
+    );
+
+    assert.equal(
+        ctx.strategyWithdrawEvent.collateralSold.toString(),
+        collateralVaultDiff.toString(),
+        "Collateral sold mismatch"
+    );
+
+    assert.equal(
+        newLpVaultTotalBorrowed.toString(),
+        after.lpVault.totalBorrowed.toString(),
+        "LP vault total borrowed mismatch"
+    );
+
+    assert.equal(
+        newStrategyTotalBorrowed.toString(),
+        after.strategy.totalBorrowedAmount.toString(),
+        "Strategy total borrowed mismatch"
+    );
+
     assert.equal(
         lpVaultDiff.toString(),
-        predicate,
+        amountIn,
         "LP vault diff mismatch"
     );
     assert.equal(
         strategyDiff.toString(),
-        predicate,
+        amountIn,
         "Strategy diff mismatch"
     );
     assert.equal(
         collateralVaultDiff.toString(),
-        predicate,
+        amountIn,
         "Collateral vault diff mismatch"
     );
+
     assert.equal(
         vaultDiff.toString(),
-        predicate,
+        amountOut,
         "Vault diff mismatch"
     );
 };
@@ -472,53 +579,6 @@ export const validateClaimStates = async (
         delta
     );
 }
-
-export const strategyWithdrawClaimBefore = async (
-    ctx: StrategyContext,
-    {
-        amountIn,
-        amountOut,
-        newQuote
-    }: {
-        amountIn: number,
-        amountOut: number,
-        newQuote: number
-    }
-) => {
-    await ctx.program.methods.strategyWithdrawCleanup()
-        .accountsPartial(strategyAccounts(ctx))
-        .preInstructions([
-            await strategyWithdrawSetup(ctx, amountIn, amountOut),
-            await strategyClaimIx(ctx, newQuote),
-            ...withdrawSwapInstructions(ctx, amountIn, amountOut)
-        ])
-        .signers([ctx.BORROW_AUTHORITY])
-        .rpc();
-};
-
-export const strategyWithdrawClaimAfter = async (
-    ctx: StrategyContext,
-    {
-        amountIn,
-        amountOut,
-        newQuote
-    }: {
-        amountIn: number,
-        amountOut: number,
-        newQuote: number
-    }
-) => {
-    await ctx.program.methods.strategyWithdrawCleanup()
-        .accountsPartial(strategyAccounts(ctx))
-        .preInstructions([
-            await strategyWithdrawSetup(ctx, amountIn, amountOut),
-            ...withdrawSwapInstructions(ctx, amountIn, amountOut),
-            await strategyClaimIx(ctx, newQuote),
-        ])
-        .signers([ctx.BORROW_AUTHORITY])
-        .rpc();
-};
-
 
 export const closeStrategy = async (ctx: StrategyContext) => {
     await ctx.program.methods

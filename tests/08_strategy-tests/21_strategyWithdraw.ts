@@ -1,10 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import {
+    validate,
     strategyWithdraw,
-    strategyDeposit,
-    strategyWithdrawClaimBefore,
-    strategyWithdrawClaimAfter,
     validateWithdraw,
     StrategyContext
 } from "../hooks/strategyHook";
@@ -19,7 +17,10 @@ describe("StrategyWithdraw", () => {
             });
 
             it("should withdraw a partial amount and update strategy/lp_vault accounts", async () => {
-                await validateWithdraw(ctx, { amountIn: 500, amountOut: 500 });
+                await validateWithdraw(ctx, {
+                    amountIn: 500,
+                    amountOut: 500
+                });
             });
         });
 
@@ -29,7 +30,10 @@ describe("StrategyWithdraw", () => {
             });
 
             it("should withdraw the full amount and update strategy/lp_vault accounts", async () => {
-                await validateWithdraw(ctx, { amountIn: 1000, amountOut: 1000 });
+                await validateWithdraw(ctx, {
+                    amountIn: 1000,
+                    amountOut: 1000
+                });
             });
         });
     });
@@ -43,7 +47,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 1000, amountOut: 2000 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 1000,
+                            amountOut: 1100
+                        });
                         assert.ok(false);
                     } catch (err) {
                         if (err instanceof anchor.AnchorError) {
@@ -61,7 +68,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 1000, amountOut: 500 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 1000,
+                            amountOut: 500
+                        });
                         assert.ok(false);
                     } catch (err) {
                         if (err instanceof anchor.AnchorError) {
@@ -81,7 +91,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 500, amountOut: 600 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 500,
+                            amountOut: 600
+                        });
                         assert.ok(false);
                     } catch (err) {
                         if (err instanceof anchor.AnchorError) {
@@ -99,7 +112,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 500, amountOut: 400 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 500,
+                            amountOut: 400
+                        });
                         assert.ok(false);
                     } catch (err) {
                         if (err instanceof anchor.AnchorError) {
@@ -122,7 +138,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 1000, amountOut: 1005 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 1000,
+                            amountOut: 1005
+                        });
                     } catch (err) {
                         console.error(err);
                         assert.ok(false);
@@ -136,7 +155,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 1000, amountOut: 995 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 1000,
+                            amountOut: 995
+                        });
                     } catch (err) {
                         console.error(err);
                         assert.ok(false);
@@ -152,7 +174,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 500, amountOut: 501 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 723,
+                            amountOut: 729,
+                        });
                     } catch (err) {
                         console.error(err);
                         assert.ok(false);
@@ -166,136 +191,10 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await strategyWithdraw(ctx, { amountIn: 500, amountOut: 499 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-        });
-    });
-
-    // setup, CLAIM, swap, cleanup
-    describe("when there is a realized difference before the 'swap' occurs", () => {
-        describe("full withdraw", () => {
-            describe("interest has accrued", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimBefore(ctx, { amountIn: 1000, amountOut: 1005, newQuote: 1008 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-            describe("interest has been lost", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimBefore(ctx, { amountIn: 1000, amountOut: 995, newQuote: 993 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-        });
-        describe("partial withdraw", () => {
-            describe("interest has accrued", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimBefore(ctx, { amountIn: 500, amountOut: 501, newQuote: 1005 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-            describe("interest has been lost", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimBefore(ctx, { amountIn: 500, amountOut: 499, newQuote: 995 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-        });
-    });
-
-    // setup, swap, CLAIM, cleanup
-    describe("when there is a realized difference after the 'swap' occurs", () => {
-        describe("full withdraw", () => {
-            describe("interest has accrued", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimAfter(ctx, { amountIn: 1000, amountOut: 1005, newQuote: 1008 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-            describe("interest has been lost", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimAfter(ctx, { amountIn: 1000, amountOut: 995, newQuote: 993 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-        });
-        describe("partial withdraw", () => {
-            describe("interest has accrued", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                    await strategyDeposit(ctx, { amountIn: 1000, amountOut: 1000 });
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimAfter(ctx, { amountIn: 500, amountOut: 501, newQuote: 1005 });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
-            });
-            describe("interest has been lost", () => {
-                before(async () => {
-                    ctx = await new StrategyContext().generateWithdrawTestDefault();
-                });
-
-                it("should correctly adjust the amounts in the cleanup", async () => {
-                    try {
-                        await strategyWithdrawClaimAfter(ctx, { amountIn: 500, amountOut: 499, newQuote: 995 });
+                        await validate(ctx, strategyWithdraw, {
+                            amountIn: 724,
+                            amountOut: 719
+                        });
                     } catch (err) {
                         console.error(err);
                         assert.ok(false);

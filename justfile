@@ -18,7 +18,7 @@ liquidation_fee := "5"
 
 cluster := ""
 
-set-cluster cluster = "devnet":
+set-cluster cluster:
     #!/usr/bin/env bash
     case "{{cluster}}" in
     "d"|"devnet") echo "devnet" > .cluster ;;
