@@ -142,6 +142,5 @@ export class TestContext {
             })
             .preInstructions([permissionIx, vaultIx])
             .rpc();
-
     }
 }

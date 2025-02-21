@@ -134,7 +134,8 @@ impl<'info> StrategyWithdrawCleanup<'info> {
         msg!("Collateral spent: {}", collateral_spent);
         msg!("Principal before: {}", principal_before);
         msg!("Collateral before: {}", collateral_before);
-        msg!("Lp vault total borrwed: {}", self.lp_vault.total_borrowed);
+        msg!("Lp vault total borrowed: {}", self.lp_vault.total_borrowed);
+        msg!("Lp vault total assets : {}", self.lp_vault.total_assets);
         msg!("Strategy total borrowed: {}", self.strategy.total_borrowed_amount);
         msg!("Strategy collateral amount: {}", self.strategy.collateral_amount);
 

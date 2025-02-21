@@ -8,7 +8,7 @@ import {
     createAssociatedTokenAccountIdempotentInstruction,
     createBurnInstruction,
     createMintToInstruction,
-    createMintToCheckedInstruction,
+    TOKEN_2022_PROGRAM_ID,
 } from '@solana/spl-token';
 import {
     WASABI_PROGRAM_ID,
@@ -89,17 +89,34 @@ export class StrategyContext extends TestContext {
             WASABI_PROGRAM_ID
         )[0];
 
-        const mintCurrencyToLpVault = createMintToCheckedInstruction(
-            this.currency,
-            this.vault,
-            this.program.provider.publicKey,
-            1_000_000,
-            6,
-            [],
-            TOKEN_PROGRAM_ID,
-        )
+        const [sharesMint] = PublicKey.findProgramAddressSync(
+            [
+                this.lpVault.toBuffer(), this.currency.toBuffer()
+            ],
+            WASABI_PROGRAM_ID
+        );
 
-        await this.program.provider.sendAndConfirm(new Transaction().add(mintCurrencyToLpVault));
+        const ownerSharesAta = getAssociatedTokenAddressSync(
+            sharesMint,
+            this.program.provider.publicKey,
+            false,
+            TOKEN_2022_PROGRAM_ID,
+        );
+
+        const createOwnerSharesAccount = createAssociatedTokenAccountIdempotentInstruction(
+            this.program.provider.publicKey,
+            ownerSharesAta,
+            this.program.provider.publicKey,
+            sharesMint,
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        await this.program.methods.deposit(new anchor.BN(1_000_000)).accountsPartial({
+            owner: this.program.provider.publicKey,
+            lpVault: this.lpVault,
+            assetMint: this.currency,
+            assetTokenProgram: TOKEN_PROGRAM_ID
+        }).preInstructions([createOwnerSharesAccount]).rpc();
 
         this.collateralVault = getAssociatedTokenAddressSync(
             this.collateral,
@@ -148,9 +165,6 @@ export class StrategyContext extends TestContext {
             .signers([NON_SWAP_AUTHORITY])
             .preInstructions([permissionIx, collateralVaultAtaIx, transferIx])
             .rpc();
-
-        const balance = await superAdminProgram.provider.connection.getBalance(this.BORROW_AUTHORITY.publicKey);
-        console.log("Borrow authority balance: ", balance);
 
         // (optional) init strategy
         await validateSetup(this);
@@ -222,34 +236,30 @@ export const accountStates = async (ctx: StrategyContext) => {
 export const validateSetup = async (ctx: StrategyContext) => {
     await setupStrategy(ctx);
 
-    try {
-        const [
-            strategyState,
-            lpVaultState,
-            collateralVaultState
-        ] = await Promise.all([
-            superAdminProgram.account.strategy.fetch(ctx.strategy),
-            superAdminProgram.account.lpVault.fetch(ctx.lpVault),
-            superAdminProgram.provider.connection.getAccountInfo(ctx.collateralVault),
-        ]);
+    const [
+        strategyState,
+        lpVaultState,
+        collateralVaultState
+    ] = await Promise.all([
+        superAdminProgram.account.strategy.fetch(ctx.strategy),
+        superAdminProgram.account.lpVault.fetch(ctx.lpVault),
+        superAdminProgram.provider.connection.getAccountInfo(ctx.collateralVault),
+    ]);
 
-        assert(strategyState.collateralVault.equals(ctx.collateralVault));
-        assert(strategyState.currency.equals(ctx.currency));
-        assert(strategyState.collateral.equals(ctx.collateral));
-        assert(strategyState.lpVault.equals(ctx.lpVault));
-        assert.equal(strategyState.totalBorrowedAmount.toNumber(), 0);
-        assert.equal(lpVaultState.totalBorrowed.toNumber(), 0);
+    assert(strategyState.collateralVault.equals(ctx.collateralVault));
+    assert(strategyState.currency.equals(ctx.currency));
+    assert(strategyState.collateral.equals(ctx.collateral));
+    assert(strategyState.lpVault.equals(ctx.lpVault));
+    assert.equal(strategyState.totalBorrowedAmount.toNumber(), 0);
+    assert.equal(lpVaultState.totalBorrowed.toNumber(), 0);
 
-        if (collateralVaultState) {
-            assert.equal(
-                AccountLayout.decode(collateralVaultState.data).amount, BigInt(0)
-            );
-        }
-
-        return;
-    } catch (err) {
-        console.error(err);
+    if (collateralVaultState) {
+        assert.equal(
+            AccountLayout.decode(collateralVaultState.data).amount, BigInt(0)
+        );
     }
+
+    return;
 }
 
 export const setupStrategy = async (ctx: StrategyContext) => {
@@ -429,7 +439,6 @@ export const claimAccounts = (ctx: StrategyContext) => {
 }
 
 export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
-    const statesBefore = accountStates(ctx);
     try {
         await ctx.program.methods
             .strategyClaimYield(new anchor.BN(newQuote))
@@ -437,7 +446,7 @@ export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
             .signers([ctx.BORROW_AUTHORITY])
             .rpc();
         const statesAfter = accountStates(ctx);
-        await validateClaimStates(statesBefore, statesAfter, newQuote);
+        await validateClaimStates(statesAfter, newQuote);
     } catch (err) {
         if (err instanceof anchor.AnchorError) {
             assert.equal(err.error.errorCode.number, 6016);
@@ -448,11 +457,10 @@ export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
 }
 
 export const validateClaimStates = async (
-    beforePromise: ReturnType<typeof accountStates>,
     afterPromise: ReturnType<typeof accountStates>,
     delta: number,
 ) => {
-    const [before, after] = await Promise.all([beforePromise, afterPromise]);
+    const after = await afterPromise;
 
     assert.equal(
         after.strategy.totalBorrowedAmount.toNumber(),

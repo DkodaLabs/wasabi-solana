@@ -58,6 +58,7 @@ impl<'info> StrategyClaimYield<'info> {
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
 
         let interest_earned = self.strategy.total_borrowed_amount.abs_diff(new_quote);
+        msg!("Interest earned: {:?}", interest_earned);
         let mut interest_earned_i64: i64 = interest_earned.try_into()?;
 
         if new_quote <= self.strategy.total_borrowed_amount {

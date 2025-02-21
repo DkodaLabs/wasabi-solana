@@ -16,11 +16,9 @@ describe("StrategyWithdraw", () => {
         describe("partial withdraw", () => {
             before(async () => {
                 ctx = await new StrategyContext().generateWithdrawTestDefault()
-                console.log(ctx);
             });
 
             it("should withdraw a partial amount and update strategy/lp_vault accounts", async () => {
-                console.log(ctx);
                 await validateWithdraw(ctx, { amountIn: 500, amountOut: 500 });
             });
         });
@@ -28,11 +26,9 @@ describe("StrategyWithdraw", () => {
         describe("full withdraw", () => {
             before(async () => {
                 ctx = await new StrategyContext().generateWithdrawTestDefault()
-                console.log(ctx);
             });
 
             it("should withdraw the full amount and update strategy/lp_vault accounts", async () => {
-                console.log(ctx);
                 await validateWithdraw(ctx, { amountIn: 1000, amountOut: 1000 });
             });
         });
