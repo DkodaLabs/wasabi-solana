@@ -30,6 +30,10 @@ import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 export const WASABI_PROGRAM_ID = new web3.PublicKey("spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c");
 
 export let superAdminProgram: Program<WasabiSolana>;
+export const [superAdminPermission] = web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("super_admin")],
+    WASABI_PROGRAM_ID
+)
 
 export const tokenAKeypair = web3.Keypair.generate();
 export const tokenBKeypair = web3.Keypair.generate();

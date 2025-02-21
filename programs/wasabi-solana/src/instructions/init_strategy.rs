@@ -1,10 +1,7 @@
 use {
     crate::{error::ErrorCode, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
-    anchor_spl::{
-        token_interface::{Mint, TokenAccount, TokenInterface},
-        associated_token::AssociatedToken,
-    },
+    anchor_spl::token_interface::{Mint, TokenAccount},
 };
 
 #[derive(Accounts)]
@@ -41,17 +38,9 @@ pub struct InitStrategy<'info> {
     pub strategy: Account<'info, Strategy>,
 
     /// The lp vault's collateral token account
-    #[account(
-        init_if_needed,
-        payer = authority,
-        associated_token::mint = collateral,
-        associated_token::authority = lp_vault,
-        associated_token::token_program = token_program,
-    )]
+    #[account(constraint = collateral_vault.owner == lp_vault.key())]
     pub collateral_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 

@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
 import { assert } from 'chai';
-import { SystemProgram } from '@solana/web3.js';
+import { Keypair, SystemProgram, PublicKey, Transaction } from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -8,70 +8,207 @@ import {
     createAssociatedTokenAccountIdempotentInstruction,
     createBurnInstruction,
     createMintToInstruction,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    createMintToCheckedInstruction,
 } from '@solana/spl-token';
 import {
     WASABI_PROGRAM_ID,
-    BORROW_AUTHORITY,
-    NON_BORROW_AUTHORITY,
-    tokenMintB,
-    tokenMintA,
     setupTestEnvironment,
     superAdminProgram,
-    lpVaultA
+    NON_SWAP_AUTHORITY
 } from './allHook';
 import { initWasabi } from './initWasabi';
-import { WasabiSolana } from '../../target/types/wasabi_solana';
+import { TestContext } from './tester';
 
-export const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
+export class StrategyContext extends TestContext {
+    collateralVault: PublicKey;
+    strategy: PublicKey;
+    strategyRequest: PublicKey;
 
-export const currency = tokenMintA;
-export const collateral = tokenMintB;
+    skip = true;
 
-export const vault = getAssociatedTokenAddressSync(
-    tokenMintA,
-    lpVaultA,
-    true,
-    TOKEN_PROGRAM_ID
-);
-export const collateralVault = getAssociatedTokenAddressSync(
-    tokenMintB,
-    lpVaultA,
-    true,
-    TOKEN_PROGRAM_ID,
-);
+    constructor(
+        readonly BORROW_AUTHORITY = Keypair.generate(),
+        readonly NON_BORROW_AUTHORITY = Keypair.generate(),
+        readonly borrowPermission = PublicKey.findProgramAddressSync(
+            [
+                anchor.utils.bytes.utf8.encode("admin"),
+                BORROW_AUTHORITY.publicKey.toBuffer(),
+            ],
+            WASABI_PROGRAM_ID,
+        )[0],
+        readonly invalidPermission = PublicKey.findProgramAddressSync(
+            [
+                anchor.utils.bytes.utf8.encode("admin"),
+                NON_BORROW_AUTHORITY.publicKey.toBuffer(),
+            ],
+            WASABI_PROGRAM_ID,
+        )[0],
+    ) {
+        super();
+    }
 
-export const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-    BORROW_AUTHORITY.publicKey,
-    collateralVault,
-    lpVaultA,
-    collateral,
-    TOKEN_PROGRAM_ID
-);
+    skipSetup(skip: boolean): this {
+        this.skip = skip;
+        return this;
+    }
 
-export const [strategy] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("strategy"), lpVaultA.toBuffer(), collateral.toBuffer()],
-    WASABI_PROGRAM_ID,
-);
-const [strategyRequest] = anchor.web3.PublicKey.findProgramAddressSync(
-    [anchor.utils.bytes.utf8.encode("strategy_request"), strategy.toBuffer()],
-    WASABI_PROGRAM_ID,
-);
+    async generateWithInitialDeposit({ amountIn, amountOut }: {
+        amountIn: number,
+        amountOut: number
+    }) {
+        await this.generate();
+        await strategyDeposit(this, { amountIn, amountOut });
 
-const [permission] = anchor.web3.PublicKey.findProgramAddressSync(
-    [
-        anchor.utils.bytes.utf8.encode("admin"),
-        BORROW_AUTHORITY.publicKey.toBuffer(),
-    ],
-    WASABI_PROGRAM_ID,
-);
+        return this;
+    }
 
-export const accountStates = async () => {
-    const [lpVaultState, strategyState, vaultState, collateralVaultState] = await Promise.all([
-        superAdminProgram.account.lpVault.fetch(lpVaultA),
-        superAdminProgram.account.strategy.fetch(strategy),
-        superAdminProgram.provider.connection.getAccountInfo(vault),
-        superAdminProgram.provider.connection.getAccountInfo(collateralVault),
+    async generateWithdrawTestDefault() {
+        await this.generate();
+        await strategyDeposit(this, { amountIn: 1_000, amountOut: 1_000 });
+
+        return this;
+    }
+
+    async generate() {
+        await super._generate();
+
+        this.strategy = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("strategy"),
+                this.lpVault.toBuffer(),
+                this.collateral.toBuffer(),
+            ],
+            WASABI_PROGRAM_ID
+        )[0];
+
+        this.strategyRequest = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("strategy_request"),
+                this.strategy.toBuffer(),
+            ],
+            WASABI_PROGRAM_ID
+        )[0];
+
+        const mintCurrencyToLpVault = createMintToCheckedInstruction(
+            this.currency,
+            this.vault,
+            this.program.provider.publicKey,
+            1_000_000,
+            6,
+            [],
+            TOKEN_PROGRAM_ID,
+        )
+
+        await this.program.provider.sendAndConfirm(new Transaction().add(mintCurrencyToLpVault));
+
+        this.collateralVault = getAssociatedTokenAddressSync(
+            this.collateral,
+            this.lpVault,
+            true,
+            TOKEN_PROGRAM_ID,
+        );
+
+        const collateralVaultAtaIx = createAssociatedTokenAccountIdempotentInstruction(
+            superAdminProgram.provider.publicKey,
+            this.collateralVault,
+            this.lpVault,
+            this.collateral,
+            TOKEN_PROGRAM_ID
+        );
+
+        const permissionIx = await superAdminProgram.methods.initOrUpdatePermission({
+            canCosignSwaps: false,
+            canInitVaults: false,
+            canLiquidate: false,
+            canInitPools: false,
+            canBorrowFromVaults: true,
+            status: { active: {} }
+        }).accounts({
+            payer: superAdminProgram.provider.publicKey,
+            newAuthority: this.BORROW_AUTHORITY.publicKey,
+        }).instruction();
+
+        const transferIx = SystemProgram.transfer({
+            fromPubkey: NON_SWAP_AUTHORITY.publicKey,
+            toPubkey: this.BORROW_AUTHORITY.publicKey,
+            lamports: 10_000_000,
+        });
+
+        await superAdminProgram.methods.initOrUpdatePermission({
+            canCosignSwaps: true,
+            canInitVaults: true,
+            canLiquidate: true,
+            canInitPools: true,
+            canBorrowFromVaults: false,
+            status: { active: {} }
+        }).accounts({
+            payer: superAdminProgram.provider.publicKey,
+            newAuthority: this.NON_BORROW_AUTHORITY.publicKey,
+        })
+            .signers([NON_SWAP_AUTHORITY])
+            .preInstructions([permissionIx, collateralVaultAtaIx, transferIx])
+            .rpc();
+
+        const balance = await superAdminProgram.provider.connection.getBalance(this.BORROW_AUTHORITY.publicKey);
+        console.log("Borrow authority balance: ", balance);
+
+        // (optional) init strategy
+        await validateSetup(this);
+
+        return this;
+    }
+}
+
+export const strategyDeposit = async (
+    ctx: StrategyContext,
+    {
+        amountIn,
+        amountOut,
+    }: {
+        amountIn: number,
+        amountOut: number,
+    }) => {
+    await ctx.program.methods.strategyDepositCleanup()
+        .accountsPartial(strategyAccounts(ctx))
+        .preInstructions([
+            await strategyDepositSetup(ctx, amountIn, amountOut),
+            ...depositSwapInstructions(ctx, amountIn, amountOut)
+        ])
+        .signers([ctx.BORROW_AUTHORITY])
+        .rpc();
+}
+
+export const strategyWithdraw = async (
+    ctx: StrategyContext,
+    {
+        amountIn,
+        amountOut,
+    }: {
+        amountIn: number,
+        amountOut: number,
+    }) => {
+    await ctx.program.methods.strategyWithdrawCleanup()
+        //@ts-ignore
+        .accountsPartial(strategyAccounts(ctx))
+        .preInstructions([
+            await strategyWithdrawSetup(ctx, amountIn, amountOut),
+            ...withdrawSwapInstructions(ctx, amountIn, amountOut)
+        ])
+        .signers([ctx.BORROW_AUTHORITY])
+        .rpc();
+};
+
+export const accountStates = async (ctx: StrategyContext) => {
+    const [
+        lpVaultState,
+        strategyState,
+        vaultState,
+        collateralVaultState
+    ] = await Promise.all([
+        superAdminProgram.account.lpVault.fetch(ctx.lpVault),
+        superAdminProgram.account.strategy.fetch(ctx.strategy),
+        superAdminProgram.provider.connection.getAccountInfo(ctx.vault),
+        superAdminProgram.provider.connection.getAccountInfo(ctx.collateralVault),
     ]);
 
     return {
@@ -80,93 +217,137 @@ export const accountStates = async () => {
         vault: vaultState,
         collateralVault: collateralVaultState,
     };
-};
+}
 
-export const depositSwapInstructions = (x: number, y: number) => {
-    const burnIx = createBurnInstruction(vault, currency, BORROW_AUTHORITY.publicKey, x);
-    const mintIx = createMintToInstruction(collateral, collateralVault, program.provider.publicKey, y);
+export const validateSetup = async (ctx: StrategyContext) => {
+    await setupStrategy(ctx);
+
+    try {
+        const [
+            strategyState,
+            lpVaultState,
+            collateralVaultState
+        ] = await Promise.all([
+            superAdminProgram.account.strategy.fetch(ctx.strategy),
+            superAdminProgram.account.lpVault.fetch(ctx.lpVault),
+            superAdminProgram.provider.connection.getAccountInfo(ctx.collateralVault),
+        ]);
+
+        assert(strategyState.collateralVault.equals(ctx.collateralVault));
+        assert(strategyState.currency.equals(ctx.currency));
+        assert(strategyState.collateral.equals(ctx.collateral));
+        assert(strategyState.lpVault.equals(ctx.lpVault));
+        assert.equal(strategyState.totalBorrowedAmount.toNumber(), 0);
+        assert.equal(lpVaultState.totalBorrowed.toNumber(), 0);
+
+        if (collateralVaultState) {
+            assert.equal(
+                AccountLayout.decode(collateralVaultState.data).amount, BigInt(0)
+            );
+        }
+
+        return;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+export const setupStrategy = async (ctx: StrategyContext) => {
+    return await superAdminProgram.methods.initStrategy().accountsPartial({
+        authority: ctx.BORROW_AUTHORITY.publicKey,
+        permission: ctx.borrowPermission,
+        lpVault: ctx.lpVault,
+        vault: ctx.vault,
+        currency: ctx.currency,
+        collateral: ctx.collateral,
+        strategy: ctx.strategy,
+        collateralVault: ctx.collateralVault,
+        systemProgram: SystemProgram.programId,
+    })
+        .signers([ctx.BORROW_AUTHORITY])
+        .rpc();
+}
+
+export const depositSwapInstructions = (ctx: StrategyContext, x: number, y: number) => {
+    const burnIx = createBurnInstruction(
+        ctx.vault,
+        ctx.currency,
+        ctx.BORROW_AUTHORITY.publicKey,
+        x
+    );
+
+    const mintIx = createMintToInstruction(
+        ctx.collateral,
+        ctx.collateralVault,
+        ctx.program.provider.publicKey,
+        y
+    );
+
+    return [burnIx, mintIx];
+}
+
+export const withdrawSwapInstructions = (ctx: StrategyContext, x: number, y: number) => {
+    const burnIx = createBurnInstruction(
+        ctx.collateralVault,
+        ctx.collateral,
+        ctx.BORROW_AUTHORITY.publicKey,
+        x
+    );
+
+    const mintIx = createMintToInstruction(
+        ctx.currency,
+        ctx.vault,
+        ctx.program.provider.publicKey,
+        y
+    );
+
     return [burnIx, mintIx];
 };
 
-export const withdrawSwapInstructions = (x: number, y: number) => {
-    const burnIx = createBurnInstruction(collateralVault, collateral, BORROW_AUTHORITY.publicKey, x);
-    const mintIx = createMintToInstruction(currency, vault, program.provider.publicKey, y);
-    return [burnIx, mintIx];
-};
-
-
-export const strategyDepositSetup = async (x: number, y: number) => {
-    return await program.methods.strategyDepositSetup(
+export const strategyDepositSetup = async (ctx: StrategyContext, x: number, y: number) => {
+    return await ctx.program.methods.strategyDepositSetup(
         new anchor.BN(x),
         new anchor.BN(y)
-    ).accountsPartial(strategyAccounts()).instruction();
+    ).accountsPartial(strategyAccounts(ctx)).instruction();
 };
 
-export const strategyWithdrawSetup = async (x: number, y: number) => {
-    return await program.methods.strategyWithdrawSetup(
+export const strategyWithdrawSetup = async (ctx: StrategyContext, x: number, y: number) => {
+    return await ctx.program.methods.strategyWithdrawSetup(
         new anchor.BN(x),
         new anchor.BN(y)
-    ).accountsPartial(strategyAccounts()).instruction();
+    ).accountsPartial(strategyAccounts(ctx)).instruction();
 };
 
-export const strategyDeposit = async ({
-    amountIn,
-    amountOut,
-}: {
-    amountIn: number,
-    amountOut: number,
-}) => {
-    await program.methods.strategyDepositCleanup()
-        .accountsPartial(strategyAccounts())
-        .preInstructions([
-            await strategyDepositSetup(amountIn, amountOut),
-            ...depositSwapInstructions(amountIn, amountOut)
-        ])
-        .signers([BORROW_AUTHORITY])
-        .rpc();
-};
-
-export const strategyWithdraw = async ({
-    amountIn,
-    amountOut,
-}: {
-    amountIn: number,
-    amountOut: number,
-}) => {
-    await program.methods.strategyWithdrawCleanup()
-        .accountsPartial(strategyAccounts())
-        .preInstructions([
-            await strategyWithdrawSetup(amountIn, amountOut),
-            ...withdrawSwapInstructions(amountIn, amountOut)
-        ])
-        .signers([BORROW_AUTHORITY])
-        .rpc();
-};
-
-export const strategyAccounts = () => {
+export const strategyAccounts = (ctx: StrategyContext) => {
     return {
-        authority: BORROW_AUTHORITY.publicKey,
-        permission,
-        lpVault: lpVaultA,
-        vault,
-        collateral,
-        strategy,
-        strategyRequest,
-        collateralVault,
+        authority: ctx.BORROW_AUTHORITY.publicKey,
+        permission: ctx.borrowPermission,
+        lpVault: ctx.lpVault,
+        vault: ctx.vault,
+        collateral: ctx.collateral,
+        strategy: ctx.strategy,
+        strategyRequest: ctx.strategyRequest,
+        collateralVault: ctx.collateralVault,
         tokenProgram: TOKEN_PROGRAM_ID,
     }
 };
 
-export const validateWithdraw = async ({
-    amountIn,
-    amountOut
-}: { amountIn: number, amountOut: number }) => {
+export const validateWithdraw = async (
+    ctx: StrategyContext,
+    {
+        amountIn,
+        amountOut
+    }: { amountIn: number, amountOut: number }) => {
     try {
-        const statesBefore = accountStates();
+        const statesBefore = accountStates(ctx);
 
-        await strategyWithdraw({ amountIn, amountOut });
+        await strategyWithdraw(ctx, { amountIn, amountOut });
 
-        await validateStates(statesBefore, accountStates(), amountIn.toString());
+        await validateStates(
+            statesBefore,
+            accountStates(ctx),
+            amountIn.toString()
+        );
     } catch (err) {
         console.error(err);
         assert.ok(false);
@@ -178,8 +359,7 @@ export const validateStates = async (
     afterPromise: ReturnType<typeof accountStates>,
     predicate: string,
 ) => {
-    const before = await beforePromise;
-    const after = await afterPromise;
+    const [before, after] = await Promise.all([beforePromise, afterPromise]);
 
     const vaultBalanceBefore =
         AccountLayout.decode(before.vault.data).amount;
@@ -225,32 +405,38 @@ export const validateStates = async (
     );
 };
 
-export const strategyClaim = async (newQuote: number) => {
-    program.methods.strategyClaimYield(new anchor.BN(newQuote))
-        .accountsPartial(claimAccounts()).signers([BORROW_AUTHORITY]).rpc();
-};
+export const strategyClaim = async (ctx: StrategyContext, newQuote: number) => {
+    return await ctx.program
+        .methods
+        .strategyClaimYield(new anchor.BN(newQuote))
+        .accountsPartial(claimAccounts(ctx))
+        .signers([ctx.BORROW_AUTHORITY]).rpc();
+}
 
-export const strategyClaimIx = async (newQuote: number) => {
-    return program.methods.strategyClaimYield(new anchor.BN(newQuote))
-        .accountsPartial(claimAccounts()).instruction()
-};
+export const strategyClaimIx = async (ctx: StrategyContext, newQuote: number) => {
+    return ctx.program.methods.strategyClaimYield(new anchor.BN(newQuote))
+        .accountsPartial(claimAccounts(ctx)).instruction()
+}
 
-export const claimAccounts = () => {
+export const claimAccounts = (ctx: StrategyContext) => {
     return {
-        authority: BORROW_AUTHORITY.publicKey,
-        permission,
-        lpVault: lpVaultA,
-        collateral,
-        strategy,
+        authority: ctx.BORROW_AUTHORITY.publicKey,
+        permission: ctx.borrowPermission,
+        lpVault: ctx.lpVault,
+        collateral: ctx.collateral,
+        strategy: ctx.strategy,
     };
-};
+}
 
-export const validateClaim = async (newQuote: number) => {
-    const statesBefore = accountStates();
+export const validateClaim = async (ctx: StrategyContext, newQuote: number) => {
+    const statesBefore = accountStates(ctx);
     try {
-        await program.methods.strategyClaimYield(new anchor.BN(newQuote))
-            .accountsPartial(claimAccounts()).signers([BORROW_AUTHORITY]).rpc();
-        const statesAfter = accountStates();
+        await ctx.program.methods
+            .strategyClaimYield(new anchor.BN(newQuote))
+            .accountsPartial(claimAccounts(ctx))
+            .signers([ctx.BORROW_AUTHORITY])
+            .rpc();
+        const statesAfter = accountStates(ctx);
         await validateClaimStates(statesBefore, statesAfter, newQuote);
     } catch (err) {
         if (err instanceof anchor.AnchorError) {
@@ -280,6 +466,7 @@ export const validateClaimStates = async (
 }
 
 export const strategyWithdrawClaimBefore = async (
+    ctx: StrategyContext,
     {
         amountIn,
         amountOut,
@@ -290,18 +477,19 @@ export const strategyWithdrawClaimBefore = async (
         newQuote: number
     }
 ) => {
-    await program.methods.strategyWithdrawCleanup()
-        .accountsPartial(strategyAccounts())
+    await ctx.program.methods.strategyWithdrawCleanup()
+        .accountsPartial(strategyAccounts(ctx))
         .preInstructions([
-            await strategyWithdrawSetup(amountIn, amountOut),
-            await strategyClaimIx(newQuote),
-            ...withdrawSwapInstructions(amountIn, amountOut)
+            await strategyWithdrawSetup(ctx, amountIn, amountOut),
+            await strategyClaimIx(ctx, newQuote),
+            ...withdrawSwapInstructions(ctx, amountIn, amountOut)
         ])
-        .signers([BORROW_AUTHORITY])
+        .signers([ctx.BORROW_AUTHORITY])
         .rpc();
 };
 
 export const strategyWithdrawClaimAfter = async (
+    ctx: StrategyContext,
     {
         amountIn,
         amountOut,
@@ -312,161 +500,40 @@ export const strategyWithdrawClaimAfter = async (
         newQuote: number
     }
 ) => {
-    await program.methods.strategyWithdrawCleanup()
-        .accountsPartial(strategyAccounts())
+    await ctx.program.methods.strategyWithdrawCleanup()
+        .accountsPartial(strategyAccounts(ctx))
         .preInstructions([
-            await strategyWithdrawSetup(amountIn, amountOut),
-            ...withdrawSwapInstructions(amountIn, amountOut),
-            await strategyClaimIx(newQuote),
+            await strategyWithdrawSetup(ctx, amountIn, amountOut),
+            ...withdrawSwapInstructions(ctx, amountIn, amountOut),
+            await strategyClaimIx(ctx, newQuote),
         ])
-        .signers([BORROW_AUTHORITY])
+        .signers([ctx.BORROW_AUTHORITY])
         .rpc();
 };
 
-export const closeStrategy = async () => {
-    await program.methods.closeStrategy().accountsPartial(
-        closeAccounts()
-    ).signers([BORROW_AUTHORITY]).rpc();
+
+export const closeStrategy = async (ctx: StrategyContext) => {
+    await ctx.program.methods
+        .closeStrategy()
+        .accountsPartial({
+            authority: ctx.BORROW_AUTHORITY.publicKey,
+            permission: ctx.borrowPermission,
+            lpVault: ctx.lpVault,
+            collateral: ctx.collateral,
+            strategy: ctx.strategy,
+            collateralVault: ctx.collateralVault,
+            tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([ctx.BORROW_AUTHORITY]).rpc();
+    assert.isNull(
+        await superAdminProgram.account.strategy.fetchNullable(ctx.strategy)
+    );
 }
 
-export const validateCloseStrategy = async () => {
-    await closeStrategy();
-
-    const st = await superAdminProgram.account.strategy.fetchNullable(strategy);
-    assert.isNull(st);
-};
-
-export const closeAccounts = () => {
-    return {
-        authority: BORROW_AUTHORITY.publicKey,
-        permission,
-        lpVault: lpVaultA,
-        collateral,
-        strategy,
-        collateralVault,
-        tokenProgram: TOKEN_PROGRAM_ID,
-    }
-}
-
-export const resetStrategyState = async ({
-    amountIn,
-    amountOut
-}: {
-    amountIn: number,
-    amountOut: number
-}) => {
-    try {
-        // drain strategy
-        await drainStrategy();
-        // close strategy - zeroes account data
-        await validateCloseStrategy();
-        // validate zero values of strategy and lp vault
-        await validateSetup();
-        // deposit
-        await strategyDeposit({ amountIn, amountOut });
-    } catch (err) {
-        console.error("Error resetting strategy - all subsequent tests are invalid");
-        console.error(err);
-    }
-};
-
-export const validateCleanStrategyState = async () => {
-    const [strategyState, lpVaultState, collatVaultState] = await Promise.all([
-        superAdminProgram.account.strategy.fetch(strategy),
-        superAdminProgram.account.lpVault.fetch(lpVaultA),
-        superAdminProgram.provider.connection.getAccountInfo(collateralVault),
-    ]);
-
-    assert(strategyState.collateralVault.equals(collateralVault));
-    assert(strategyState.currency.equals(currency));
-    assert(strategyState.collateral.equals(collateral));
-    assert(strategyState.lpVault.equals(lpVaultA));
-    assert.equal(strategyState.totalBorrowedAmount.toNumber(), 0);
-    assert.equal(lpVaultState.totalBorrowed.toNumber(), 0);
-
-    if (collateralVault) {
-        assert.equal(AccountLayout.decode(collatVaultState.data).amount, BigInt(0));
-    }
-
-    return;
-};
-
-export const validateSetup = async () => {
-    await setupStrategy();
-    return await validateCleanStrategyState();
-};
-
-export const drainStrategy = async () => {
-    const cV = await superAdminProgram.provider.connection.getAccountInfo(collateralVault);
-
-    if (!cV) {
-        console.log("collateralVault not found, this might affect the test");
-        return;
-    }
-    const fullWithdrawAmount = AccountLayout.decode(cV.data).amount;
-
-    if (fullWithdrawAmount === BigInt(0)) {
-        return;
-    }
-
-    return await strategyWithdraw({
-        amountIn: Number(fullWithdrawAmount),
-        amountOut: Number(fullWithdrawAmount)
-    });
-};
-
-export const setupStrategy = async () => {
-    return await superAdminProgram.methods.initStrategy().accountsPartial({
-        //@ts-ignore
-        authority: BORROW_AUTHORITY.publicKey,
-        permission,
-        lpVault: lpVaultA,
-        vault,
-        currency,
-        collateral,
-        strategy,
-        collateralVault,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-    })
-        .signers([BORROW_AUTHORITY])
-        .rpc();
-};
-
-export const initStrategyPermissions = async () => {
-    const borrowPermissionIx = await superAdminProgram.methods.initOrUpdatePermission({
-        canCosignSwaps: true,
-        canInitVaults: true,
-        canLiquidate: true,
-        canInitPools: true,
-        canBorrowFromVaults: true,
-        status: { active: {} }
-    }).accounts({
-        payer: superAdminProgram.provider.publicKey,
-        newAuthority: BORROW_AUTHORITY.publicKey,
-    }).instruction();
-
-    return await superAdminProgram.methods.initOrUpdatePermission({
-        canCosignSwaps: true,
-        canInitVaults: true,
-        canLiquidate: true,
-        canInitPools: true,
-        canBorrowFromVaults: true,
-        status: { active: {} }
-    }).accounts({
-        payer: superAdminProgram.provider.publicKey,
-        newAuthority: NON_BORROW_AUTHORITY.publicKey,
-    })
-        .preInstructions([borrowPermissionIx, collateralVaultAtaIx])
-        .signers([BORROW_AUTHORITY])
-        .rpc();
-};
 
 export const mochaHooks = {
     beforeAll: async () => {
         await setupTestEnvironment();
         await initWasabi();
-        await initStrategyPermissions();
     },
 }
