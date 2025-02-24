@@ -2,12 +2,11 @@ use {
     super::OpenLongPositionCleanup,
     crate::{
         error::ErrorCode, long_pool_signer_seeds, lp_vault_signer_seeds,
-        utils::position_setup_transaction_introspection_validation, BasePool, DebtController,
-        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache
+        utils::setup_transaction_introspection_validation, BasePool, DebtController,
+        GlobalSettings, LpVault, OpenPositionRequest, Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
-    anchor_spl::
-        token_interface::{
+    anchor_spl::token_interface::{
         self, Approve, Mint, TokenAccount, TokenInterface, TransferChecked,
     },
 };
@@ -70,10 +69,10 @@ pub struct OpenLongPositionSetup<'info> {
         init,
         payer = owner,
         seeds = [
-            b"position", 
-            owner.key().as_ref(), 
-            pool.key().as_ref(), 
-            lp_vault.key().as_ref(), 
+            b"position",
+            owner.key().as_ref(),
+            pool.key().as_ref(),
+            lp_vault.key().as_ref(),
             &nonce.to_le_bytes() // Ensures user can have multiple positions for this
             // particular pool
         ],
@@ -123,13 +122,20 @@ impl<'info> OpenLongPositionSetup<'info> {
 
         require_gt!(expiration, now, ErrorCode::PositionReqExpired);
 
-        require!(ctx.accounts.permission.can_cosign_swaps(), ErrorCode::InvalidSwapCosigner);
-        require!(ctx.accounts.global_settings.can_trade(), ErrorCode::UnpermittedIx);
+        require!(
+            ctx.accounts.permission.can_cosign_swaps(),
+            ErrorCode::InvalidSwapCosigner
+        );
+        require!(
+            ctx.accounts.global_settings.can_trade(),
+            ErrorCode::UnpermittedIx
+        );
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspection_validation(
+        setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
             OpenLongPositionCleanup::get_hash(),
+            true,
         )?;
 
         Ok(())
@@ -191,23 +197,19 @@ impl<'info> OpenLongPositionSetup<'info> {
 
     pub fn open_long_position_setup(
         &mut self,
-        #[allow(unused_variables)]
-        nonce: u16,
+        #[allow(unused_variables)] nonce: u16,
         min_target_amount: u64,
         down_payment: u64,
         principal: u64,
         fee: u64,
-        #[allow(unused_variables)]
-        expiration: i64,
+        #[allow(unused_variables)] expiration: i64,
     ) -> Result<()> {
         self.transfer_borrow_amount_from_vault(principal)?;
         self.transfer_down_payment_from_user(down_payment)?;
         self.transfer_from_user_to_fee_wallet(fee)?;
         self.currency_vault.reload()?;
 
-        let max_principal = self
-            .debt_controller
-            .compute_max_principal(down_payment)?;
+        let max_principal = self.debt_controller.compute_max_principal(down_payment)?;
 
         require_gte!(max_principal, principal, ErrorCode::PrincipalTooHigh);
 

@@ -1,7 +1,5 @@
 use {
-    crate::{
-        instructions::close_position_cleanup::*,  utils::get_function_hash,
-    },
+    crate::{instructions::close_position_cleanup::*, utils::get_function_hash},
     anchor_lang::prelude::*,
 };
 

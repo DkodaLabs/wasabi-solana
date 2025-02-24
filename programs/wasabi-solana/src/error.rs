@@ -62,6 +62,18 @@ pub enum ErrorCode {
     IncorrectTokenProgram, // 6028
     #[msg("The payout token account's associated mint does not match")]
     MintMismatch, // 6029
-    #[msg("Value must be greater than 0")]
-    ZeroAmount,
+    #[msg("Invalid pubkey")]
+    InvalidPubkey, // 6030
+    #[msg("Amount cannot be 0")]
+    ZeroAmount, // 6031
+    #[msg("Invalid swap")]
+    InvalidSwap, // 6032
+    #[msg("Vault balance unchanged")]
+    BalanceUnchanged, // 6033
+    #[msg("Source overflow")]
+    SourceOverflow, // 6034
+    #[msg("Destionation overflow")]
+    DestionationOverflow, // 6035
+    #[msg("Strategy cannot be closed if the collateral vault is not empty")]
+    VaultNotEmpty, // 6036
 }

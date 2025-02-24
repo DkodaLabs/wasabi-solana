@@ -77,4 +77,3 @@ impl<'info> InitLongPool<'info> {
         Ok(())
     }
 }
-

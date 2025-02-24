@@ -230,3 +230,29 @@ pub struct NativeYieldClaimed {
     pub token: Pubkey,
     pub amount: u64,
 }
+
+#[event]
+pub struct StrategyDeposit {
+    pub strategy: Pubkey,
+    pub vault_address: Pubkey,
+    pub collateral: Pubkey,
+    pub amount_deposited: u64,    // x - SOL
+    pub collateral_received: u64, // y - JitoSOL
+}
+
+#[event]
+pub struct StrategyWithdraw {
+    pub strategy: Pubkey,
+    pub vault_address: Pubkey, // Not actual vault address; it's asset mint.
+    pub collateral: Pubkey,
+    pub amount_withdraw: u64, // x - SOL
+    pub collateral_sold: u64, // y - JitoSOL
+}
+
+#[event]
+pub struct StrategyClaim {
+    pub strategy: Pubkey,
+    pub vault_address: Pubkey,
+    pub collateral: Pubkey,
+    pub amount: i64,
+}

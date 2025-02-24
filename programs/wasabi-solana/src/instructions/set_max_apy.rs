@@ -26,11 +26,7 @@ pub struct SetMaxApy<'info> {
 impl<'info> SetMaxApy<'info> {
     fn validate(&self, max_apy: u64) -> Result<()> {
         require_neq!(max_apy, 0, ErrorCode::InvalidValue);
-        require_gt!(
-            1000 * APY_DENOMINATOR,
-            max_apy,
-            ErrorCode::InvalidValue
-        );
+        require_gt!(1000 * APY_DENOMINATOR, max_apy, ErrorCode::InvalidValue);
         Ok(())
     }
 

@@ -55,12 +55,7 @@ impl<'info> CloseLongPositionSetup<'info> {
         )?;
 
         // Create a close position request
-        cps.set_close_position_request(
-            min_target_amount,
-            interest,
-            execution_fee,
-            expiration,
-        )?;
+        cps.set_close_position_request(min_target_amount, interest, execution_fee, expiration)?;
 
         Ok(())
     }

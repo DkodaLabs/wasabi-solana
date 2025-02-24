@@ -5,6 +5,8 @@ import {
     unpackAccount,
     unpackMint,
 } from "@solana/spl-token";
+import { TransactionInstruction } from "@solana/web3.js";
+import { superAdminProgram, WASABI_PROGRAM_ID } from './hooks/allHook';
 
 /**
  * Ixes to create a mint, the payer gains the Mint Tokens/Freeze authority
@@ -74,3 +76,30 @@ export const getMultipleMintAccounts = async (
         unpackMint(keys[index], accountInfo, tokenProgram),
     );
 };
+
+export const defaultInitLpVaultArgs = {
+    name: "PLACEHOLDER",
+    symbol: "PLC",
+    uri: "https://placeholder.com",
+};
+
+export const initDefaultPermission = async (newAuthority: web3.PublicKey): Promise<TransactionInstruction> => {
+    return superAdminProgram.methods.initOrUpdatePermission({
+        canCosignSwaps: true, // 4
+        canInitVaults: true, // 1
+        canLiquidate: true, // 2
+        canInitPools: true, // 8
+        canBorrowFromVaults: true,
+        status: { active: {} }
+    }).accountsPartial({
+        payer: superAdminProgram.provider.publicKey,
+        newAuthority,
+    }).instruction();
+};
+
+export const getDefaultPermission = (auth: web3.PublicKey) => {
+    return web3.PublicKey.findProgramAddressSync(
+        [Buffer.from('admin'), auth.toBuffer()],
+        WASABI_PROGRAM_ID
+    )[0];
+}

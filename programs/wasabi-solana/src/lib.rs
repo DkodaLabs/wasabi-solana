@@ -292,4 +292,47 @@ pub mod wasabi_solana {
     pub fn claim_position(ctx: Context<ClaimPosition>) -> Result<()> {
         ctx.accounts.claim_position()
     }
+
+    #[access_control(InitStrategy::validate(&ctx))]
+    pub fn init_strategy(ctx: Context<InitStrategy>) -> Result<()> {
+        ctx.accounts.init_strategy(&ctx.bumps)
+    }
+
+    #[access_control(StrategyDepositSetup::validate(&ctx, amount_in))]
+    pub fn strategy_deposit_setup(
+        ctx: Context<StrategyDepositSetup>,
+        amount_in: u64,
+        min_target_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .strategy_deposit_setup(amount_in, min_target_amount)
+    }
+
+    pub fn strategy_deposit_cleanup(ctx: Context<StrategyDepositCleanup>) -> Result<()> {
+        ctx.accounts.strategy_deposit_cleanup()
+    }
+
+    #[access_control(StrategyWithdrawSetup::validate(&ctx, amount_in))]
+    pub fn strategy_withdraw_setup(
+        ctx: Context<StrategyWithdrawSetup>,
+        amount_in: u64,
+        min_target_amount: u64,
+    ) -> Result<()> {
+        ctx.accounts
+            .strategy_withdraw_setup(amount_in, min_target_amount)
+    }
+
+    pub fn strategy_withdraw_cleanup(ctx: Context<StrategyWithdrawCleanup>) -> Result<()> {
+        ctx.accounts.strategy_withdraw_cleanup()
+    }
+
+    #[access_control(CloseStrategy::validate(&ctx))]
+    pub fn close_strategy(ctx: Context<CloseStrategy>) -> Result<()> {
+        ctx.accounts.close_strategy()
+    }
+
+    #[access_control(StrategyClaimYield::validate(&ctx))]
+    pub fn strategy_claim_yield(ctx: Context<StrategyClaimYield>, new_quote: u64) -> Result<()> {
+        ctx.accounts.strategy_claim_yield(new_quote)
+    }
 }

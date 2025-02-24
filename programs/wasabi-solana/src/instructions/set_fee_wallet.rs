@@ -30,4 +30,3 @@ impl<'info> SetFeeWallet<'info> {
         Ok(())
     }
 }
-

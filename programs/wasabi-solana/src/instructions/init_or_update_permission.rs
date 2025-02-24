@@ -1,7 +1,7 @@
 use {
     crate::{
         AuthorityStatus, Permission, COSIGN_PERMISSION, INIT_POOL_PERMISSION,
-        INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION,
+        INIT_VAULT_PERMISSION, LIQUIDATE_PERMISSION, VAULT_BORROW_PERMISSION,
     },
     anchor_lang::prelude::*,
 };
@@ -45,6 +45,7 @@ pub struct InitOrUpdatePermissionArgs {
     can_liquidate: bool,
     can_cosign_swaps: bool,
     can_init_pools: bool,
+    can_borrow_from_vaults: bool,
 }
 
 impl InitOrUpdatePermissionArgs {
@@ -62,6 +63,9 @@ impl InitOrUpdatePermissionArgs {
         if self.can_init_pools {
             res += INIT_POOL_PERMISSION
         }
+        if self.can_borrow_from_vaults {
+            res += VAULT_BORROW_PERMISSION
+        }
         res
     }
 }
@@ -78,4 +82,3 @@ impl<'info> InitOrUpdatePermission<'info> {
         Ok(())
     }
 }
-

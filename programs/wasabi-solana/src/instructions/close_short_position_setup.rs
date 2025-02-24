@@ -15,10 +15,7 @@ pub struct CloseShortPositionSetup<'info> {
 }
 
 impl<'info> CloseShortPositionSetup<'info> {
-    pub fn validate(
-        ctx: &Context<CloseShortPositionSetup>,
-        expiration: i64,
-    ) -> Result<()> {
+    pub fn validate(ctx: &Context<CloseShortPositionSetup>, expiration: i64) -> Result<()> {
         require_keys_eq!(
             ctx.accounts.owner.key(),
             ctx.accounts.close_position_setup.owner.key(),
@@ -56,13 +53,12 @@ impl<'info> CloseShortPositionSetup<'info> {
                 &[short_pool_signer_seeds!(self.close_position_setup.pool)],
             )?;
 
-        self.close_position_setup
-            .set_close_position_request(
-                min_target_amount,
-                interest,
-                execution_fee,
-                expiration,
-            )?;
+        self.close_position_setup.set_close_position_request(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )?;
 
         Ok(())
     }

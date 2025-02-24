@@ -1,8 +1,8 @@
 use {
     crate::{
         error::ErrorCode, long_pool_signer_seeds, short_pool_signer_seeds,
-        utils::position_setup_transaction_introspection_validation, BasePool,
-        ClosePositionRequest, Permission, Position, SwapCache,
+        utils::setup_transaction_introspection_validation, BasePool, ClosePositionRequest,
+        Permission, Position, SwapCache,
     },
     anchor_lang::{prelude::*, solana_program::sysvar},
     anchor_spl::token_interface::{self, Approve, Mint, TokenAccount, TokenInterface},
@@ -78,7 +78,7 @@ impl<'info> ClosePositionSetup<'info> {
         require_keys_eq!(expected_pool_key, self.pool.key(), ErrorCode::InvalidPool);
 
         // Validate TX only has only one setup IX and has one following cleanup IX
-        position_setup_transaction_introspection_validation(&self.sysvar_info, cleanup_ix_hash)?;
+        setup_transaction_introspection_validation(&self.sysvar_info, cleanup_ix_hash, true)?;
 
         require_keys_eq!(
             self.owner.key(),

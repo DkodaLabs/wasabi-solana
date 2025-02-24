@@ -7,6 +7,8 @@ pub mod open_position_request;
 pub mod permission;
 pub mod position;
 pub mod stop_loss_order;
+pub mod strategy;
+pub mod strategy_request;
 pub mod take_profit_order;
 
 pub use base_pool::*;
@@ -18,4 +20,6 @@ pub use open_position_request::*;
 pub use permission::*;
 pub use position::*;
 pub use stop_loss_order::*;
+pub use strategy::*;
+pub use strategy_request::*;
 pub use take_profit_order::*;
