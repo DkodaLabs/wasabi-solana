@@ -23,7 +23,7 @@ pub struct ValidateBundle<'info> {
     pub bundle_request: Account<'info, BundleRequest>,
 }
 
-impl<'info> ValidateBundle<'info> {
+impl ValidateBundle<'_> {
     pub fn validate_bundle(&mut self) -> Result<()> {
         require!(
             self.permission.bundle_authority(),

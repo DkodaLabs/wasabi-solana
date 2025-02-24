@@ -33,7 +33,7 @@ pub struct BundleSetup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 
-impl<'info> BundleSetup<'info> {
+impl BundleSetup<'_> {
     fn get_hash() -> [u8; 8] {
         get_function_hash("global", "init_bundle_cache")
     }

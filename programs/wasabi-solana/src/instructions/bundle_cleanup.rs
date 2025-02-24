@@ -44,7 +44,7 @@ pub struct BundleCleanup<'info> {
     pub sysvar_info: AccountInfo<'info>,
 }
 
-impl<'info> BundleCleanup<'info> {
+impl BundleCleanup<'_> {
     fn get_hash() -> [u8; 8] {
         get_function_hash("global", "close_bundle_cache")
     }
@@ -57,6 +57,7 @@ impl<'info> BundleCleanup<'info> {
         let current_idx =
             sysvar::instructions::load_current_index_checked(&self.sysvar_info)? as usize;
         let mut post_current_idx = 1usize;
+        #[allow(unused_assignments)]
         let mut end_idx = 0usize;
         loop {
             let ix = sysvar::instructions::load_instruction_at_checked(
