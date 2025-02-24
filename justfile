@@ -159,7 +159,7 @@ configure-accounts:
 
 local-deploy: validator (deploy "localnet") configure
 
-update C buffer_len="0":
+update C buffer_len="80000":
     #!/usr/bin/env bash
     just set-cluster {{C}}
     ALIAS=$(just cluster-alias $(just get-cluster))
@@ -173,7 +173,7 @@ update C buffer_len="0":
     PROGRAM_ID=$(solana address -k {{program_keypair}})
     echo "Program ID: $PROGRAM_ID"
     CURRENT_LEN=$(solana program show $PROGRAM_ID --output json | jq '.dataLen')
-    NEW_LEN=$(echo "($CURRENT_LEN * (100 + {{buffer_len}})) / 100" | bc)
+    NEW_LEN=$(echo "($CURRENT_LEN * 100 + {{buffer_len}}) / 100" | bc)
 
     echo "Current length: $CURRENT_LEN"
     echo "New buffer length: $NEW_LEN"
