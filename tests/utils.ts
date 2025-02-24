@@ -5,15 +5,22 @@ import {
     unpackAccount,
     unpackMint,
 } from "@solana/spl-token";
+<<<<<<< Updated upstream
+=======
+import { TransactionInstruction } from "@solana/web3.js";
+import { superAdminProgram, WASABI_PROGRAM_ID } from './hooks/rootHook';
+>>>>>>> Stashed changes
 
 /**
  * Ixes to create a mint, the payer gains the Mint Tokens/Freeze authority
  * @param payer - pays account init fees, must sign
- * @param provider
+ * @param connection
  * @param decimals
+ * @param programId
  * @param mintKeypair - (optional) generates random keypair if not provided, must sign
  * @param lamps - (optional) lamports to pay for created acc, fetches minimum for Mint exemption if
  * not provided
+ * @param mintAuthority
  * @returns ixes, and keypair of new mint
  */
 export const createSimpleMint = async (

@@ -1,7 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { assert } from "chai";
+<<<<<<< Updated upstream:tests/03.3_setDebtControllerLiquidationFee.ts
 import { superAdminProgram } from "./rootHooks";
+=======
+import { superAdminProgram } from "../hooks/rootHook";
+>>>>>>> Stashed changes:tests/01_setup-tests/03.3_setDebtControllerLiquidationFee.ts
 
 describe("setDebtControllerLiquidationFee", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -21,7 +25,6 @@ describe("setDebtControllerLiquidationFee", () => {
         } catch (err) {
             if (err.message.includes("Expected error")) {
                 assert.fail("Expected error");
-                return
             }
             assert.ok(true);
         }

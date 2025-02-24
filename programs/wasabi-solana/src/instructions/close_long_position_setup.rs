@@ -12,7 +12,7 @@ pub struct CloseLongPositionSetup<'info> {
     pub owner: Signer<'info>,
 }
 
-impl<'info> CloseLongPositionSetup<'info> {
+impl CloseLongPositionSetup<'_> {
     pub fn validate(ctx: &Context<CloseLongPositionSetup>, expiration: i64) -> Result<()> {
         require_keys_eq!(
             ctx.accounts.owner.key(),

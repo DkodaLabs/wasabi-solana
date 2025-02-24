@@ -187,3 +187,40 @@ update C buffer_len="0":
         --program-keypair "{{program_keypair}}" \
         --provider.cluster "$(just get-cluster)" \
         --provider.wallet "{{deployment_keypair}}" \
+<<<<<<< Updated upstream
+=======
+
+test suite:
+    #!/usr/bin/env bash
+    case "{{suite}}" in
+    "strategy-withdraw")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/21_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        ;;
+    "strategy-claim")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/20_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        ;;
+    "setup")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
+        ;;
+    "vault")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/02_vault-tests/*.ts --require tests/hooks/vaultHook.ts"#' Anchor.toml
+        ;;
+    "pool")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/03_pool-tests/*.ts --require tests/hooks/poolHook.ts"#' Anchor.toml
+        ;;
+    "trade")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/04_trade-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
+        ;;
+    "liquidation")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/05_liquidation-tests/*.ts --require tests/hooks/liquidationHook.ts"#' Anchor.toml
+        ;;
+    "order")
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/06_order-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
+        ;;
+    *)
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
+        ;;
+    esac
+    sed -i '' 's#cluster = ".*#cluster = "localnet"#' Anchor.toml
+    anchor test
+>>>>>>> Stashed changes

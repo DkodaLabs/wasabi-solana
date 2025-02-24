@@ -1,13 +1,17 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { assert } from "chai";
 import { 
     superAdminProgram, 
     SWAP_AUTHORITY, 
     feeWalletKeypair, 
     liquidationWalletKeypair 
+<<<<<<< Updated upstream:tests/01_initGlobalSettings.ts
 } from "./rootHooks";
+=======
+} from "../hooks/rootHook";
+>>>>>>> Stashed changes:tests/01_setup-tests/01_initGlobalSettings.ts
 
 describe("wasabi-solana", () => {
     // Configure the client to use the local cluster.
@@ -41,7 +45,7 @@ describe("wasabi-solana", () => {
             [anchor.utils.bytes.utf8.encode("super_admin")],
             program.programId,
         );
-        const tx = await program.methods
+        await program.methods
             .initGlobalSettings({
                 superAdmin: superAdminProgram.provider.publicKey,
                 feeWallet: feeWalletKeypair.publicKey,

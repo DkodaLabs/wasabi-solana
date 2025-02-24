@@ -37,7 +37,7 @@ pub struct CloseStrategy<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-impl<'info> CloseStrategy<'info> {
+impl CloseStrategy<'_> {
     pub fn validate(ctx: &Context<Self>) -> Result<()> {
         require!(
             ctx.accounts.permission.can_borrow_from_vaults(),

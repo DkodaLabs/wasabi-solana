@@ -1,6 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
+<<<<<<< Updated upstream:tests/02_initOrUpdatePermission.ts
 import { NON_SWAP_AUTHORITY, CAN_SWAP_CANT_LIQ_AUTH, superAdminProgram } from "./rootHooks";
+=======
+import { superAdminProgram, NON_SWAP_AUTHORITY } from "../hooks/rootHook";
+>>>>>>> Stashed changes:tests/01_setup-tests/02_initOrUpdatePermission.ts
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {

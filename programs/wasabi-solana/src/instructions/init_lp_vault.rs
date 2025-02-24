@@ -138,7 +138,7 @@ impl<'info> InitLpVault<'info> {
         args: &InitLpVaultArgs,
         bumps: &InitLpVaultBumps,
     ) -> Result<()> {
-        self.initialize_token_metadata(&args, bumps)?;
+        self.initialize_token_metadata(args, bumps)?;
 
         self.lp_vault.set_inner(LpVault {
             bump: bumps.lp_vault,

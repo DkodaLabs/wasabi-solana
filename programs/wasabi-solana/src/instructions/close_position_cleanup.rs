@@ -441,29 +441,26 @@ impl<'info> ClosePositionCleanup<'info> {
         // Update close fee before calculating liquidation fee
         close_amounts.close_fee = close_fee;
 
-        match close_action {
-            CloseAction::Liquidation => {
-                // Liquidation fee is % of down_payment
-                let liquidation_fee = self
-                    .position
-                    .down_payment
-                    .checked_mul(self.debt_controller.liquidation_fee as u64)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?
-                    .checked_div(100)
-                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if let CloseAction::Liquidation = close_action {
+            // Liquidation fee is % of down_payment
+            let liquidation_fee = self
+                .position
+                .down_payment
+                .checked_mul(self.debt_controller.liquidation_fee as u64)
+                .ok_or(ErrorCode::ArithmeticOverflow)?
+                .checked_div(100)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-                // Deduct from the payout
-                let (liquidation_payout, actual_liquidation_fee) =
-                    crate::utils::deduct(payout, liquidation_fee);
+            // Deduct from the payout
+            let (liquidation_payout, actual_liquidation_fee) =
+                crate::utils::deduct(payout, liquidation_fee);
 
-                // Transfer liquidation fee
-                self.transfer_liquidation_fee(actual_liquidation_fee)?;
+            // Transfer liquidation fee
+            self.transfer_liquidation_fee(actual_liquidation_fee)?;
 
-                // Payout is now decremented by `liquidation_fee`
-                payout = liquidation_payout;
-                close_amounts.liquidation_fee = actual_liquidation_fee;
-            }
-            _ => (),
+            // Payout is now decremented by `liquidation_fee`
+            payout = liquidation_payout;
+            close_amounts.liquidation_fee = actual_liquidation_fee;
         }
 
         close_amounts.payout = payout;
@@ -471,7 +468,7 @@ impl<'info> ClosePositionCleanup<'info> {
         close_amounts.past_fees = self.position.fees_to_be_paid;
 
         // Update the value of `lp_vault.total_assets` based on `close_action`
-        self.update_total_assets(&close_action, &close_amounts)?;
+        self.update_total_assets(close_action, &close_amounts)?;
 
         // Transfer the principal and interest amount to the LP Vault.
         self.transfer_from_pool_to_vault(

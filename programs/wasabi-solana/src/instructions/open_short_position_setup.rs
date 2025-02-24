@@ -106,7 +106,8 @@ pub struct OpenShortPositionSetup<'info> {
     /// CHECK: Sysvar instruction check applied
     pub sysvar_info: AccountInfo<'info>,
 }
-impl<'info> OpenShortPositionSetup<'info> {
+
+impl OpenShortPositionSetup<'_> {
     pub fn validate(ctx: &Context<Self>, expiration: i64) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
 

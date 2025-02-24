@@ -1,7 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
+<<<<<<< Updated upstream:tests/03.1_setDebtControllerMaxApy.ts
 import { WasabiSolana } from "../target/types/wasabi_solana";
 import { superAdminProgram } from "./rootHooks";
+=======
+import { WasabiSolana } from "../../target/types/wasabi_solana";
+import { superAdminProgram } from "../hooks/rootHook";
+>>>>>>> Stashed changes:tests/01_setup-tests/03.1_setDebtControllerMaxApy.ts
 
 describe("setDebtControllerMaxApy", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;

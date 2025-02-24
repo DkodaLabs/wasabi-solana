@@ -36,10 +36,8 @@ pub fn setup_transaction_introspection_validation(
         let ixn = sysvar::instructions::load_instruction_at_checked(ixn_idx, sysvar_info)?;
 
         if crate::ID == ixn.program_id {
-            if is_position_setup {
-                if check_function_hash(&ixn.data[0..8]) {
-                    continue;
-                }
+            if is_position_setup && check_function_hash(&ixn.data[0..8]) {
+                continue;
             }
             return Err(ErrorCode::UnpermittedIx.into());
         }
@@ -56,7 +54,7 @@ pub fn setup_transaction_introspection_validation(
         if ixn.is_err() {
             break;
         } else {
-            let ixn_unwrapped = ixn.unwrap();
+            let ixn_unwrapped = ixn?;
             if crate::ID == ixn_unwrapped.program_id {
                 // Check that there is a cleanup instruction
                 if ixn_unwrapped.data[0..8] == clean_up_ix_hash {

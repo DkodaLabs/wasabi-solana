@@ -12,7 +12,7 @@ pub struct CloseLongPositionCleanup<'info> {
     pub owner: Signer<'info>,
 }
 
-impl<'info> CloseLongPositionCleanup<'info> {
+impl CloseLongPositionCleanup<'_> {
     pub fn get_hash() -> [u8; 8] {
         get_function_hash("global", "close_long_position_cleanup")
     }

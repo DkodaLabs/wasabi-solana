@@ -78,7 +78,7 @@ pub struct ClaimPosition<'info> {
     pub collateral_token_program: Interface<'info, TokenInterface>,
     pub currency_token_program: Interface<'info, TokenInterface>,
 }
-impl<'info> ClaimPosition<'info> {
+impl ClaimPosition<'_> {
     pub fn transfer_from_trader_to_vault(&self, amount: u64) -> Result<()> {
         let cpi_accounts = TransferChecked {
             from: self.trader_currency_account.to_account_info(),
