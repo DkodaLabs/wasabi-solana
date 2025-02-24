@@ -1,14 +1,17 @@
 # Configuration
+## CHANGE
 wasabi_ts := env_var('HOME') + "/Projects/Dkoda/wasabi-solana-ts"
-interest_test_program := env_var('HOME') + "Projects/Solana/interest_bearing_token_test"
 
 # Program Configuration
 program_name := "wasabi_solana"
 program_keypair := "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c.json"
+## CHANGE
 deployment_keypair := env_var('HOME') + "/.config/solana/deploy.json"
 
 # Program Parameters
+## CHANGE
 super_admin := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
+## CHANGE
 super_admin_keypair := env_var('HOME') + "/.config/solana/id.json"
 fee_wallet := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
 liquidation_wallet := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
@@ -18,7 +21,7 @@ liquidation_fee := "5"
 
 cluster := ""
 
-set-cluster cluster = "devnet":
+set-cluster cluster:
     #!/usr/bin/env bash
     case "{{cluster}}" in
     "d"|"devnet") echo "devnet" > .cluster ;;
@@ -125,7 +128,6 @@ validator:
     --reset \
     --quiet \
     --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw tests/deps/spl_token_swap.so \
-    --bpf-program 9gLx3yq5Py6bbSVfLEYcpqjfhM4WVpj3AHUMfPdiX4hk tests/deps/interest_test.so \
     --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s tests/deps/token_metadata.so > validator.log 2>&1 &
 
     sleep 5
@@ -155,11 +157,10 @@ configure-accounts:
     wsb init-market "$token2" "$token"
     wsb deposit "$token" 1000000 
     wsb deposit "$token2" 1000000
-    wsb init-interest-test "$token" 1 10000 10
 
 local-deploy: validator (deploy "localnet") configure
 
-update C buffer_len="0":
+update C buffer_len="80000":
     #!/usr/bin/env bash
     just set-cluster {{C}}
     ALIAS=$(just cluster-alias $(just get-cluster))
@@ -173,7 +174,7 @@ update C buffer_len="0":
     PROGRAM_ID=$(solana address -k {{program_keypair}})
     echo "Program ID: $PROGRAM_ID"
     CURRENT_LEN=$(solana program show $PROGRAM_ID --output json | jq '.dataLen')
-    NEW_LEN=$(echo "($CURRENT_LEN * (100 + {{buffer_len}})) / 100" | bc)
+    NEW_LEN=$(echo "($CURRENT_LEN * 100 + {{buffer_len}}) / 100" | bc)
 
     echo "Current length: $CURRENT_LEN"
     echo "New buffer length: $NEW_LEN"
@@ -187,8 +188,6 @@ update C buffer_len="0":
         --program-keypair "{{program_keypair}}" \
         --provider.cluster "$(just get-cluster)" \
         --provider.wallet "{{deployment_keypair}}" \
-<<<<<<< Updated upstream
-=======
 
 test suite:
     #!/usr/bin/env bash
@@ -200,7 +199,7 @@ test suite:
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/20_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
         ;;
     "setup")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/allHook.ts"#' Anchor.toml
         ;;
     "vault")
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/02_vault-tests/*.ts --require tests/hooks/vaultHook.ts"#' Anchor.toml
@@ -218,9 +217,8 @@ test suite:
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/06_order-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
         ;;
     *)
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/allHook.ts"#' Anchor.toml
         ;;
     esac
     sed -i '' 's#cluster = ".*#cluster = "localnet"#' Anchor.toml
     anchor test
->>>>>>> Stashed changes

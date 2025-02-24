@@ -1,15 +1,12 @@
 use crate::{
-    lp_vault_signer_seeds,
     error::ErrorCode,
     instructions::StrategyWithdrawCleanup,
-    state::{Permission, LpVault, StrategyRequest, StrategyCache, Strategy},
-    utils::{setup_transaction_introspection_validation, get_function_hash}
+    lp_vault_signer_seeds,
+    state::{LpVault, Permission, Strategy, StrategyCache, StrategyRequest},
+    utils::{get_function_hash, setup_transaction_introspection_validation},
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::sysvar,
-};
-use anchor_spl::token_interface::{self, TokenAccount, TokenInterface, Approve, Mint};
+use anchor_lang::{prelude::*, solana_program::sysvar};
+use anchor_spl::token_interface::{self, Approve, Mint, TokenAccount, TokenInterface};
 
 #[derive(Accounts)]
 pub struct StrategyWithdrawSetup<'info> {
@@ -61,7 +58,7 @@ pub struct StrategyWithdrawSetup<'info> {
     pub system_program: Program<'info, System>,
     /// CHECK: Sysvar instruction check applied
     #[account(address = sysvar::instructions::ID)]
-    pub sysvar_info: AccountInfo<'info>
+    pub sysvar_info: AccountInfo<'info>,
 }
 
 impl<'info> StrategyWithdrawSetup<'info> {
@@ -72,7 +69,10 @@ impl<'info> StrategyWithdrawSetup<'info> {
     pub fn validate(ctx: &Context<Self>, amount_in: u64) -> Result<()> {
         require_gt!(amount_in, 0, ErrorCode::ZeroAmount);
 
-        require!(ctx.accounts.permission.can_borrow_from_vaults(), ErrorCode::InvalidPermissions);
+        require!(
+            ctx.accounts.permission.can_borrow_from_vaults(),
+            ErrorCode::InvalidPermissions
+        );
 
         setup_transaction_introspection_validation(
             &ctx.accounts.sysvar_info,
@@ -115,7 +115,7 @@ impl<'info> StrategyWithdrawSetup<'info> {
             strategy_cache: StrategyCache {
                 src_bal_before: self.collateral_vault.amount,
                 dst_bal_before: self.vault.amount,
-            }
+            },
         });
 
         Ok(())

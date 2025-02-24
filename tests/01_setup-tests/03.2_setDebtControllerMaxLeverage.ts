@@ -1,11 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../../target/types/wasabi_solana";
+import { WasabiSolana } from "../target/types/wasabi_solana";
 import { assert } from "chai";
-<<<<<<< Updated upstream:tests/03.2_setDebtControllerMaxLeverage.ts
-import { superAdminProgram } from "./rootHooks";
-=======
-import { superAdminProgram } from "../hooks/rootHook";
->>>>>>> Stashed changes:tests/01_setup-tests/03.2_setDebtControllerMaxLeverage.ts
+import { superAdminProgram } from "./hooks/allHook";
 
 describe("setDebtControllerMaxLeverage", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -25,7 +21,6 @@ describe("setDebtControllerMaxLeverage", () => {
         } catch (err) {
             if (err.message.includes("Expected error")) {
                 assert.fail("Expected error");
-                return
             }
             assert.ok(true);
         }
@@ -35,6 +30,23 @@ describe("setDebtControllerMaxLeverage", () => {
         try {
             await superAdminProgram.methods.setMaxLeverage(
                 new anchor.BN(0),
+            ).accounts({
+                authority: superAdminProgram.provider.publicKey,
+            }).rpc();
+            assert.fail("Expected error");
+        } catch (err) {
+            if (err instanceof anchor.AnchorError) {
+                assert.equal(err.error.errorCode.number, 6013);
+            } else if (err instanceof anchor.ProgramError) {
+                assert.equal(err.code, 6013);
+            } else {
+                assert.ok(false);
+            }
+        }
+
+        try {
+            await superAdminProgram.methods.setMaxLeverage(
+                new anchor.BN(101 * 100),
             ).accounts({
                 authority: superAdminProgram.provider.publicKey,
             }).rpc();

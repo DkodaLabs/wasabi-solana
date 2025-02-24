@@ -1,5 +1,5 @@
 use {
-    crate::{error::ErrorCode, LpVault, Strategy, Permission},
+    crate::{error::ErrorCode, LpVault, Permission, Strategy},
     anchor_lang::prelude::*,
     anchor_spl::token_interface::{Mint, TokenAccount},
 };

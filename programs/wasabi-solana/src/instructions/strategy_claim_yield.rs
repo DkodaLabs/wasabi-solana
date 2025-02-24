@@ -1,10 +1,9 @@
-use crate::utils::get_function_hash;
 use {
     crate::{
         error::ErrorCode,
         events::StrategyClaim,
         state::{LpVault, Permission, Strategy},
-        utils::{get_shares_mint_address, validate_difference},
+        utils::{get_function_hash, get_shares_mint_address, validate_difference},
     },
     anchor_lang::prelude::*,
     anchor_spl::token_interface::Mint,
@@ -56,7 +55,7 @@ impl<'info> StrategyClaimYield<'info> {
 
         let shares_mint = get_shares_mint_address(&self.lp_vault.key(), &self.strategy.currency);
 
-        let interest_earned = self.strategy.total_borrowed_amount.abs_diff(new_quote);
+        let interest_earned = new_quote.abs_diff(self.strategy.total_borrowed_amount);
         let mut interest_earned_i64: i64 = interest_earned.try_into()?;
 
         if new_quote <= self.strategy.total_borrowed_amount {

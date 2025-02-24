@@ -70,6 +70,12 @@ pub enum ErrorCode {
     InvalidSwap, // 6032
     #[msg("Vault balance unchanged")]
     BalanceUnchanged, // 6033
+    #[msg("Source overflow")]
+    SourceOverflow, // 6034
+    #[msg("Destionation overflow")]
+    DestionationOverflow, // 6035
+    #[msg("Strategy cannot be closed if the collateral vault is not empty")]
+    VaultNotEmpty, // 6036
     #[msg("Incorrect transaction count")]
     IncorrectTxCount, // 6034
     #[msg("Invalid bundle authority")]

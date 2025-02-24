@@ -9,4 +9,3 @@ pub struct StopLossOrder {
     /// The amount that will be bought to close the position (is in `position.currency`)
     pub taker_amount: u64,
 }
-

@@ -8,6 +8,7 @@ import {
     closeLongPositionWithoutCleanup,
     closeLongPositionWithBadDebt,
 } from '../hooks/tradeHook';
+import { user2 } from '../hooks/allHook';
 
 describe("CloseLongPosition", () => {
     describe("with owned long position", () => {

@@ -236,7 +236,7 @@ pub struct StrategyDeposit {
     pub strategy: Pubkey,
     pub vault_address: Pubkey,
     pub collateral: Pubkey,
-    pub amount_deposited: u64,       // x - SOL
+    pub amount_deposited: u64,    // x - SOL
     pub collateral_received: u64, // y - JitoSOL
 }
 

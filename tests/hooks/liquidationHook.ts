@@ -1,5 +1,5 @@
 import { BN, Program, workspace } from '@coral-xyz/anchor';
-import { setupTestEnvironment } from './rootHook'
+import { setupTestEnvironment } from './allHook'
 import { initWasabi } from './initWasabi';
 import { initPools } from './poolHook';
 import {

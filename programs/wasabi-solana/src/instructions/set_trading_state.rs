@@ -33,4 +33,3 @@ impl<'info> TradingState<'info> {
         Ok(())
     }
 }
-

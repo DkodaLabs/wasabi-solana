@@ -1,11 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-<<<<<<< Updated upstream:tests/03.3_updateVaultMaxBorrow.ts
 import { WasabiSolana } from "../target/types/wasabi_solana";
-import { NON_SWAP_AUTHORITY, SWAP_AUTHORITY, tokenMintA } from "./rootHooks";
-=======
-import { WasabiSolana } from "../../target/types/wasabi_solana";
-import { NON_SWAP_AUTHORITY, SWAP_AUTHORITY, tokenMintA } from "../hooks/rootHook";
->>>>>>> Stashed changes:tests/01_setup-tests/03.3_updateVaultMaxBorrow.ts
+import { NON_SWAP_AUTHORITY, SWAP_AUTHORITY, tokenMintA } from "./hooks/allHook";
 import { assert } from "chai";
 
 describe("UpdateVaultMaxBorrow", () => {
