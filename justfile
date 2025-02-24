@@ -1,14 +1,17 @@
 # Configuration
+## CHANGE
 wasabi_ts := env_var('HOME') + "/Projects/Dkoda/wasabi-solana-ts"
-interest_test_program := env_var('HOME') + "Projects/Solana/interest_bearing_token_test"
 
 # Program Configuration
 program_name := "wasabi_solana"
 program_keypair := "spicyTHtbmarmUxwFSHYpA8G4uP2nRNq38RReMpoZ9c.json"
+## CHANGE
 deployment_keypair := env_var('HOME') + "/.config/solana/deploy.json"
 
 # Program Parameters
+## CHANGE
 super_admin := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
+## CHANGE
 super_admin_keypair := env_var('HOME') + "/.config/solana/id.json"
 fee_wallet := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
 liquidation_wallet := "frae7AtwagcebTnNNFaobGH2haFUGNpFniKELbuBi2z"
@@ -125,7 +128,6 @@ validator:
     --reset \
     --quiet \
     --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw tests/deps/spl_token_swap.so \
-    --bpf-program 9gLx3yq5Py6bbSVfLEYcpqjfhM4WVpj3AHUMfPdiX4hk tests/deps/interest_test.so \
     --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s tests/deps/token_metadata.so > validator.log 2>&1 &
 
     sleep 5
@@ -155,7 +157,6 @@ configure-accounts:
     wsb init-market "$token2" "$token"
     wsb deposit "$token" 1000000 
     wsb deposit "$token2" 1000000
-    wsb init-interest-test "$token" 1 10000 10
 
 local-deploy: validator (deploy "localnet") configure
 
