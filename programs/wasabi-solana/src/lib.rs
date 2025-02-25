@@ -447,4 +447,16 @@ pub mod wasabi_solana {
     pub fn strategy_claim_yield(ctx: Context<StrategyClaimYield>, new_quote: u64) -> Result<()> {
         ctx.accounts.strategy_claim_yield(new_quote)
     }
+
+    pub fn bundle_setup(ctx: Context<BundleSetup>, reciprocal: Pubkey, num_expected_tx: u8) -> Result<()> {
+        ctx.accounts.bundle_setup(&reciprocal, num_expected_tx)
+    }
+
+    pub fn validate_bundle(ctx: Context<ValidateBundle>) -> Result<()> {
+        ctx.accounts.validate_bundle()
+    }
+
+    pub fn bundle_cleanup(ctx: Context<BundleCleanup>, tip_amount: u64) -> Result<()> {
+        ctx.accounts.bundle_cleanup(tip_amount)
+    }
 }
