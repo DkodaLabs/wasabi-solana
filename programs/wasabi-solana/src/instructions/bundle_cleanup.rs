@@ -46,13 +46,10 @@ pub struct BundleCleanup<'info> {
 
 impl BundleCleanup<'_> {
     fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "close_bundle_cache")
+        get_function_hash("global", "bundle_cleanup")
     }
 
     // Ensure this instruction is the last instruction in the transaction
-    // The instruction immediately preceding this instruction should also be a cleanup
-    // instruction issued by our program - i.e. we whitelist the instructions that should
-    // be at index current - 1.
     fn introspection_validation(&self) -> Result<()> {
         let current_idx =
             sysvar::instructions::load_current_index_checked(&self.sysvar_info)? as usize;

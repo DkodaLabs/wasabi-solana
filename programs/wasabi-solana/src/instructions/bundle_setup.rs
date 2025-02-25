@@ -35,7 +35,7 @@ pub struct BundleSetup<'info> {
 
 impl BundleSetup<'_> {
     fn get_hash() -> [u8; 8] {
-        get_function_hash("global", "init_bundle_cache")
+        get_function_hash("global", "bundle_setup")
     }
 
     // Ensure that initialization of the bundle cache is the first instruction
