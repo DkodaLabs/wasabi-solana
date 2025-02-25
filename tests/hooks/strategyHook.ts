@@ -15,7 +15,7 @@ import {
     setupTestEnvironment,
     superAdminProgram,
     NON_SWAP_AUTHORITY
-} from './allHook';
+} from './rootHook';
 import {initWasabi} from './initWasabi';
 import {TestContext} from './tester';
 

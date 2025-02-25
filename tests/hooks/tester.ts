@@ -4,7 +4,7 @@ import { WasabiSolana } from '../../target/types/wasabi_solana';
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToCheckedInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
 import { getDefaultPermission, createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs } from '../utils';
-import { WASABI_PROGRAM_ID } from './allHook';
+import { WASABI_PROGRAM_ID } from './rootHook';
 import { MPL_TOKEN_METADATA_PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
 import { superAdminProgram, superAdminPermission } from './allHook';
 

@@ -18,7 +18,7 @@ import {
     vaultB,
     user2,
     WASABI_PROGRAM_ID
-} from './allHook';
+} from './rootHook';
 import { getMultipleTokenAccounts } from '../utils';
 import { initWasabi } from './initWasabi';
 import {

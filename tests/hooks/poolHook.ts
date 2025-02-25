@@ -2,7 +2,7 @@ import { web3, utils } from '@coral-xyz/anchor';
 import { assert } from 'chai';
 import { PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
-import { WASABI_PROGRAM_ID, setupTestEnvironment, superAdminProgram, tokenMintA, tokenMintB } from './allHook';
+import { WASABI_PROGRAM_ID, setupTestEnvironment, superAdminProgram, tokenMintA, tokenMintB } from './rootHook';
 import { initWasabi } from './initWasabi';
 
 const [superAdminPermissionKey] = web3.PublicKey.findProgramAddressSync(
