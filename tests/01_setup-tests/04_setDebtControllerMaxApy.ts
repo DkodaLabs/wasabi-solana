@@ -1,18 +1,18 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
-import { assert } from "chai";
-import { superAdminProgram } from "./hooks/allHook";
+import {assert} from "chai";
+import {WasabiSolana} from "../../target/types/wasabi_solana";
+import {superAdminProgram} from "../hooks/rootHook";
 
-describe("setDebtControllerMaxLeverage", () => {
+describe("setDebtControllerMaxApy", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
     const [debtControllerKey] = anchor.web3.PublicKey.findProgramAddressSync(
         [anchor.utils.bytes.utf8.encode("debt_controller")],
         program.programId,
     );
 
-    it("should fail if not super admin", async () => {
+    it("should fail without super admin", async () => {
         try {
-            await program.methods.setMaxLeverage(
+            await program.methods.setMaxApy(
                 new anchor.BN(50),
             ).accounts({
                 authority: program.provider.publicKey,
@@ -26,9 +26,9 @@ describe("setDebtControllerMaxLeverage", () => {
         }
     });
 
-    it("should fail with invalid max leverage", async () => {
+    it("should fail with invalid max apy", async () => {
         try {
-            await superAdminProgram.methods.setMaxLeverage(
+            await superAdminProgram.methods.setMaxApy(
                 new anchor.BN(0),
             ).accounts({
                 authority: superAdminProgram.provider.publicKey,
@@ -40,13 +40,14 @@ describe("setDebtControllerMaxLeverage", () => {
             } else if (err instanceof anchor.ProgramError) {
                 assert.equal(err.code, 6013);
             } else {
+                console.error(err);
                 assert.ok(false);
             }
         }
 
         try {
-            await superAdminProgram.methods.setMaxLeverage(
-                new anchor.BN(101 * 100),
+            await superAdminProgram.methods.setMaxApy(
+                new anchor.BN(1001 * 100),
             ).accounts({
                 authority: superAdminProgram.provider.publicKey,
             }).rpc();
@@ -57,20 +58,22 @@ describe("setDebtControllerMaxLeverage", () => {
             } else if (err instanceof anchor.ProgramError) {
                 assert.equal(err.code, 6013);
             } else {
+                console.error(err);
                 assert.ok(false);
             }
         }
     });
 
-    it("should set max leverage", async () => {
+    it("should set max apy", async () => {
         const debtControllerBefore = await program.account.debtController.fetch(debtControllerKey);
-        await superAdminProgram.methods.setMaxLeverage(
-            new anchor.BN(200),
+        await superAdminProgram.methods.setMaxApy(
+            new anchor.BN(300),
         ).accounts({
             authority: superAdminProgram.provider.publicKey,
         }).rpc();
         const debtControllerAfter = await program.account.debtController.fetch(debtControllerKey);
-        assert.equal(debtControllerAfter.maxLeverage.toNumber(), 200);
-        assert.notEqual(debtControllerBefore.maxLeverage.toNumber(), debtControllerAfter.maxLeverage.toNumber());
+        assert.equal(debtControllerAfter.maxApy.toNumber(), 300);
+        assert.notEqual(debtControllerBefore.maxApy.toString(), debtControllerAfter.maxApy.toString());
     });
+
 });

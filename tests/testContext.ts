@@ -1,23 +1,26 @@
-import { PublicKey, Keypair, SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
-import { workspace, Program, web3 } from '@coral-xyz/anchor';
-import { WasabiSolana } from '../../target/types/wasabi_solana';
-import { createAssociatedTokenAccountIdempotentInstruction, createMintToCheckedInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
-import { TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
-import { getDefaultPermission, createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs } from '../utils';
-import { WASABI_PROGRAM_ID } from './allHook';
-import { MPL_TOKEN_METADATA_PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
-import { superAdminProgram, superAdminPermission } from './allHook';
+import {SYSVAR_INSTRUCTIONS_PUBKEY} from '@solana/web3.js';
+import {workspace, Program, web3} from '@coral-xyz/anchor';
+import {WasabiSolana} from '../target/types/wasabi_solana';
+import {
+    createAssociatedTokenAccountIdempotentInstruction,
+    createMintToCheckedInstruction,
+    getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID
+} from '@solana/spl-token';
+import {TOKEN_PROGRAM_ID} from '@coral-xyz/anchor/dist/cjs/utils/token';
+import {createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs} from './utils';
+import {WASABI_PROGRAM_ID} from './hooks/rootHook';
+import {MPL_TOKEN_METADATA_PROGRAM_ID} from '@metaplex-foundation/mpl-token-metadata';
+import {superAdminProgram, superAdminPermission} from './hooks/rootHook';
 
 export class TestContext {
     constructor(
         readonly program = workspace.WasabiSolana as Program<WasabiSolana>,
-        readonly currencyKeypair = Keypair.generate(),
-        readonly collateralKeypair = Keypair.generate(),
+        readonly currencyKeypair = web3.Keypair.generate(),
+        readonly collateralKeypair = web3.Keypair.generate(),
         readonly currency = currencyKeypair.publicKey,
         readonly collateral = collateralKeypair.publicKey,
-        readonly defaultAuthority = Keypair.generate(),
-        readonly defaultPermission = getDefaultPermission(defaultAuthority.publicKey),
-        readonly lpVault = PublicKey.findProgramAddressSync(
+        readonly defaultAuthority = web3.Keypair.generate(),
+        readonly lpVault = web3.PublicKey.findProgramAddressSync(
             [
                 Buffer.from("lp_vault"),
                 currency.toBuffer()
@@ -36,20 +39,32 @@ export class TestContext {
             false,
             TOKEN_PROGRAM_ID,
         ),
-
         readonly ownerCollateralAta = getAssociatedTokenAddressSync(
             collateral,
             program.provider.publicKey,
             false,
             TOKEN_PROGRAM_ID,
         ),
-    ) { }
+        readonly sharesMint = web3.PublicKey.findProgramAddressSync(
+            [
+                lpVault.toBuffer(), currency.toBuffer()
+            ],
+            WASABI_PROGRAM_ID
+        )[0],
+        readonly ownerSharesAta = getAssociatedTokenAddressSync(
+            sharesMint,
+            program.provider.publicKey,
+            false,
+            TOKEN_2022_PROGRAM_ID,
+        )
+    ) {
+    }
 
     protected async _generate() {
         const mintTx = new web3.Transaction();
         let [
-            { ixes: uIxes, mint: uMint },
-            { ixes: qIxes, mint: qMint }
+            {ixes: uIxes, mint: uMint},
+            {ixes: qIxes, mint: qMint}
         ] = await Promise.all([
             createSimpleMint(
                 this.program.provider.publicKey,
@@ -127,20 +142,29 @@ export class TestContext {
             TOKEN_PROGRAM_ID
         );
 
+        const ownerSharesAta = createAssociatedTokenAccountIdempotentInstruction(
+            superAdminProgram.provider.publicKey,
+            this.ownerSharesAta,
+            this.program.provider.publicKey,
+            this.sharesMint,
+            TOKEN_2022_PROGRAM_ID
+        )
+
         return await superAdminProgram.methods
             .initLpVault(defaultInitLpVaultArgs)
             .accountsPartial({
-                payer: superAdminProgram.provider.publicKey,
-                authority: superAdminProgram.provider.publicKey,
-                vault: this.vault,
-                lpVault: this.lpVault,
-                permission: superAdminPermission,
-                assetMint: this.currency,
-                assetTokenProgram: TOKEN_PROGRAM_ID,
+                payer:                superAdminProgram.provider.publicKey,
+                authority:            superAdminProgram.provider.publicKey,
+                vault:                this.vault,
+                lpVault:              this.lpVault,
+                permission:           superAdminPermission,
+                assetMint:            this.currency,
+                assetTokenProgram:    TOKEN_PROGRAM_ID,
                 tokenMetadataProgram: MPL_TOKEN_METADATA_PROGRAM_ID,
-                sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+                sysvarInstructions:   SYSVAR_INSTRUCTIONS_PUBKEY,
             })
             .preInstructions([permissionIx, vaultIx])
+            .postInstructions([ownerSharesAta])
             .rpc();
     }
 }
