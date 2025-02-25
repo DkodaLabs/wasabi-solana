@@ -13,7 +13,11 @@ pub struct CloseLongPositionSetup<'info> {
 }
 
 impl CloseLongPositionSetup<'_> {
-    pub fn validate(ctx: &Context<CloseLongPositionSetup>, expiration: i64) -> Result<()> {
+    pub fn validate(
+        ctx: &Context<CloseLongPositionSetup>,
+        expiration: i64,
+        is_bundle: bool,
+    ) -> Result<()> {
         require_keys_eq!(
             ctx.accounts.owner.key(),
             ctx.accounts.close_position_setup.owner.key(),
@@ -32,6 +36,7 @@ impl CloseLongPositionSetup<'_> {
             &ctx.accounts.close_position_setup,
             expiration,
             CloseLongPositionCleanup::get_hash(),
+            is_bundle,
         )?;
 
         Ok(())

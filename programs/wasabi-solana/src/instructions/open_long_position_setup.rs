@@ -117,7 +117,7 @@ pub struct OpenLongPositionSetup<'info> {
 }
 
 impl<'info> OpenLongPositionSetup<'info> {
-    pub fn validate(ctx: &Context<Self>, expiration: i64) -> Result<()> {
+    pub fn validate(ctx: &Context<Self>, expiration: i64, is_bundle: bool) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
 
         require_gt!(expiration, now, ErrorCode::PositionReqExpired);
@@ -131,12 +131,14 @@ impl<'info> OpenLongPositionSetup<'info> {
             ErrorCode::UnpermittedIx
         );
 
-        // Validate TX only has only one setup IX and has one following cleanup IX
-        setup_transaction_introspection_validation(
-            &ctx.accounts.sysvar_info,
-            OpenLongPositionCleanup::get_hash(),
-            true,
-        )?;
+        if !is_bundle {
+            // Validate TX only has only one setup IX and has one following cleanup IX
+            setup_transaction_introspection_validation(
+                &ctx.accounts.sysvar_info,
+                OpenLongPositionCleanup::get_hash(),
+                true,
+            )?;
+        }
 
         Ok(())
     }

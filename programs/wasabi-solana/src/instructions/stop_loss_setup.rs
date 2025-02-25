@@ -13,7 +13,7 @@ pub struct StopLossSetup<'info> {
 }
 
 impl<'info> StopLossSetup<'info> {
-    pub fn validate(ctx: &Context<StopLossSetup>, expiration: i64) -> Result<()> {
+    pub fn validate(ctx: &Context<StopLossSetup>, expiration: i64, is_bundle: bool) -> Result<()> {
         // Validate the authority can co-sign swaps
         require!(
             ctx.accounts
@@ -27,6 +27,7 @@ impl<'info> StopLossSetup<'info> {
             &ctx.accounts.close_position_setup,
             expiration,
             StopLossCleanup::get_hash(),
+            is_bundle
         )?;
 
         Ok(())

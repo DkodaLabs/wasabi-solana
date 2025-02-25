@@ -13,7 +13,11 @@ pub struct TakeProfitSetup<'info> {
 }
 
 impl<'info> TakeProfitSetup<'info> {
-    pub fn validate(ctx: &Context<TakeProfitSetup>, expiration: i64) -> Result<()> {
+    pub fn validate(
+        ctx: &Context<TakeProfitSetup>,
+        expiration: i64,
+        is_bundle: bool,
+    ) -> Result<()> {
         // Validate the authority can co-sign swaps
         require!(
             ctx.accounts
@@ -27,6 +31,7 @@ impl<'info> TakeProfitSetup<'info> {
             &ctx.accounts.close_position_setup,
             expiration,
             TakeProfitCleanup::get_hash(),
+            is_bundle,
         )?;
 
         Ok(())

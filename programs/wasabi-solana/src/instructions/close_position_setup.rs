@@ -66,7 +66,7 @@ pub struct ClosePositionSetup<'info> {
 }
 
 impl<'info> ClosePositionSetup<'info> {
-    pub fn validate(&self, expiration: i64, cleanup_ix_hash: [u8; 8]) -> Result<()> {
+    pub fn validate(&self, expiration: i64, cleanup_ix_hash: [u8; 8], is_bundle: bool) -> Result<()> {
         // Validate pool is correct based on seeds
         let expected_pool_key = if self.pool.is_long_pool {
             Pubkey::create_program_address(long_pool_signer_seeds!(self.pool), &crate::ID)
@@ -77,8 +77,10 @@ impl<'info> ClosePositionSetup<'info> {
         };
         require_keys_eq!(expected_pool_key, self.pool.key(), ErrorCode::InvalidPool);
 
-        // Validate TX only has only one setup IX and has one following cleanup IX
-        setup_transaction_introspection_validation(&self.sysvar_info, cleanup_ix_hash, true)?;
+        if !is_bundle {
+            // Validate TX only has only one setup IX and has one following cleanup IX
+            setup_transaction_introspection_validation(&self.sysvar_info, cleanup_ix_hash, false)?;
+        }
 
         require_keys_eq!(
             self.owner.key(),

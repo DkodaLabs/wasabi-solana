@@ -149,8 +149,28 @@ pub mod wasabi_solana {
         ctx.accounts.donate(amount)
     }
 
-    #[access_control(OpenLongPositionSetup::validate(&ctx, expiration))]
+    #[access_control(OpenLongPositionSetup::validate(&ctx, expiration, false))]
     pub fn open_long_position_setup(
+        ctx: Context<OpenLongPositionSetup>,
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.open_long_position_setup(
+            nonce,
+            min_target_amount,
+            down_payment,
+            principal,
+            fee,
+            expiration,
+        )
+    }
+
+    #[access_control(OpenLongPositionSetup::validate(&ctx, expiration, true))]
+    pub fn open_long_position_setup_with_bundle(
         ctx: Context<OpenLongPositionSetup>,
         nonce: u16,
         min_target_amount: u64,
@@ -173,8 +193,24 @@ pub mod wasabi_solana {
         ctx.accounts.open_long_position_cleanup()
     }
 
-    #[access_control(CloseLongPositionSetup::validate(&ctx, expiration))]
+    #[access_control(CloseLongPositionSetup::validate(&ctx, expiration, false))]
     pub fn close_long_position_setup(
+        ctx: Context<CloseLongPositionSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.close_long_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
+    }
+
+    #[access_control(CloseLongPositionSetup::validate(&ctx, expiration, true))]
+    pub fn close_long_position_setup_with_bundle(
         ctx: Context<CloseLongPositionSetup>,
         min_target_amount: u64,
         interest: u64,
@@ -193,8 +229,28 @@ pub mod wasabi_solana {
         ctx.accounts.close_long_position_cleanup()
     }
 
-    #[access_control(OpenShortPositionSetup::validate(&ctx, expiration))]
+    #[access_control(OpenShortPositionSetup::validate(&ctx, expiration, false))]
     pub fn open_short_position_setup(
+        ctx: Context<OpenShortPositionSetup>,
+        nonce: u16,
+        min_target_amount: u64,
+        down_payment: u64,
+        principal: u64,
+        fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.open_short_position_setup(
+            nonce,
+            min_target_amount,
+            down_payment,
+            principal,
+            fee,
+            expiration,
+        )
+    }
+
+    #[access_control(OpenShortPositionSetup::validate(&ctx, expiration, true))]
+    pub fn open_short_position_setup_with_bundle(
         ctx: Context<OpenShortPositionSetup>,
         nonce: u16,
         min_target_amount: u64,
@@ -217,8 +273,24 @@ pub mod wasabi_solana {
         ctx.accounts.open_short_position_cleanup()
     }
 
-    #[access_control(CloseShortPositionSetup::validate(&ctx, expiration))]
+    #[access_control(CloseShortPositionSetup::validate(&ctx, expiration, false))]
     pub fn close_short_position_setup(
+        ctx: Context<CloseShortPositionSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.close_short_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
+    }
+
+    #[access_control(CloseShortPositionSetup::validate(&ctx, expiration, true))]
+    pub fn close_short_position_setup_with_bundle(
         ctx: Context<CloseShortPositionSetup>,
         min_target_amount: u64,
         interest: u64,
@@ -237,8 +309,24 @@ pub mod wasabi_solana {
         ctx.accounts.close_short_position_cleanup()
     }
 
-    #[access_control(LiquidatePositionSetup::validate(&ctx, expiration))]
+    #[access_control(LiquidatePositionSetup::validate(&ctx, expiration, false))]
     pub fn liquidate_position_setup(
+        ctx: Context<LiquidatePositionSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts.liquidate_position_setup(
+            min_target_amount,
+            interest,
+            execution_fee,
+            expiration,
+        )
+    }
+
+    #[access_control(LiquidatePositionSetup::validate(&ctx, expiration, true))]
+    pub fn liquidate_position_setup_with_bundle(
         ctx: Context<LiquidatePositionSetup>,
         min_target_amount: u64,
         interest: u64,
@@ -257,8 +345,20 @@ pub mod wasabi_solana {
         ctx.accounts.liquidate_position_cleanup()
     }
 
-    #[access_control(TakeProfitSetup::validate(&ctx, expiration))]
+    #[access_control(TakeProfitSetup::validate(&ctx, expiration, false))]
     pub fn take_profit_setup(
+        ctx: Context<TakeProfitSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts
+            .take_profit_setup(min_target_amount, interest, execution_fee, expiration)
+    }
+
+    #[access_control(TakeProfitSetup::validate(&ctx, expiration, true))]
+    pub fn take_profit_setup_with_bundle(
         ctx: Context<TakeProfitSetup>,
         min_target_amount: u64,
         interest: u64,
@@ -273,8 +373,20 @@ pub mod wasabi_solana {
         ctx.accounts.take_profit_cleanup()
     }
 
-    #[access_control(StopLossSetup::validate(&ctx, expiration))]
+    #[access_control(StopLossSetup::validate(&ctx, expiration, false))]
     pub fn stop_loss_setup(
+        ctx: Context<StopLossSetup>,
+        min_target_amount: u64,
+        interest: u64,
+        execution_fee: u64,
+        expiration: i64,
+    ) -> Result<()> {
+        ctx.accounts
+            .stop_loss_setup(min_target_amount, interest, execution_fee, expiration)
+    }
+
+    #[access_control(StopLossSetup::validate(&ctx, expiration, true))]
+    pub fn stop_loss_setup_with_bundle(
         ctx: Context<StopLossSetup>,
         min_target_amount: u64,
         interest: u64,

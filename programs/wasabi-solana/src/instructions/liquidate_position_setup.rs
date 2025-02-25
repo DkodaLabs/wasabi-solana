@@ -13,7 +13,11 @@ pub struct LiquidatePositionSetup<'info> {
 }
 
 impl<'info> LiquidatePositionSetup<'info> {
-    pub fn validate(ctx: &Context<LiquidatePositionSetup>, expiration: i64) -> Result<()> {
+    pub fn validate(
+        ctx: &Context<LiquidatePositionSetup>,
+        expiration: i64,
+        is_bundle: bool,
+    ) -> Result<()> {
         // Validate the authority has liquidate authority
         require!(
             ctx.accounts.close_position_setup.permission.can_liquidate(),
@@ -24,6 +28,7 @@ impl<'info> LiquidatePositionSetup<'info> {
             &ctx.accounts.close_position_setup,
             expiration,
             LiquidatePositionCleanup::get_hash(),
+            is_bundle
         )?;
 
         Ok(())
