@@ -58,7 +58,7 @@ describe("StopLoss", () => {
 })
 
 //import * as anchor from "@coral-xyz/anchor";
-//import { WasabiSolana } from "../target/types/wasabi_solana";
+//import { WasabiSolana } from "../../target/types/wasabi_solana";
 //import {
 //    abSwapKey,
 //    NON_SWAP_AUTHORITY,

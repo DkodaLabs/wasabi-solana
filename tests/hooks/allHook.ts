@@ -12,8 +12,8 @@ import {
     TokenSwap,
     TokenSwapLayout,
 } from "@solana/spl-token-swap";
-import { WasabiSolana } from "../../target/types/wasabi_solana";
-import { createSimpleMint } from "./../utils";
+import { WasabiSolana } from "../../../target/types/wasabi_solana";
+import { createSimpleMint } from "../utils";
 import {
     AccountLayout,
     createAssociatedTokenAccountInstruction,

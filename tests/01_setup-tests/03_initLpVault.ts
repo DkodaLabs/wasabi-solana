@@ -8,7 +8,7 @@
 //} from "@solana/spl-token";
 //import { SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
 //import { MPL_TOKEN_METADATA_PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
-//import { WasabiSolana } from "../target/types/wasabi_solana";
+//import { WasabiSolana } from "../../target/types/wasabi_solana";
 //
 //describe("InitLpVault", () => {
 //    const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;

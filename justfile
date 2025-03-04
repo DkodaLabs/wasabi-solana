@@ -199,7 +199,7 @@ test suite:
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/20_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
         ;;
     "setup")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/allHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
         ;;
     "vault")
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/02_vault-tests/*.ts --require tests/hooks/vaultHook.ts"#' Anchor.toml

@@ -6,7 +6,7 @@ import {
     unpackMint,
 } from "@solana/spl-token";
 import { TransactionInstruction } from "@solana/web3.js";
-import { superAdminProgram, WASABI_PROGRAM_ID } from './hooks/allHook';
+import { superAdminProgram, WASABI_PROGRAM_ID } from './hooks/rootHook';
 
 /**
  * Ixes to create a mint, the payer gains the Mint Tokens/Freeze authority
@@ -92,6 +92,7 @@ export const initDefaultPermission = async (newAuthority: web3.PublicKey): Promi
         canLiquidate: true, // 2
         canInitPools: true, // 8
         canBorrowFromVaults: true,
+        canBundleTxs: true,
         status: { active: {} }
     }).accountsPartial({
         payer: superAdminProgram.provider.publicKey,

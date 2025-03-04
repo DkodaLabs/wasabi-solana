@@ -61,15 +61,6 @@ export interface ClosePositionArgs {
     swapOut: bigint;
 }
 
-export const defaultOpenLongPositionArgs = <OpenPositionArgs>{
-    minOut: BigInt(1_900),
-    downPayment: BigInt(1_000),
-    principal: BigInt(1_000),
-    fee: BigInt(10),
-    swapIn: BigInt(2_000),
-    swapOut: BigInt(1_900),
-};
-
 export const defaultOpenShortPositionArgs = <OpenPositionArgs>{
     minOut: BigInt(1),
     downPayment: BigInt(1_000),
@@ -94,43 +85,6 @@ export const defaultCloseShortPositionArgs = <ClosePositionArgs>{
     executionFee: BigInt(10),
 };
 
-export const openLongPosition = async ({
-    minOut,
-    downPayment,
-    principal,
-    fee,
-    swapIn,
-    swapOut,
-}: {
-    minOut: bigint,
-    downPayment: bigint,
-    principal: bigint,
-    fee: bigint,
-    swapIn: bigint,
-    swapOut: bigint
-}) => {
-    const instructions = await Promise.all([
-        openLongPositionSetup({
-            minOut,
-            downPayment,
-            principal,
-            fee,
-        }),
-
-        createABSwapIx({
-            swapIn,
-            swapOut,
-            poolAtaA: longPoolCurrencyAta,
-            poolAtaB: longPoolCollateralAta
-        }),
-
-        openLongPositionCleanup(),
-    ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
-
-    console.log(JSON.stringify(instructions));
-
-    return await send(instructions);
-}
 
 export const openShortPosition = async ({
     minOut,

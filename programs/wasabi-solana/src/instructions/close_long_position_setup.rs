@@ -12,7 +12,7 @@ pub struct CloseLongPositionSetup<'info> {
     pub owner: Signer<'info>,
 }
 
-impl CloseLongPositionSetup<'_> {
+impl<'info> CloseLongPositionSetup<'info> {
     pub fn validate(
         ctx: &Context<CloseLongPositionSetup>,
         expiration: i64,

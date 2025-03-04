@@ -19,7 +19,7 @@ import {
     liquidationWalletKeypair,
     SWAP_AUTHORITY,
 } from "./rootHook";
-import { WasabiSolana } from '../../target/types/wasabi_solana';
+import { WasabiSolana } from '../../../target/types/wasabi_solana';
 
 export const initWasabi = async () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
