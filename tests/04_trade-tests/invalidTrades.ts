@@ -111,7 +111,7 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
     fee,
     swapIn,
     swapOut,
-}: OpenPositionArgs) => {
+}: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     const instructions = await Promise.all([
         ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
         ctx.createABSwapIx({
@@ -524,25 +524,3 @@ export const closeShortPositionWithoutCleanup = async (ctx: TradeContext, {
         executionFee
     })]);
 }
-
-export const openLongPositionWithoutCosigner = async (ctx: TradeContext, {
-    minOut,
-    downPayment,
-    principal,
-    fee,
-    swapIn,
-    swapOut,
-}: OpenPositionArgs = defaultOpenLongPositionArgs) => {
-    const instructions = await Promise.all([
-        openLongPositionSetupWithoutCosigner(ctx, {swapIn, swapOut, minOut, downPayment, principal, fee}),
-        ctx.createABSwapIx({
-            swapIn,
-            swapOut,
-            poolAtaA: ctx.longPoolCurrencyVault,
-            poolAtaB: ctx.longPoolCollateralVault
-        }),
-        ctx.openLongPositionCleanup(),
-    ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
-
-    return ctx.sendInvalid(instructions);
-};
