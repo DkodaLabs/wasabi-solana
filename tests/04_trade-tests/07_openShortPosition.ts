@@ -1,26 +1,26 @@
 import { assert } from "chai";
 import { AnchorError, ProgramError } from "@coral-xyz/anchor";
-import { TradeContext, defaultOpenLongPositionArgs } from "./tradeContext";
-import { validateOpenLongPosition } from "./validateTrade";
+import { TradeContext, defaultOpenShortPositionArgs } from "./tradeContext";
+import { validateOpenShortPosition } from "./validateTrade";
 import { 
-    openLongPositionWithInvalidPool, 
-    openLongPositionWithInvalidPosition,
-    openLongPositionWithoutCosigner
+    openShortPositionWithInvalidPool, 
+    openShortPositionWithInvalidPosition,
+    openShortPositionWithoutCosigner
 } from "./invalidTrades";
 
-describe("OpenLongPosition", () => {
+describe("OpenShortPosition", () => {
     let ctx: TradeContext;
 
     describe("with more than one setup instruction", () => {
         before(async () => {
-            ctx = await new TradeContext().generateLongTest();
+            ctx = await new TradeContext().generateShortTest();
         });
 
         it("should fail", async () => {
             try {
                 await ctx.send(await Promise.all([
-                    ctx.openLongPositionSetup(),
-                    ctx.openLongPositionSetup()
+                    ctx.openShortPositionSetup(),
+                    ctx.openShortPositionSetup()
                 ]));
             } catch (err) {
                 console.error(err);
@@ -29,16 +29,17 @@ describe("OpenLongPosition", () => {
             }
         });
     });
+    
     describe("without a cleanup instruction", () => {
         it("should fail", async () => {
             try {
                 await ctx.send(await Promise.all([
-                    ctx.openLongPositionSetup(),
+                    ctx.openShortPositionSetup(),
                     ctx.createABSwapIx({
-                        swapIn: defaultOpenLongPositionArgs.swapIn,
-                        swapOut: defaultOpenLongPositionArgs.swapOut,
-                        poolAtaA: ctx.longPoolCurrencyVault,
-                        poolAtaB: ctx.longPoolCollateralVault
+                        swapIn: defaultOpenShortPositionArgs.swapIn,
+                        swapOut: defaultOpenShortPositionArgs.swapOut,
+                        poolAtaA: ctx.shortPoolCurrencyVault,
+                        poolAtaB: ctx.shortPoolCollateralVault
                     })]).then(ixes => ixes.flatMap(ix => ix)));
                 assert.ok(false);
             } catch (err) {
@@ -48,12 +49,13 @@ describe("OpenLongPosition", () => {
             }
         });
     });
+    
     describe("with one setup and one cleanup ix", () => {
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
                 try {
-                    await validateOpenLongPosition(ctx, {
-                        ...defaultOpenLongPositionArgs,
+                    await validateOpenShortPosition(ctx, {
+                        ...defaultOpenShortPositionArgs,
                         swapIn: BigInt(3_000),
                     });
                     assert.ok(false);
@@ -64,10 +66,11 @@ describe("OpenLongPosition", () => {
                 }
             });
         });
+        
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
                 try {
-                    await openLongPositionWithInvalidPool(ctx);
+                    await openShortPositionWithInvalidPool(ctx, defaultOpenShortPositionArgs);
                     assert.ok(false);
                 } catch (err) {
                     console.error(err);
@@ -76,10 +79,11 @@ describe("OpenLongPosition", () => {
                 }
             });
         });
+        
         describe("with an incorrect position", () => {
             it("should fail", async () => {
                 try {
-                    await openLongPositionWithInvalidPosition(ctx);
+                    await openShortPositionWithInvalidPosition(ctx, defaultOpenShortPositionArgs);
                     assert.ok(false);
                 } catch (err) {
                     console.error(err);
@@ -92,7 +96,7 @@ describe("OpenLongPosition", () => {
         describe("without a swap co-signer", () => {
             it("should fail", async () => {
                 try {
-                    await openLongPositionWithoutCosigner(ctx);
+                    await openShortPositionWithoutCosigner(ctx);
                     assert.ok(false);
                 } catch (err) {
                     if (err instanceof AnchorError) {
@@ -106,10 +110,11 @@ describe("OpenLongPosition", () => {
                 }
             });
         });
+        
         describe("correct parameters", () => {
             it("should correctly open a new position", async () => {
                 try {
-                    await validateOpenLongPosition(ctx, defaultOpenLongPositionArgs);
+                    await validateOpenShortPosition(ctx, defaultOpenShortPositionArgs);
                 } catch (err) {
                     console.error(err);
                     assert.ok(false);
