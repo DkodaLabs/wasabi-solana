@@ -6,7 +6,7 @@ import {
     closeLongPositionWithoutCleanup,
     closeLongPositionWithBadDebt,
 } from './invalidTrades';
-import {TradeContext, defaultCloseLongPositionArgs} from './tradeContext'
+import {TradeContext} from './tradeContext'
 import {validateCloseLongPosition} from './validateTrade';
 
 describe("CloseLongPosition", () => {
@@ -61,7 +61,7 @@ describe("CloseLongPosition", () => {
         describe("when a user tries to close a position with bad debt", () => {
             it("should fail", async () => {
                 try {
-                    await closeLongPositionWithBadDebt(defaultCloseLongPositionArgs);
+                    await closeLongPositionWithBadDebt(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);
@@ -71,7 +71,7 @@ describe("CloseLongPosition", () => {
         describe("correct setup", () => {
             it("should successfully close position", async () => {
                 try {
-                    await validateCloseLongPosition(defaultCloseLongPositionArgs);
+                    await validateCloseLongPosition(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);

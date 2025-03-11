@@ -27,7 +27,7 @@ describe("OpenShortPosition", () => {
         it("should fail", async () => {
             try {
                 await openShortPositionWithoutCleanup(ctx);
-                    assert.ok(false);
+                assert.ok(false);
             } catch (err) {
                 console.error(err);
                 // 'Missing cleanup'
@@ -94,6 +94,7 @@ describe("OpenShortPosition", () => {
             });
         });
     });
+});
 
 
 //
