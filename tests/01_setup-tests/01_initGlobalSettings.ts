@@ -1,13 +1,13 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { assert } from "chai";
 import { 
     superAdminProgram, 
     SWAP_AUTHORITY, 
     feeWalletKeypair, 
     liquidationWalletKeypair 
-} from "./hooks/rootHook";
+} from "../hooks/rootHook";
 
 describe("wasabi-solana", () => {
     // Configure the client to use the local cluster.

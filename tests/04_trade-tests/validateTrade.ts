@@ -202,10 +202,18 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
     swapIn,
     swapOut,
 }: OpenPositionArgs) => {
-    const statesBefore = positionStates(ctx, true);
-    await ctx.openLongPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
-    const statesAfter = positionStates(ctx, true);
-    await validateOpenLongPositionStates(ctx, statesBefore, statesAfter, principal, downPayment, fee);
+    try {
+        const statesBefore = positionStates(ctx, true);
+        await ctx.openLongPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
+        const statesAfter = positionStates(ctx, true);
+        await validateOpenLongPositionStates(ctx, statesBefore, statesAfter, principal, downPayment, fee);
+
+        assert.ok(false);
+    } catch (err) {
+        console.error(err);
+        // 'Insufficient funds'
+        assert.ok(/insufficient funds/.test(err.toString()));
+    }
 };
 
 export const validateOpenShortPosition = async (ctx: TradeContext, {

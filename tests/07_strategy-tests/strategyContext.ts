@@ -15,7 +15,7 @@ import {
     superAdminProgram,
     NON_SWAP_AUTHORITY
 } from '../hooks/rootHook';
-import { TestContext } from '../hooks/tester';
+import { TestContext } from '../testContext';
 
 export class StrategyContext extends TestContext {
     collateralVault: PublicKey;

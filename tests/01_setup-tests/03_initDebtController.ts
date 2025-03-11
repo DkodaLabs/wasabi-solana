@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
-import { superAdminProgram } from "./rootHooks";
+import { WasabiSolana } from "../../target/types/wasabi_solana";
+import { superAdminProgram } from "../hooks/rootHook"
 import { assert } from "chai";
 
 describe("initDebtController", () => {

@@ -1,10 +1,8 @@
-import { assert } from "chai";
-import { AnchorError, ProgramError } from "@coral-xyz/anchor";
-import { TradeContext, defaultOpenLongPositionArgs } from "./tradeContext";
-import { validateOpenLongPosition } from "./validateTrade";
-import { 
-    openLongPositionWithInvalidPool, 
-    openLongPositionWithInvalidPosition,
+import {TradeContext, defaultOpenLongPositionArgs} from "./tradeContext";
+import {validateOpenLongPosition} from "./validateTrade";
+import {
+    openLongPositionWithInvalidPool,
+    openLongPositionWithInvalidPosition, openLongPositionWithInvalidSetup, openLongPositionWithoutCleanup,
     openLongPositionWithoutCosigner
 } from "./invalidTrades";
 
@@ -17,104 +15,46 @@ describe("OpenLongPosition", () => {
         });
 
         it("should fail", async () => {
-            try {
-                await ctx.send(await Promise.all([
-                    ctx.openLongPositionSetup(),
-                    ctx.openLongPositionSetup()
-                ]));
-            } catch (err) {
-                console.error(err);
-                // 'Account already exists'
-                assert.ok(/already in use/.test(err.toString()));
-            }
+            await openLongPositionWithInvalidSetup(ctx);
         });
     });
+
     describe("without a cleanup instruction", () => {
         it("should fail", async () => {
-            try {
-                await ctx.send(await Promise.all([
-                    ctx.openLongPositionSetup(),
-                    ctx.createABSwapIx({
-                        swapIn: defaultOpenLongPositionArgs.swapIn,
-                        swapOut: defaultOpenLongPositionArgs.swapOut,
-                        poolAtaA: ctx.longPoolCurrencyVault,
-                        poolAtaB: ctx.longPoolCollateralVault
-                    })]).then(ixes => ixes.flatMap(ix => ix)));
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                // 'Missing cleanup'
-                assert.ok(/6002/.test(err.toString()))
-            }
+            await openLongPositionWithoutCleanup(ctx);
         });
     });
+
     describe("with one setup and one cleanup ix", () => {
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
-                try {
-                    await validateOpenLongPosition(ctx, {
-                        ...defaultOpenLongPositionArgs,
-                        swapIn: BigInt(3_000),
-                    });
-                    assert.ok(false);
-                } catch (err) {
-                    console.error(err);
-                    // 'Insufficient funds'
-                    assert.ok(/insufficient funds/.test(err.toString()));
-                }
+                await validateOpenLongPosition(ctx, {...defaultOpenLongPositionArgs, swapIn: BigInt(3_000),});
             });
         });
+
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
-                try {
-                    await openLongPositionWithInvalidPool(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    console.error(err);
-                    // 'Invalid pool'
-                    assert.ok(/6006/.test(err.toString()));
-                }
+                await openLongPositionWithInvalidPool(ctx);
             });
         });
+
         describe("with an incorrect position", () => {
             it("should fail", async () => {
-                try {
-                    await openLongPositionWithInvalidPosition(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    console.error(err);
-                    // 'Account already exists'
-                    assert.ok(/already in use/.test(err.toString()));
-                }
+                await openLongPositionWithInvalidPosition(ctx);
             });
         });
 
         describe("without a swap co-signer", () => {
             it("should fail", async () => {
-                try {
-                    await openLongPositionWithoutCosigner(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    if (err instanceof AnchorError) {
-                        assert.equal(err.error.errorCode.number, 6008);
-                    } else if (err instanceof ProgramError) {
-                        assert.equal(err.code, 6008);
-                    } else {
-                        console.log(err);
-                        assert.ok(false);
-                    }
-                }
+                await openLongPositionWithoutCosigner(ctx);
             });
         });
+
         describe("correct parameters", () => {
             it("should correctly open a new position", async () => {
-                try {
-                    await validateOpenLongPosition(ctx, defaultOpenLongPositionArgs);
-                } catch (err) {
-                    console.error(err);
-                    assert.ok(false);
-                }
+                await validateOpenLongPosition(ctx, defaultOpenLongPositionArgs);
             });
         });
     });
-});
+})
+;

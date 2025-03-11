@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
+import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { assert } from "chai";
-import { superAdminProgram } from "./hooks/rootHook";
+import { superAdminProgram } from "../hooks/rootHook";
 
 describe("setDebtControllerMaxLeverage", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
