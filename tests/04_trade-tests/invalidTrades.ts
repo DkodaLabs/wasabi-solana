@@ -524,3 +524,61 @@ export const closeShortPositionWithoutCleanup = async (ctx: TradeContext, {
         executionFee
     })]);
 }
+
+export const closeLongPositionWithBadDebt = async (ctx: TradeContext, {
+    minOut,
+    interest,
+    executionFee,
+    swapIn,
+    swapOut,
+}: ClosePositionArgs = defaultCloseLongPositionArgs) => {
+    // In a bad debt scenario, the collateral value is less than the principal + interest
+    // This is simulated by setting a very small swapOut value
+    const badDebtSwapOut = BigInt(10); // Very small amount, not enough to cover debt
+
+    const instructions = await Promise.all([
+        ctx.closeLongPositionSetup({
+            minOut,
+            interest,
+            executionFee
+        }),
+        ctx.createBASwapIx({
+            swapIn,
+            swapOut: badDebtSwapOut, // Use the bad debt swap out value
+            poolAtaA: ctx.longPoolCurrencyVault,
+            poolAtaB: ctx.longPoolCollateralVault
+        }),
+        ctx.closeLongPositionCleanup()
+    ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+
+    return await ctx.send(instructions);
+};
+
+export const closeShortPositionWithBadDebt = async (ctx: TradeContext, {
+    minOut,
+    interest,
+    executionFee,
+    swapIn,
+    swapOut,
+}: ClosePositionArgs = defaultCloseShortPositionArgs) => {
+    // In a bad debt scenario, the collateral value is less than the principal + interest
+    // This is simulated by setting a very small swapOut value
+    const badDebtSwapOut = BigInt(10); // Very small amount, not enough to cover debt
+
+    const instructions = await Promise.all([
+        ctx.closeShortPositionSetup({
+            minOut,
+            interest,
+            executionFee
+        }),
+        ctx.createABSwapIx({
+            swapIn,
+            swapOut: badDebtSwapOut, // Use the bad debt swap out value
+            poolAtaA: ctx.shortPoolCurrencyVault,
+            poolAtaB: ctx.shortPoolCollateralVault
+        }),
+        ctx.closeShortPositionCleanup()
+    ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+
+    return await ctx.send(instructions);
+};

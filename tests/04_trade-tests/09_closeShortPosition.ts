@@ -6,6 +6,7 @@ import {
     closeShortPositionWithoutCosigner,
     closeShortPositionWithInvalidSetup,
     closeShortPositionWithoutCleanup,
+    closeShortPositionWithBadDebt
 } from './invalidTrades';
 
 describe("CloseShortPosition", () => {
@@ -96,6 +97,19 @@ describe("CloseShortPosition", () => {
             } catch (err) {
                 console.error(err);
                 assert.ok(false);
+            }
+        });
+    });
+    
+    describe("with bad debt", () => {
+        it("should handle bad debt scenario", async () => {
+            try {
+                await closeShortPositionWithBadDebt(ctx, defaultCloseShortPositionArgs);
+                // If we reach here, the bad debt was handled correctly
+                assert.ok(true);
+            } catch (err) {
+                console.error(err);
+                assert.ok(false, "Bad debt scenario should be handled gracefully");
             }
         });
     });
