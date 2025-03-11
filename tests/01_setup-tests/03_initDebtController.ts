@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
-import { WasabiSolana } from "../target/types/wasabi_solana";
-import { superAdminProgram } from "./rootHooks";
-import { assert } from "chai";
+import {WasabiSolana} from "../../target/types/wasabi_solana";
+import {superAdminProgram} from "../hooks/rootHook"
+import {assert} from "chai";
 
 describe("initDebtController", () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
@@ -13,8 +13,8 @@ describe("initDebtController", () => {
     it("should fail without super admin", async () => {
         try {
             let args = {
-                maxApy: new anchor.BN(100),
-                maxLeverage: new anchor.BN(100),
+                maxApy:         new anchor.BN(100),
+                maxLeverage:    new anchor.BN(100),
                 liquidationFee: 1,
             }
             await program.methods.initDebtController(
