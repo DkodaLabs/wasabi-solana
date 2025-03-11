@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { LiquidationContext, defaultLiquidateLongPositionArgs, defaultLiquidateShortPositionArgs } from "./liquidationContext";
 import {
     liquidateLongPositionWithInvalidPermission,
     liquidateLongPositionWithoutExceedingThreshold,
@@ -6,29 +7,45 @@ import {
     liquidateShortPositionWithInvalidPermission,
     liquidateShortPositionWithoutExceedingThreshold,
     validateLiquidateShortPosition,
-} from '../hooks/liquidationHook';
+} from './validateLiquidation';
 
-describe("Liqudiations", () => {
+describe("Liquidations", () => {
+    let longCtx: LiquidationContext;
+    let shortCtx: LiquidationContext;
+
     describe("Long position", () => {
+        before(async () => {
+            longCtx = await new LiquidationContext().generateLongTestWithDefaultPosition();
+        });
+
         it("should fail without a liquidation permission", async () => {
-            await liquidateLongPositionWithInvalidPermission();
+            await liquidateLongPositionWithInvalidPermission(longCtx);
         });
+
         it("should fail if the liquidation threshold is not exceeded", async () => {
-            await liquidateLongPositionWithoutExceedingThreshold();
+            await liquidateLongPositionWithoutExceedingThreshold(longCtx);
         });
+
         it("should liquidate the position", async () => {
-            await validateLiquidateLongPosition();
+            await validateLiquidateLongPosition(longCtx, defaultLiquidateLongPositionArgs);
         });
     });
+
     describe("Short position", () => {
+        before(async () => {
+            shortCtx = await new LiquidationContext().generateShortTestWithDefaultPosition();
+        });
+
         it("should fail without a liquidation permission", async () => {
-            await liquidateShortPositionWithInvalidPermission();
+            await liquidateShortPositionWithInvalidPermission(shortCtx);
         });
+
         it("should fail if the liquidation threshold is not exceeded", async () => {
-            await liquidateShortPositionWithoutExceedingThreshold();
+            await liquidateShortPositionWithoutExceedingThreshold(shortCtx);
         });
+
         it("should liquidate the position", async () => {
-            await validateLiquidateShortPosition();
+            await validateLiquidateShortPosition(shortCtx, defaultLiquidateShortPositionArgs);
         });
     });
 });
