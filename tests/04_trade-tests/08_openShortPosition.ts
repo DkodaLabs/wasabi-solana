@@ -1,4 +1,3 @@
-import {assert} from 'chai';
 import {TradeContext, defaultOpenShortPositionArgs} from './tradeContext';
 import {validateOpenShortPosition} from './validateTrade';
 import {
@@ -11,86 +10,51 @@ import {
 
 describe("OpenShortPosition", () => {
     let ctx: TradeContext
+
+    before(async () => {
+        ctx = await new TradeContext().generateShortTest();
+    });
+
     describe("with more than one setup instruction", () => {
         it("should fail", async () => {
-            try {
-                await openShortPositionWithInvalidSetup(ctx);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                // 'Account already exists'
-                assert.ok(/already in use/.test(err.toString()));
-            }
+            await openShortPositionWithInvalidSetup(ctx);
         });
     });
+
     describe("without a cleanup instruction", () => {
         it("should fail", async () => {
-            try {
-                await openShortPositionWithoutCleanup(ctx);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                // 'Missing cleanup'
-                assert.ok(/6002/.test(err.toString()))
-            }
+            await openShortPositionWithoutCleanup(ctx);
         });
     })
+
     describe("with one setup and one cleanup ix", () => {
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
-                try {
-                    await validateOpenShortPosition(ctx, {
-                        ...defaultOpenShortPositionArgs,
-                        swapIn: BigInt(3_000),
-                    });
-                    assert.ok(false);
-                } catch (err) {
-                    // 'Insufficient funds'
-                    assert.ok(/insufficient funds/.test(err.toString()));
-                }
+                await validateOpenShortPosition(ctx, {...defaultOpenShortPositionArgs, swapIn: BigInt(3_000)});
             });
         });
+
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
-                try {
-                    await openShortPositionWithInvalidPool(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    // 'Invalid pool'
-                    assert.ok(/6006/.test(err.toString()));
-                }
+                await openShortPositionWithInvalidPool(ctx);
             });
         });
+
         describe("with an incorrect position", () => {
             it("should fail", async () => {
-                try {
-                    await openShortPositionWithInvalidPosition(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    // 'Account already exists'
-                    assert.ok(/already in use/.test(err.toString()));
-                }
+                await openShortPositionWithInvalidPosition(ctx);
             });
         });
+
         describe("without a swap co-signer", () => {
             it("should fail", async () => {
-                try {
-                    await openShortPositionWithoutCosigner(ctx);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(/6008/.test(err.toString()));
-                }
+                await openShortPositionWithoutCosigner(ctx);
             });
-            //});
-            describe("correct parameters", () => {
-                it("should correctly open a new position", async () => {
-                    try {
-                        await validateOpenShortPosition(ctx);
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
-                });
+        });
+
+        describe("correct parameters", () => {
+            it("should correctly open a new position", async () => {
+                await validateOpenShortPosition(ctx);
             });
         });
     });

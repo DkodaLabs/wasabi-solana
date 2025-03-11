@@ -41,7 +41,7 @@ export const validateExecuteTakeProfitOrder = async (ctx: OrderContext, {
     );
     
     // Execute the take profit order
-    await ctx.executeTakeProfitOrder({ interest, executionFee, swapIn, swapOut }, isLong);
+    await ctx.executeTakeProfitOrder(ctx, { interest, executionFee, swapIn, swapOut }, isLong);
     
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(position);

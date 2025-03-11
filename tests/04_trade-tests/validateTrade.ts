@@ -1,7 +1,13 @@
 import {assert} from "chai";
 import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {getMultipleTokenAccounts} from "../utils";
-import {TradeContext, OpenPositionArgs} from "./tradeContext";
+import {
+    TradeContext,
+    OpenPositionArgs,
+    ClosePositionArgs,
+    defaultCloseLongPositionArgs,
+    defaultCloseShortPositionArgs
+} from "./tradeContext";
 import {defaultOpenShortPositionArgs, defaultOpenLongPositionArgs} from "./tradeContext";
 
 export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
@@ -211,10 +217,19 @@ export const validateOpenShortPosition = async (ctx: TradeContext, {
                                                     swapOut,
                                                 }: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
-    const statesBefore = positionStates(ctx, false);
-    await ctx.openShortPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
-    const statesAfter = positionStates(ctx, false);
-    await validateOpenShortPositionStates(ctx, statesBefore, statesAfter, principal, downPayment, fee);
+    try {
+
+        const statesBefore = positionStates(ctx, false);
+        await ctx.openShortPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
+        const statesAfter = positionStates(ctx, false);
+        await validateOpenShortPositionStates(ctx, statesBefore, statesAfter, principal, downPayment, fee);
+
+        assert.ok(false);
+    } catch (err) {
+        console.error(err);
+        // 'Insufficient funds'
+        assert.ok(/insufficient funds/.test(err.toString()));
+    }
 }
 
 export const validateCloseLongPosition = async (ctx: TradeContext, {
@@ -226,51 +241,51 @@ export const validateCloseLongPosition = async (ctx: TradeContext, {
 }: ClosePositionArgs = defaultCloseLongPositionArgs) => {
     // Get position before closing
     const positionBefore = await ctx.program.account.position.fetch(ctx.longPosition);
-    
+
     // Get token account balances before closing
     const [vaultBefore, ownerTokenABefore, ownerBBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
-        ctx.program.provider.connection, 
+        ctx.program.provider.connection,
         [
             ctx.vault,
             ctx.ownerCurrencyAta,
             ctx.ownerCollateralAta,
             ctx.feeWallet,
-        ], 
+        ],
         TOKEN_PROGRAM_ID
     );
-    
+
     // Close the position
     await ctx.closeLongPosition({minOut, interest, executionFee, swapIn, swapOut});
-    
+
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(ctx.longPosition);
     assert.isNull(positionAfter, "Position should be closed");
-    
+
     // Get token account balances after closing
     const [vaultAfter, ownerTokenAAfter, ownerBAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
-        ctx.program.provider.connection, 
+        ctx.program.provider.connection,
         [
             ctx.vault,
             ctx.ownerCurrencyAta,
             ctx.ownerCollateralAta,
             ctx.feeWallet,
-        ], 
+        ],
         TOKEN_PROGRAM_ID
     );
-    
+
     // Verify LP vault received principal + interest
     const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
     const vaultDiff = vaultAfter.amount - vaultBefore.amount;
     assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
-    
+
     // Verify user received payout in currency
     const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
     assert.isTrue(ownerADiff > BigInt(0), "User should receive payout in currency");
-    
+
     // Verify fee wallet received execution fee
     const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
     assert.equal(feeBalanceDiff.toString(), executionFee.toString());
-    
+
     // Verify event was emitted
     assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
     assert.equal(
@@ -287,59 +302,65 @@ export const validateCloseShortPosition = async (ctx: TradeContext, {
     swapIn,
     swapOut,
 }: ClosePositionArgs = defaultCloseShortPositionArgs) => {
-    // Get position before closing
-    const positionBefore = await ctx.program.account.position.fetch(ctx.shortPosition);
-    
-    // Get token account balances before closing
-    const [vaultBefore, ownerTokenABefore, ownerBBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
-        ctx.program.provider.connection, 
-        [
-            ctx.vault,
-            ctx.ownerCurrencyAta,
-            ctx.ownerCollateralAta,
-            ctx.feeWallet,
-        ], 
-        TOKEN_PROGRAM_ID
-    );
-    
-    // Close the position
-    await ctx.closeShortPosition({minOut, interest, executionFee, swapIn, swapOut});
-    
-    // Verify position is closed
-    const positionAfter = await ctx.program.account.position.fetchNullable(ctx.shortPosition);
-    assert.isNull(positionAfter, "Position should be closed");
-    
-    // Get token account balances after closing
-    const [vaultAfter, ownerTokenAAfter, ownerBAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
-        ctx.program.provider.connection, 
-        [
-            ctx.vault,
-            ctx.ownerCurrencyAta,
-            ctx.ownerCollateralAta,
-            ctx.feeWallet,
-        ], 
-        TOKEN_PROGRAM_ID
-    );
-    
-    // Verify LP vault received principal + interest
-    const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
-    const vaultDiff = vaultAfter.amount - vaultBefore.amount;
-    assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
-    
-    // Verify user received payout in collateral
-    const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-    assert.isTrue(ownerADiff > BigInt(0), "User should receive payout in currency");
-    
-    // Verify fee wallet received execution fee
-    const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-    assert.equal(feeBalanceDiff.toString(), executionFee.toString());
-    
-    // Verify event was emitted
-    assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
-    assert.equal(
-        ctx.closePositionEvent.id.toString(),
-        ctx.shortPosition.toString(),
-        "Position ID in event should match"
-    );
+    try {
+        // Get position before closing
+        const positionBefore = await ctx.program.account.position.fetch(ctx.shortPosition);
+
+        // Get token account balances before closing
+        const [vaultBefore, ownerTokenABefore, ownerBBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
+            ctx.program.provider.connection,
+            [
+                ctx.vault,
+                ctx.ownerCurrencyAta,
+                ctx.ownerCollateralAta,
+                ctx.feeWallet,
+            ],
+            TOKEN_PROGRAM_ID
+        );
+
+        // Close the position
+        await ctx.closeShortPosition({minOut, interest, executionFee, swapIn, swapOut});
+
+        // Verify position is closed
+        const positionAfter = await ctx.program.account.position.fetchNullable(ctx.shortPosition);
+        assert.isNull(positionAfter, "Position should be closed");
+
+        // Get token account balances after closing
+        const [vaultAfter, ownerTokenAAfter, ownerBAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
+            ctx.program.provider.connection,
+            [
+                ctx.vault,
+                ctx.ownerCurrencyAta,
+                ctx.ownerCollateralAta,
+                ctx.feeWallet,
+            ],
+            TOKEN_PROGRAM_ID
+        );
+
+        // Verify LP vault received principal + interest
+        const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
+        const vaultDiff = vaultAfter.amount - vaultBefore.amount;
+        assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
+
+        // Verify user received payout in collateral
+        const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
+        assert.isTrue(ownerADiff > BigInt(0), "User should receive payout in currency");
+
+        // Verify fee wallet received execution fee
+        const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
+        assert.equal(feeBalanceDiff.toString(), executionFee.toString());
+
+        // Verify event was emitted
+        assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
+        assert.equal(
+            ctx.closePositionEvent.id.toString(),
+            ctx.shortPosition.toString(),
+            "Position ID in event should match"
+        );
+
+    } catch (err) {
+        console.error(err);
+        assert.ok(false);
+    }
 }
 

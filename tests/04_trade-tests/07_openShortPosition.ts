@@ -11,17 +11,18 @@ import {
 describe("OpenShortPosition", () => {
     let ctx: TradeContext;
 
-    describe("with more than one setup instruction", () => {
-        before(async () => {
-            ctx = await new TradeContext().generateShortTest();
-        });
+    before(async () => {
+        ctx = await new TradeContext().generateShortTest();
+    });
 
+    describe("with more than one setup instruction", () => {
         it("should fail", async () => {
             try {
                 await ctx.send(await Promise.all([
-                    ctx.openShortPositionSetup(),
-                    ctx.openShortPositionSetup()
+                    ctx.openShortPositionSetup(defaultOpenShortPositionArgs),
+                    ctx.openShortPositionSetup(defaultOpenShortPositionArgs)
                 ]));
+                assert.ok(false);
             } catch (err) {
                 console.error(err);
                 // 'Account already exists'
@@ -31,11 +32,15 @@ describe("OpenShortPosition", () => {
     });
     
     describe("without a cleanup instruction", () => {
+        before(async () => {
+            ctx = await new TradeContext().generateShortTest();
+        });
+        
         it("should fail", async () => {
             try {
                 await ctx.send(await Promise.all([
-                    ctx.openShortPositionSetup(),
-                    ctx.createABSwapIx({
+                    ctx.openShortPositionSetup(defaultOpenShortPositionArgs),
+                    ctx.createBASwapIx({
                         swapIn: defaultOpenShortPositionArgs.swapIn,
                         swapOut: defaultOpenShortPositionArgs.swapOut,
                         poolAtaA: ctx.shortPoolCurrencyVault,
@@ -51,6 +56,10 @@ describe("OpenShortPosition", () => {
     });
     
     describe("with one setup and one cleanup ix", () => {
+        before(async () => {
+            ctx = await new TradeContext().generateShortTest();
+        });
+        
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
                 try {
@@ -96,7 +105,7 @@ describe("OpenShortPosition", () => {
         describe("without a swap co-signer", () => {
             it("should fail", async () => {
                 try {
-                    await openShortPositionWithoutCosigner(ctx);
+                    await openShortPositionWithoutCosigner(ctx, defaultOpenShortPositionArgs);
                     assert.ok(false);
                 } catch (err) {
                     if (err instanceof AnchorError) {
