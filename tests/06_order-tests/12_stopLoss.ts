@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { OrderContext, defaultStopLossOrderArgs } from "./orderContext";
 import {
     initStopLossOrder,
     validateExecuteStopLossOrder,
@@ -7,55 +8,80 @@ import {
     cancelStopLossOrderWithAdmin,
     executeStopLossOrderWithInvalidAuthority,
     executeStopLossOrderWithInvalidTakerAmount
-} from '../hooks/orderHook';
+} from './validateOrder';
 
 describe("StopLoss", () => {
-    describe("Long position", async () => {
+    let longCtx: OrderContext;
+    let shortCtx: OrderContext;
+
+    describe("Long position", () => {
+        before(async () => {
+            longCtx = await new OrderContext().generateLongTestWithDefaultPosition();
+        });
+
         it("should init the SL order", async () => {
-            await initStopLossOrder();
+            await initStopLossOrder(longCtx, defaultStopLossOrderArgs, true);
         });
+
         it("should fail to close the SL order without proper permissions", async () => {
-            await cancelStopLossOrderWithInvalidPermission();
+            await cancelStopLossOrderWithInvalidPermission(longCtx, true);
         });
+
         it("should close the SL order when invoked by the user", async () => {
-            await cancelStopLossOrderWithUser();
+            await cancelStopLossOrderWithUser(longCtx, true);
         });
+
         it("should close the SL order when invoked by the admin", async () => {
-            await cancelStopLossOrderWithAdmin();
+            await cancelStopLossOrderWithAdmin(longCtx, true);
         });
+
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeStopLossOrderWithInvalidAuthority();
+            await executeStopLossOrderWithInvalidAuthority(longCtx, defaultStopLossOrderArgs, true);
         });
+
         it("should fail when the SL taker amount is exceeded", async () => {
-            await executeStopLossOrderWithInvalidTakerAmount();
+            await executeStopLossOrderWithInvalidTakerAmount(longCtx, defaultStopLossOrderArgs, true);
         });
+
         it("should execute SL order", async () => {
-            await validateExecuteStopLossOrder();
+            await validateExecuteStopLossOrder(longCtx, defaultStopLossOrderArgs, true);
         });
     });
-    describe("Short position", async () => {
+
+    describe("Short position", () => {
+        before(async () => {
+            shortCtx = await new OrderContext().generateShortTestWithDefaultPosition();
+        });
+
         it("should init the SL order", async () => {
-            await initStopLossOrder();
+            await initStopLossOrder(shortCtx, defaultStopLossOrderArgs, false);
         });
+
         it("should fail to close the SL order without proper permissions", async () => {
-            await cancelStopLossOrderWithInvalidPermission();
+            await cancelStopLossOrderWithInvalidPermission(shortCtx, false);
         });
+
         it("should close the SL order when invoked by the user", async () => {
-            await cancelStopLossOrderWithUser();
+            await cancelStopLossOrderWithUser(shortCtx, false);
         });
+
         it("should close the SL order when invoked by the admin", async () => {
-            await cancelStopLossOrderWithAdmin();
+            await cancelStopLossOrderWithAdmin(shortCtx, false);
         });
+
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeStopLossOrderWithInvalidAuthority();
+            await executeStopLossOrderWithInvalidAuthority(shortCtx, defaultStopLossOrderArgs, false);
         });
+
         it("should fail when the SL taker amount is exceeded", async () => {
-            await executeStopLossOrderWithInvalidTakerAmount();
+            await executeStopLossOrderWithInvalidTakerAmount(shortCtx, defaultStopLossOrderArgs, false);
         });
+
         it("should execute SL order", async () => {
+            await validateExecuteStopLossOrder(shortCtx, defaultStopLossOrderArgs, false);
         });
     });
-})
+});
 
 //import * as anchor from "@coral-xyz/anchor";
 //import { WasabiSolana } from "../target/types/wasabi_solana";

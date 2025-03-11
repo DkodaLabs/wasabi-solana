@@ -1,4 +1,5 @@
 import { assert } from "chai";
+import { OrderContext, defaultTakeProfitOrderArgs } from "./orderContext";
 import {
     initTakeProfitOrder,
     validateExecuteTakeProfitOrder,
@@ -7,53 +8,77 @@ import {
     cancelTakeProfitOrderWithAdmin,
     executeTakeProfitOrderWithInvalidAuthority,
     executeTakeProfitOrderWithInvalidTakerAmount
-} from '../hooks/orderHook';
+} from './validateOrder';
 
 describe("TakeProfit", () => {
+    let longCtx: OrderContext;
+    let shortCtx: OrderContext;
+
     describe("Long position", () => {
+        before(async () => {
+            longCtx = await new OrderContext().generateLongTestWithDefaultPosition();
+        });
+
         it("should init the TP order", async () => {
-            await initTakeProfitOrder();
+            await initTakeProfitOrder(longCtx, defaultTakeProfitOrderArgs, true);
         });
+
         it("should fail to close the TP order without proper permissions", async () => {
-            await cancelTakeProfitOrderWithInvalidPermission();
+            await cancelTakeProfitOrderWithInvalidPermission(longCtx, true);
         });
+
         it("should close the TP order when invoked by the user", async () => {
-            await cancelTakeProfitOrderWithUser();
+            await cancelTakeProfitOrderWithUser(longCtx, true);
         });
+
         it("should close the TP order when invoked by the admin", async () => {
-            await cancelTakeProfitOrderWithAdmin();
+            await cancelTakeProfitOrderWithAdmin(longCtx, true);
         });
+
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeTakeProfitOrderWithInvalidAuthority();
+            await executeTakeProfitOrderWithInvalidAuthority(longCtx, defaultTakeProfitOrderArgs, true);
         });
+
         it("should fail when the TP taker amount is exceeded", async () => {
-            await executeTakeProfitOrderWithInvalidTakerAmount();
+            await executeTakeProfitOrderWithInvalidTakerAmount(longCtx, defaultTakeProfitOrderArgs, true);
         });
+
         it("should execute TP order", async () => {
-            await validateExecuteTakeProfitOrder();
+            await validateExecuteTakeProfitOrder(longCtx, defaultTakeProfitOrderArgs, true);
         });
     });
+
     describe("Short position", () => {
+        before(async () => {
+            shortCtx = await new OrderContext().generateShortTestWithDefaultPosition();
+        });
+
         it("should init the TP order", async () => {
-            await initTakeProfitOrder();
+            await initTakeProfitOrder(shortCtx, defaultTakeProfitOrderArgs, false);
         });
+
         it("should fail to close the TP order without proper permissions", async () => {
-            await cancelTakeProfitOrderWithInvalidPermission();
+            await cancelTakeProfitOrderWithInvalidPermission(shortCtx, false);
         });
+
         it("should close the TP order when invoked by the user", async () => {
-            await cancelTakeProfitOrderWithUser();
+            await cancelTakeProfitOrderWithUser(shortCtx, false);
         });
+
         it("should close the TP order when invoked by the admin", async () => {
-            await cancelTakeProfitOrderWithAdmin();
+            await cancelTakeProfitOrderWithAdmin(shortCtx, false);
         });
+
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeTakeProfitOrderWithInvalidAuthority();
+            await executeTakeProfitOrderWithInvalidAuthority(shortCtx, defaultTakeProfitOrderArgs, false);
         });
+
         it("should fail when the TP taker amount is exceeded", async () => {
-            await executeTakeProfitOrderWithInvalidTakerAmount();
+            await executeTakeProfitOrderWithInvalidTakerAmount(shortCtx, defaultTakeProfitOrderArgs, false);
         });
+
         it("should execute TP order", async () => {
-            await validateExecuteTakeProfitOrder();
+            await validateExecuteTakeProfitOrder(shortCtx, defaultTakeProfitOrderArgs, false);
         });
     });
 });
