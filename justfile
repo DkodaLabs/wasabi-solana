@@ -193,10 +193,10 @@ test suite:
     #!/usr/bin/env bash
     case "{{suite}}" in
     "strategy-withdraw")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/21_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/16_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
         ;;
     "strategy-claim")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/20_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/15_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
         ;;
     "setup")
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml

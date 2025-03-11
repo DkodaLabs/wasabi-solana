@@ -1,17 +1,17 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { closeStrategy, setupStrategy, strategyDeposit, strategyWithdraw } from '../hooks/strategyHook';
-
+import { StrategyContext } from './strategyContext';
 describe("CloseStrategy", () => {
-    before(async () => {
-        await setupStrategy();
-        await strategyDeposit({ amountIn: 1000, amountOut: 1000 });
-    });
+    let ctx: StrategyContext;
 
     describe("when there is collateral remaining in the vault", () => {
+        before(async () => {
+            ctx = await new StrategyContext().generateWithdrawTestDefault()
+        });
+
         it("should fail", async () => {
             try {
-                await closeStrategy();
+                await ctx.closeStrategy();
             } catch (err) {
                 if (err instanceof anchor.AnchorError) {
                     assert.equal(err.error.errorCode.number, 6036);
@@ -24,12 +24,13 @@ describe("CloseStrategy", () => {
 
     describe("when there is no collateral remaining in the vault", () => {
         before(async () => {
-            strategyWithdraw({ amountIn: 1000, amountOut: 1000 });
+            await ctx.strategyWithdraw({ amountIn: 800, amountOut: 1000 });
+            // ctx = await new StrategyContext().generateWithInitialDeposit({ amountIn: 0, amountOut: 0 });
         });
 
         it("should successfully close the strategy", async () => {
             try {
-                await closeStrategy();
+                await ctx.closeStrategy();
                 assert.ok(true);
             } catch (err) {
                 console.error(err);

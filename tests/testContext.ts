@@ -1,23 +1,22 @@
-import { PublicKey, Keypair, SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
+import { SYSVAR_INSTRUCTIONS_PUBKEY } from '@solana/web3.js';
 import { workspace, Program, web3 } from '@coral-xyz/anchor';
-import { WasabiSolana } from '../../target/types/wasabi_solana';
+import { WasabiSolana } from '../target/types/wasabi_solana';
 import { createAssociatedTokenAccountIdempotentInstruction, createMintToCheckedInstruction, getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { TOKEN_PROGRAM_ID } from '@coral-xyz/anchor/dist/cjs/utils/token';
-import { getDefaultPermission, createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs } from '../utils';
-import { WASABI_PROGRAM_ID } from './rootHook';
+import { createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs } from './utils';
+import { WASABI_PROGRAM_ID } from './hooks/rootHook';
 import { MPL_TOKEN_METADATA_PROGRAM_ID } from '@metaplex-foundation/mpl-token-metadata';
-import { superAdminProgram, superAdminPermission } from './allHook';
+import { superAdminProgram, superAdminPermission } from './hooks/rootHook';
 
 export class TestContext {
     constructor(
         readonly program = workspace.WasabiSolana as Program<WasabiSolana>,
-        readonly currencyKeypair = Keypair.generate(),
-        readonly collateralKeypair = Keypair.generate(),
+        readonly currencyKeypair = web3.Keypair.generate(),
+        readonly collateralKeypair = web3.Keypair.generate(),
         readonly currency = currencyKeypair.publicKey,
         readonly collateral = collateralKeypair.publicKey,
-        readonly defaultAuthority = Keypair.generate(),
-        readonly defaultPermission = getDefaultPermission(defaultAuthority.publicKey),
-        readonly lpVault = PublicKey.findProgramAddressSync(
+        readonly defaultAuthority = web3.Keypair.generate(),
+        readonly lpVault = web3.PublicKey.findProgramAddressSync(
             [
                 Buffer.from("lp_vault"),
                 currency.toBuffer()

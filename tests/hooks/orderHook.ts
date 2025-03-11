@@ -38,36 +38,11 @@ export const validateExecuteStopLossOrder = async () => {
 export const validateExecuteTakeProfitOrder = async () => {
 };
 
-export const cancelTakeProfitOrderWithInvalidPermission = async () => {
+export const cancelTakeProfitOrder = async () => {
 };
 
-export const cancelTakeProfitOrderWithUser = async () => {
+export const cancelStopLossOrder = async () => {
 };
-
-export const cancelTakeProfitOrderWithAdmin = async () => {
-};
-
-export const executeTakeProfitOrderWithInvalidAuthority = async () => {
-};
-
-export const executeTakeProfitOrderWithInvalidTakerAmount = async () => {
-};
-
-export const cancelStopLossOrderWithInvalidPermission = async () => {
-};
-
-export const cancelStopLossOrderWithUser = async () => {
-};
-
-export const cancelStopLossOrderWithAdmin = async () => {
-};
-
-export const executeStopLossOrderWithInvalidAuthority = async () => {
-};
-
-export const executeStopLossOrderWithInvalidTakerAmount = async () => {
-};
-
 
 export const mochaHooks = {
     beforeAll: async () => {

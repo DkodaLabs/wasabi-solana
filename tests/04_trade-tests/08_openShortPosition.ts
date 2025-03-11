@@ -1,19 +1,20 @@
-import { assert } from 'chai';
+import {assert} from 'chai';
+import {TradeContext, defaultOpenShortPositionArgs} from './tradeContext';
+import {validateOpenShortPosition} from './validateTrade';
 import {
-    defaultOpenShortPositionArgs,
-    validateOpenShortPosition,
     openShortPositionWithInvalidSetup,
     openShortPositionWithoutCleanup,
     openShortPositionWithInvalidPool,
     openShortPositionWithInvalidPosition,
     openShortPositionWithoutCosigner,
-} from '../hooks/tradeHook';
+} from './invalidTrades';
 
 describe("OpenShortPosition", () => {
+    let ctx: TradeContext
     describe("with more than one setup instruction", () => {
         it("should fail", async () => {
             try {
-                await openShortPositionWithInvalidSetup(defaultOpenShortPositionArgs);
+                await openShortPositionWithInvalidSetup(ctx);
                 assert.ok(false);
             } catch (err) {
                 console.error(err);
@@ -25,8 +26,8 @@ describe("OpenShortPosition", () => {
     describe("without a cleanup instruction", () => {
         it("should fail", async () => {
             try {
-                await openShortPositionWithoutCleanup(defaultOpenShortPositionArgs);
-                assert.ok(false);
+                await openShortPositionWithoutCleanup(ctx);
+                    assert.ok(false);
             } catch (err) {
                 console.error(err);
                 // 'Missing cleanup'
@@ -38,13 +39,12 @@ describe("OpenShortPosition", () => {
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
                 try {
-                    await validateOpenShortPosition({
+                    await validateOpenShortPosition(ctx, {
                         ...defaultOpenShortPositionArgs,
                         swapIn: BigInt(3_000),
                     });
                     assert.ok(false);
                 } catch (err) {
-                    console.error(err);
                     // 'Insufficient funds'
                     assert.ok(/insufficient funds/.test(err.toString()));
                 }
@@ -53,10 +53,9 @@ describe("OpenShortPosition", () => {
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
                 try {
-                    await openShortPositionWithInvalidPool(defaultOpenShortPositionArgs);
+                    await openShortPositionWithInvalidPool(ctx);
                     assert.ok(false);
                 } catch (err) {
-                    console.error(err);
                     // 'Invalid pool'
                     assert.ok(/6006/.test(err.toString()));
                 }
@@ -65,46 +64,36 @@ describe("OpenShortPosition", () => {
         describe("with an incorrect position", () => {
             it("should fail", async () => {
                 try {
-                    await openShortPositionWithInvalidPosition(defaultOpenShortPositionArgs);
+                    await openShortPositionWithInvalidPosition(ctx);
                     assert.ok(false);
                 } catch (err) {
-                    console.error(err);
                     // 'Account already exists'
                     assert.ok(/already in use/.test(err.toString()));
                 }
             });
         });
-        //NOTE: Come back to this test later
-        //
-        //describe("without a swap co-signer", () => {
-        //    it("should fail", async () => {
-        //        try {
-        //            await openShortPositionWithoutCosigner(defaultOpenShortPositionArgs);
-        //            assert.ok(false);
-        //        } catch (err) {
-        //            if (err instanceof AnchorError) {
-        //                assert.equal(err.error.errorCode.number, 6008);
-        //            } else if (err instanceof ProgramError) {
-        //                assert.equal(err.code, 6008);
-        //            } else {
-        //                console.log(err);
-        //                assert.ok(false);
-        //            }
-        //        }
-        //    });
-        //});
-        describe("correct parameters", () => {
-            it("should correctly open a new position", async () => {
+        describe("without a swap co-signer", () => {
+            it("should fail", async () => {
                 try {
-                    await validateOpenShortPosition(defaultOpenShortPositionArgs);
-                } catch (err) {
-                    console.error(err);
+                    await openShortPositionWithoutCosigner(ctx);
                     assert.ok(false);
+                } catch (err) {
+                    assert.ok(/6008/.test(err.toString()));
                 }
+            });
+            //});
+            describe("correct parameters", () => {
+                it("should correctly open a new position", async () => {
+                    try {
+                        await validateOpenShortPosition(ctx);
+                    } catch (err) {
+                        console.error(err);
+                        assert.ok(false);
+                    }
+                });
             });
         });
     });
-});
 
 
 //

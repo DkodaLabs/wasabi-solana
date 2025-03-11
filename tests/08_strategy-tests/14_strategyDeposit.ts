@@ -1,5 +1,6 @@
 import { assert } from "chai";
-import { StrategyContext, validateDeposit } from "../hooks/strategyHook";
+import { validateDeposit } from "./validateStrategy";
+import { StrategyContext } from "./strategyContext";
 
 describe("StrategyDeposit", () => {
     let ctx: StrategyContext;
@@ -16,7 +17,7 @@ describe("StrategyDeposit", () => {
             }
         })
     });
-    describe("a second is made", () => {
+    describe("when a second is made", () => {
         it("should correctly increment the borrowed values of the strategy and lp vault", async () => {
             try {
                 await validateDeposit(ctx, { amountIn: 1_000, amountOut: 1_000 });

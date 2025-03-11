@@ -1,21 +1,26 @@
-import { assert } from "chai";
+import {assert} from "chai";
 import {
-    defaultCloseLongPositionArgs,
-    validateCloseLongPosition,
     closeLongPositionWithIncorrectOwner,
     closeLongPositionWithoutCosigner,
     closeLongPositionWithInvalidSetup,
     closeLongPositionWithoutCleanup,
     closeLongPositionWithBadDebt,
-} from '../hooks/tradeHook';
-import { user2 } from '../hooks/rootHook';
+} from './invalidTrades';
+import {TradeContext, defaultCloseLongPositionArgs} from './tradeContext'
+import {validateCloseLongPosition} from './validateTrade';
 
 describe("CloseLongPosition", () => {
+    let ctx: TradeContext;
+
     describe("with owned long position", () => {
+        before(async () => {
+            ctx = await new TradeContext().generateLongTest();
+        });
+
         describe("incorrect owner", () => {
             it("should fail", async () => {
                 try {
-                    await closeLongPositionWithIncorrectOwner(defaultCloseLongPositionArgs);
+                    await closeLongPositionWithIncorrectOwner(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);
@@ -25,7 +30,7 @@ describe("CloseLongPosition", () => {
         describe("without swap co-signer", () => {
             it("should fail", async () => {
                 try {
-                    await closeLongPositionWithoutCosigner(defaultCloseLongPositionArgs);
+                    await closeLongPositionWithoutCosigner(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);
@@ -36,7 +41,7 @@ describe("CloseLongPosition", () => {
         describe("with more than one setup IX", () => {
             it("should fail", async () => {
                 try {
-                    await closeLongPositionWithInvalidSetup(defaultCloseLongPositionArgs);
+                    await closeLongPositionWithInvalidSetup(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);
@@ -46,7 +51,7 @@ describe("CloseLongPosition", () => {
         describe("without cleanup instruction", () => {
             it("should fail", async () => {
                 try {
-                    await closeLongPositionWithoutCleanup(defaultCloseLongPositionArgs);
+                    await closeLongPositionWithoutCleanup(ctx);
                     assert.ok(false);
                 } catch (err) {
                     assert.ok(true);

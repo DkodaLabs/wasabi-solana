@@ -2,10 +2,9 @@ import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import {
     validate,
-    strategyWithdraw,
     validateWithdraw,
-    StrategyContext
-} from "../hooks/strategyHook";
+} from "./validateStrategy";
+import { StrategyContext } from './strategyContext';
 
 describe("StrategyWithdraw", () => {
     let ctx: StrategyContext;
@@ -47,7 +46,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 800,
                             amountOut: 1100
                         });
@@ -68,7 +67,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 800,
                             amountOut: 500
                         });
@@ -91,7 +90,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 400,
                             amountOut: 600
                         });
@@ -112,7 +111,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should fail", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 300,
                             amountOut: 400
                         });
@@ -138,7 +137,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 800,
                             amountOut: 1009
                         });
@@ -155,7 +154,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 800,
                             amountOut: 992
                         });
@@ -174,7 +173,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 523,
                             amountOut: 655,
                         });
@@ -191,7 +190,7 @@ describe("StrategyWithdraw", () => {
 
                 it("should succeed", async () => {
                     try {
-                        await validate(ctx, strategyWithdraw, {
+                        await validate(ctx, ctx.strategyWithdraw, {
                             amountIn: 524,
                             amountOut: 656,
                         });
