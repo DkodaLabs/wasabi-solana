@@ -328,21 +328,26 @@ export class TradeContext extends PoolContext {
         poolAtaA,
         poolAtaB,
     }: SwapArgs) {
-        console.log(swapIn)
-        console.log(swapOut)
+        console.log(`Swap In AB: ${swapIn || 'undefined'}`)
+        console.log(`Swap Out AB: ${swapOut || 'undefined'}`)
+        
+        // Use default values if not provided
+        const actualSwapIn = swapIn || BigInt(1000);
+        const actualSwapOut = swapOut || BigInt(900);
+        
         return await Promise.all([
             createBurnInstruction(
                 poolAtaA,
                 this.currency,
                 this.SWAP_AUTHORITY.publicKey,
-                swapIn,
+                actualSwapIn,
             ),
 
             createMintToInstruction(
                 this.collateral,
                 poolAtaB,
                 this.program.provider.publicKey,
-                swapOut,
+                actualSwapOut,
             )
         ]);
     }
@@ -353,21 +358,26 @@ export class TradeContext extends PoolContext {
         poolAtaA,
         poolAtaB,
     }: SwapArgs) {
-        console.log(`Swap In BA: ${swapIn}`)
-        console.log(`Swap Out BA: ${swapOut}`)
+        console.log(`Swap In BA: ${swapIn || 'undefined'}`)
+        console.log(`Swap Out BA: ${swapOut || 'undefined'}`)
+        
+        // Use default values if not provided
+        const actualSwapIn = swapIn || BigInt(1000);
+        const actualSwapOut = swapOut || BigInt(900);
+        
         return await Promise.all([
             createBurnInstruction(
                 poolAtaB,
                 this.collateral,
                 this.SWAP_AUTHORITY.publicKey,
-                swapIn,
+                actualSwapIn,
             ),
 
             createMintToInstruction(
                 this.currency,
                 poolAtaA,
                 this.program.provider.publicKey,
-                swapOut,
+                actualSwapOut,
             )
         ]);
     }
@@ -413,15 +423,15 @@ export class TradeContext extends PoolContext {
     }: OpenPositionArgs = defaultOpenShortPositionArgs) {
         const instructions = await Promise.all([
             this.openShortPositionSetup({
-                minOut,
-                downPayment,
-                principal,
-                fee,
+                minOut: minOut || defaultOpenShortPositionArgs.minOut,
+                downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
+                principal: principal || defaultOpenShortPositionArgs.principal,
+                fee: fee || defaultOpenShortPositionArgs.fee,
             }),
 
             this.createABSwapIx({
-                swapIn,
-                swapOut,
+                swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
+                swapOut: swapOut || defaultOpenShortPositionArgs.swapOut,
                 poolAtaA: this.shortPoolCurrencyVault,
                 poolAtaB: this.shortPoolCollateralVault,
             }),
@@ -429,7 +439,7 @@ export class TradeContext extends PoolContext {
             this.openShortPositionCleanup(),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        console.log(JSON.stringify(instructions));
+        console.log("Sending openShortPosition instructions");
 
         return await this.send(instructions);
     }
@@ -463,16 +473,21 @@ export class TradeContext extends PoolContext {
         swapOut,
     }: ClosePositionArgs = defaultCloseShortPositionArgs) {
         const instructions = await Promise.all([
-            this.closeShortPositionSetup({minOut, interest, executionFee}),
+            this.closeShortPositionSetup({
+                minOut: minOut || defaultCloseShortPositionArgs.minOut,
+                interest: interest || defaultCloseShortPositionArgs.interest,
+                executionFee: executionFee || defaultCloseShortPositionArgs.executionFee
+            }),
             this.createABSwapIx({
-                swapIn,
-                swapOut,
+                swapIn: swapIn || BigInt(1000),
+                swapOut: swapOut || BigInt(900),
                 poolAtaA: this.shortPoolCurrencyVault,
                 poolAtaB: this.shortPoolCollateralVault
             }),
             this.closeShortPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
+        console.log("Sending closeShortPosition instructions");
         return await this.send(instructions);
     };
 
