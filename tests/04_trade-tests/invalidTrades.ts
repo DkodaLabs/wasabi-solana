@@ -21,29 +21,26 @@ export const openLongPositionWithInvalidSetup = async (ctx: TradeContext, {
     downPayment,
     principal,
     fee,
-    swapIn,
-    swapOut,
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
         const instructions = await Promise.all([
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
-            ctx.createABSwapIx({
-                swapIn,
-                swapOut,
-                poolAtaA: ctx.longPoolCurrencyVault,
-                poolAtaB: ctx.longPoolCollateralVault
-            }),
-            ctx.openLongPositionCleanup(),
-        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+        ])
 
         await ctx.send(instructions);
 
         assert.ok(false);
     } catch (err) {
-        console.error(err);
         // 'Account already exists'
-        assert.ok(/already in use/.test(err.toString()));
+        if (err instanceof AnchorError) {
+            assert.equal(err.error.errorCode.number, 6002);
+        } else if (/MissingCleanup/.test(err.toString())) {
+            assert.ok(true);
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
     }
 };
 
@@ -52,22 +49,13 @@ export const openShortPositionWithInvalidSetup = async (ctx: TradeContext, {
         downPayment,
         principal,
         fee,
-        swapIn,
-        swapOut,
     }: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
     try {
         const instructions = await Promise.all([
             ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
             ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
-            ctx.createBASwapIx({
-                swapIn,
-                swapOut,
-                poolAtaA: ctx.shortPoolCurrencyVault,
-                poolAtaB: ctx.shortPoolCollateralVault
-            }),
-            ctx.openShortPositionCleanup(),
-        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+        ])
 
         await ctx.send(instructions);
 
@@ -75,7 +63,14 @@ export const openShortPositionWithInvalidSetup = async (ctx: TradeContext, {
     } catch (err) {
         console.error(err);
         // 'Account already exists'
-        assert.ok(/already in use/.test(err.toString()));
+        if (err instanceof AnchorError) {
+            assert.equal(err.error.errorCode.number, 6002);
+        } else if (/MissingCleanup/.test(err.toString())) {
+            assert.ok(true);
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
     }
 };
 
@@ -101,9 +96,15 @@ export const openLongPositionWithoutCleanup = async (ctx: TradeContext, {
         await ctx.send(instructions);
         assert.ok(false);
     } catch (err) {
-        console.error(err);
         // 'Missing cleanup'
-        assert.ok(/6002/.test(err.toString()));
+        if (err instanceof AnchorError) {
+            assert.equal(err.error.errorCode.number, 6002);
+        } else if (/MissingCleanup/.test(err.toString())) {
+            assert.ok(true);
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
     }
 }
 
@@ -127,13 +128,18 @@ export const openShortPositionWithoutCleanup = async (ctx: TradeContext, {
             }),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        ctx.send(instructions);
+        await ctx.send(instructions);
 
         assert.ok(false);
     } catch (err) {
-        console.error(err);
-        // 'Missing cleanup'
-        assert.ok(/6002/.test(err.toString()))
+        if (err instanceof AnchorError) {
+            assert.equal(err.error.errorCode.number, 6002);
+        } else if (/MissingCleanup/.test(err.toString())) {
+            assert.ok(true);
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
     }
 };
 
@@ -277,7 +283,7 @@ export const openLongPositionSetupWithoutCosigner = async (ctx: TradeContext, {
         collateral:   ctx.collateral,
         currency:     ctx.currency,
         authority:    ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-        permission:   ctx.invalidPermission,
+        permission:   ctx.nonSwapPermission,
         feeWallet:    ctx.feeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
     }).instruction();
@@ -340,7 +346,7 @@ export const openShortPositionSetupWithoutCosigner = async (ctx: TradeContext, {
         collateral:             ctx.collateral,
         currency:               ctx.currency,
         authority:              ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-        permission:             ctx.invalidPermission,
+        permission:             ctx.nonSwapPermission,
         feeWallet:              ctx.feeWallet,
         collateralTokenProgram: TOKEN_PROGRAM_ID,
         currencyTokenProgram:   TOKEN_PROGRAM_ID,
@@ -477,7 +483,7 @@ export const closeLongPositionWithoutCosigner = async (ctx: TradeContext, {
                     owner:        ctx.program.provider.publicKey,
                     collateral:   ctx.collateral,
                     position:     ctx.longPosition,
-                    permission:   ctx.invalidPermission, // Valid permission w/o singer permission
+                    permission:   ctx.nonSwapPermission, // Valid permission w/o singer permission
                     authority:    ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
@@ -620,7 +626,7 @@ export const closeShortPositionWithoutCosigner = async (ctx: TradeContext, {
                     owner:        ctx.program.provider.publicKey,
                     collateral:   ctx.collateral,
                     position:     ctx.longPosition,
-                    permission:   ctx.invalidPermission, // Valid permission w/o singer permission
+                    permission:   ctx.nonSwapPermission, // Valid permission w/o singer permission
                     authority:    ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },

@@ -1,14 +1,14 @@
 import * as anchor from '@coral-xyz/anchor';
 import {Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionInstruction} from '@solana/web3.js';
-import {TestContext} from '../testContext';
-import {WASABI_PROGRAM_ID} from "../hooks/rootHook";
+import {PoolContext} from '../03_pool-tests/poolContext';
+import {feeWalletKeypair, liquidationWalletKeypair, superAdminProgram, WASABI_PROGRAM_ID} from "../hooks/rootHook";
 import {
     createBurnCheckedInstruction,
     createMintToInstruction,
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
     TOKEN_2022_PROGRAM_ID,
-    TOKEN_PROGRAM_ID
+    TOKEN_PROGRAM_ID, createBurnInstruction
 } from "@solana/spl-token";
 
 export interface OpenPositionArgs {
@@ -57,7 +57,7 @@ export const defaultCloseLongPositionArgs = <ClosePositionArgs>{
     minOut:       BigInt(0),
     interest:     BigInt(1),
     executionFee: BigInt(11),
-    expiration:   BigInt(Date.now() / 1_000 + 60 * 60),
+    expiration:   BigInt(Math.floor(Date.now() / 1_000 + 60 * 60)),
     swapIn:       BigInt(1_900),
     swapOut:      BigInt(2_000),
 };
@@ -68,7 +68,7 @@ export const defaultCloseShortPositionArgs = <ClosePositionArgs>{
     executionFee: BigInt(10),
 };
 
-export class TradeContext extends TestContext {
+export class TradeContext extends PoolContext {
     nonce = 69;
     feeWallet: PublicKey;
     liquidationWallet: PublicKey;
@@ -94,7 +94,7 @@ export class TradeContext extends TestContext {
             anchor.utils.bytes.utf8.encode('admin'),
             SWAP_AUTHORITY.publicKey.toBuffer(),
         ], WASABI_PROGRAM_ID)[0],
-        readonly invalidPermission = PublicKey.findProgramAddressSync([
+        readonly nonSwapPermission = PublicKey.findProgramAddressSync([
             anchor.utils.bytes.utf8.encode('admin'),
             NON_SWAP_AUTHORITY.publicKey.toBuffer(),
         ], WASABI_PROGRAM_ID)[0],
@@ -152,20 +152,66 @@ export class TradeContext extends TestContext {
     }
 
     async generate(): Promise<this> {
-        await super._generate();
+        await super.generate();
 
         this.feeWallet = getAssociatedTokenAddressSync(
             this.currency,
-            this.program.provider.publicKey,
+            feeWalletKeypair.publicKey,
             false,
             TOKEN_PROGRAM_ID
         );
+
         this.liquidationWallet = getAssociatedTokenAddressSync(
             this.currency,
-            this.program.provider.publicKey,
+            liquidationWalletKeypair.publicKey,
             false,
             TOKEN_PROGRAM_ID
         );
+
+        const feeWalletIx = createAssociatedTokenAccountIdempotentInstruction(
+            superAdminProgram.provider.publicKey,
+            this.feeWallet,
+            feeWalletKeypair.publicKey,
+            this.currency
+        );
+
+        const liqWalletIx = createAssociatedTokenAccountIdempotentInstruction(
+            superAdminProgram.provider.publicKey,
+            this.liquidationWallet,
+            liquidationWalletKeypair.publicKey,
+            this.currency
+        );
+
+        const permissionIx = await superAdminProgram.methods
+            .initOrUpdatePermission({
+                canCosignSwaps:      true, // 4
+                canInitVaults:       false, // 1
+                canLiquidate:        false, // 2
+                canInitPools:        false, // 8
+                canBorrowFromVaults: false,
+                status:              {active: {}}
+            })
+            .accounts({
+                payer:        superAdminProgram.provider.publicKey,
+                newAuthority: this.SWAP_AUTHORITY.publicKey,
+            }).instruction();
+
+        await superAdminProgram.methods
+            .initOrUpdatePermission({
+                canCosignSwaps:      false, // 4
+                canInitVaults:       true, // 1
+                canLiquidate:        true, // 2
+                canInitPools:        true, // 8
+                canBorrowFromVaults: true,
+                status:              {active: {}}
+            })
+            .accounts({
+                payer:        superAdminProgram.provider.publicKey,
+                newAuthority: this.NON_SWAP_AUTHORITY.publicKey,
+            })
+            .preInstructions([feeWalletIx, liqWalletIx, permissionIx])
+            .rpc();
+
 
         this.openPositionRequest = PublicKey.findProgramAddressSync([
             anchor.utils.bytes.utf8.encode('open_pos'),
@@ -190,6 +236,8 @@ export class TradeContext extends TestContext {
                 this.lpVault.toBuffer(),
                 new anchor.BN(this.nonce).toArrayLike(Buffer, "le", 2),
             ], WASABI_PROGRAM_ID)[0];
+
+            await this.initLongPool(this.NON_SWAP_AUTHORITY, this.nonSwapPermission);
         } else {
             this.shortPool = PublicKey.findProgramAddressSync(
                 [Buffer.from('short_pool'), this.collateral.toBuffer(), this.currency.toBuffer()],
@@ -208,6 +256,8 @@ export class TradeContext extends TestContext {
                 this.lpVault.toBuffer(),
                 new anchor.BN(this.nonce).toArrayLike(Buffer, "le", 2),
             ], WASABI_PROGRAM_ID)[0];
+
+            await this.initShortPool(this.NON_SWAP_AUTHORITY, this.nonSwapPermission);
         }
 
         if (this.isCloseTest) {
@@ -278,13 +328,14 @@ export class TradeContext extends TestContext {
         poolAtaA,
         poolAtaB,
     }: SwapArgs) {
+        console.log(swapIn)
+        console.log(swapOut)
         return await Promise.all([
-            createBurnCheckedInstruction(
+            createBurnInstruction(
                 poolAtaA,
                 this.currency,
                 this.SWAP_AUTHORITY.publicKey,
                 swapIn,
-                6,
             ),
 
             createMintToInstruction(
@@ -302,13 +353,14 @@ export class TradeContext extends TestContext {
         poolAtaA,
         poolAtaB,
     }: SwapArgs) {
+        console.log(`Swap In BA: ${swapIn}`)
+        console.log(`Swap Out BA: ${swapOut}`)
         return await Promise.all([
-            createBurnCheckedInstruction(
+            createBurnInstruction(
                 poolAtaB,
                 this.collateral,
                 this.SWAP_AUTHORITY.publicKey,
                 swapIn,
-                6,
             ),
 
             createMintToInstruction(
@@ -440,15 +492,17 @@ export class TradeContext extends TestContext {
             new anchor.BN(fee.toString()),
             new anchor.BN(now + 3600),
         ).accountsPartial({
-            owner:        this.program.provider.publicKey,
-            lpVault:      this.lpVault,
-            pool:         this.longPool,
-            collateral:   this.collateral,
-            currency:     this.currency,
-            authority:    this.SWAP_AUTHORITY.publicKey,
-            permission:   this.swapPermission,
-            feeWallet:    this.feeWallet,
-            tokenProgram: TOKEN_PROGRAM_ID,
+            owner:           this.program.provider.publicKey,
+            lpVault:         this.lpVault,
+            pool:            this.longPool,
+            collateral:      this.collateral,
+            currency:        this.currency,
+            currencyVault:   this.longPoolCurrencyVault,
+            collateralVault: this.longPoolCollateralVault,
+            authority:       this.SWAP_AUTHORITY.publicKey,
+            permission:      this.swapPermission,
+            feeWallet:       this.feeWallet,
+            tokenProgram:    TOKEN_PROGRAM_ID,
         }).instruction();
     };
 
@@ -456,10 +510,12 @@ export class TradeContext extends TestContext {
         return this.program.methods
             .openLongPositionCleanup()
             .accountsPartial({
-                owner:        this.program.provider.publicKey,
-                pool:         this.longPool,
-                position:     this.longPosition,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                owner:           this.program.provider.publicKey,
+                pool:            this.longPool,
+                collateralVault: this.longPoolCollateralVault,
+                currencyVault:   this.longPoolCurrencyVault,
+                position:        this.longPosition,
+                tokenProgram:    TOKEN_PROGRAM_ID,
             }).instruction();
     };
 
@@ -484,6 +540,8 @@ export class TradeContext extends TestContext {
             pool:                   this.shortPool,
             collateral:             this.collateral,
             currency:               this.currency,
+            collateralVault:        this.shortPoolCollateralVault,
+            currencyVault:          this.shortPoolCurrencyVault,
             authority:              this.SWAP_AUTHORITY.publicKey,
             permission:             this.swapPermission,
             feeWallet:              this.feeWallet,
@@ -519,13 +577,15 @@ export class TradeContext extends TestContext {
             ).accountsPartial({
                 owner:              this.program.provider.publicKey,
                 closePositionSetup: {
-                    pool:         this.longPool,
-                    owner:        this.program.provider.publicKey,
-                    collateral:   this.collateral,
-                    position:     this.longPosition,
-                    permission:   this.swapPermission,
-                    authority:    this.SWAP_AUTHORITY.publicKey,
-                    tokenProgram: TOKEN_PROGRAM_ID,
+                    pool:            this.longPool,
+                    owner:           this.program.provider.publicKey,
+                    collateral:      this.collateral,
+                    collateralVault: this.longPoolCollateralVault,
+                    currencyVault:   this.longPoolCurrencyVault,
+                    position:        this.longPosition,
+                    permission:      this.swapPermission,
+                    authority:       this.SWAP_AUTHORITY.publicKey,
+                    tokenProgram:    TOKEN_PROGRAM_ID,
                 },
             }).instruction();
     };
@@ -539,6 +599,8 @@ export class TradeContext extends TestContext {
             position:               this.longPosition,
             currency:               this.currency,
             collateral:             this.collateral,
+            currencyVault:          this.longPoolCurrencyVault,
+            collateralVault:        this.longPoolCollateralVault,
             authority:              this.SWAP_AUTHORITY.publicKey,
             feeWallet:              this.feeWallet,
             liquidationWallet:      this.liquidationWallet,
@@ -560,13 +622,15 @@ export class TradeContext extends TestContext {
         ).accountsPartial({
             owner:              this.program.provider.publicKey,
             closePositionSetup: {
-                owner:        this.program.provider.publicKey,
-                position:     this.shortPosition,
-                pool:         this.shortPool,
-                collateral:   this.collateral,
-                authority:    this.SWAP_AUTHORITY.publicKey,
-                permission:   this.swapPermission,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                owner:           this.program.provider.publicKey,
+                position:        this.shortPosition,
+                pool:            this.shortPool,
+                collateral:      this.collateral,
+                collateralVault: this.shortPoolCollateralVault,
+                currencyVault:   this.shortPoolCurrencyVault,
+                authority:       this.SWAP_AUTHORITY.publicKey,
+                permission:      this.swapPermission,
+                tokenProgram:    TOKEN_PROGRAM_ID,
             }
         }).instruction();
     };
@@ -583,6 +647,8 @@ export class TradeContext extends TestContext {
                 pool:                   this.shortPool,
                 collateral:             this.collateral,
                 currency:               this.currency,
+                collateralVault:        this.shortPoolCollateralVault,
+                currencyVault:          this.shortPoolCurrencyVault,
                 position:               this.shortPosition,
                 authority:              this.SWAP_AUTHORITY.publicKey,
                 feeWallet:              this.feeWallet,

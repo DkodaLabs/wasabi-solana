@@ -185,9 +185,13 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
 
         assert.ok(false);
     } catch (err) {
-        console.error(err);
         // 'Insufficient funds'
-        assert.ok(/insufficient funds/.test(err.toString()));
+        if (/insufficient funds/.test(err.toString())) {
+            assert.ok(true);
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
     }
 };
 
