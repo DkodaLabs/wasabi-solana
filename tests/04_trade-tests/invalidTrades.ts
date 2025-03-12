@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor"
-import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {TransactionInstruction} from "@solana/web3.js";
 import {
     TradeContext,
@@ -12,6 +12,7 @@ import {
 } from "./tradeContext";
 import {assert} from "chai";
 import {AnchorError, ProgramError} from "@coral-xyz/anchor";
+import {WASABI_PROGRAM_ID} from "../hooks/rootHook";
 
 /**
  * Invalid Open Positions
@@ -155,7 +156,7 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
         // First make sure we have a short pool to use
         if (!ctx.withOtherSidePool) {
             // Generate a short pool if we don't have one
-            ctx.shortPool = PublicKey.findProgramAddressSync(
+            ctx.shortPool = anchor.web3.PublicKey.findProgramAddressSync(
                 [Buffer.from('short_pool'), ctx.collateral.toBuffer(), ctx.currency.toBuffer()],
                 WASABI_PROGRAM_ID
             )[0];
@@ -232,7 +233,7 @@ export const openLongPositionCleanupWithInvalidPool = async (ctx: TradeContext) 
     if (!ctx.shortPool) {
         // If we're in a long-only test context, initialize the short pool
         if (!ctx.withOtherSidePool) {
-            ctx.shortPool = PublicKey.findProgramAddressSync(
+            ctx.shortPool = anchor.web3.PublicKey.findProgramAddressSync(
                 [Buffer.from('short_pool'), ctx.collateral.toBuffer(), ctx.currency.toBuffer()],
                 WASABI_PROGRAM_ID
             )[0];
@@ -710,7 +711,6 @@ export const closeShortPositionWithoutCosigner = async (ctx: TradeContext, {
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
         return await ctx.sendInvalid(instructions);
-        assert.ok(false);
     } catch (err) {
         if (err instanceof AnchorError) {
             assert.equal(err.error.errorCode.number, 6008);
