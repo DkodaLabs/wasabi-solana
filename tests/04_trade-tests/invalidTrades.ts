@@ -117,7 +117,6 @@ export const openShortPositionWithoutCleanup = async (ctx: TradeContext, {
     swapOut,
 }: OpenPositionArgs = defaultOpenShortPositionArgs) => {
     try {
-
         const instructions = await Promise.all([
             ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
@@ -156,8 +155,8 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
         const instructions = await Promise.all([
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -225,13 +224,13 @@ export const openLongPositionCleanupWithInvalidPool = async (ctx: TradeContext) 
         // create a dummy instruction that will fail with the expected error
         return {
             programId: ctx.program.programId,
-            keys: [
-                { pubkey: ctx.program.provider.publicKey, isSigner: true, isWritable: true },
-                { pubkey: ctx.shortPool, isSigner: false, isWritable: false },
-                { pubkey: ctx.longPosition, isSigner: false, isWritable: true },
-                { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+            keys:      [
+                {pubkey: ctx.program.provider.publicKey, isSigner: true, isWritable: true},
+                {pubkey: ctx.shortPool, isSigner: false, isWritable: false},
+                {pubkey: ctx.longPosition, isSigner: false, isWritable: true},
+                {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
             ],
-            data: Buffer.from([11, 66, 242, 14, 3, 49, 56, 187]) // openLongPositionCleanup instruction data
+            data:      Buffer.from([11, 66, 242, 14, 3, 49, 56, 187]) // openLongPositionCleanup instruction data
         };
     }
 };
@@ -257,16 +256,16 @@ export const openLongPositionWithoutCosigner = async (ctx: TradeContext, {
     try {
         const instructions = await Promise.all([
             openLongPositionSetupWithoutCosigner(ctx, {
-                minOut, 
-                downPayment, 
-                principal, 
+                minOut,
+                downPayment,
+                principal,
                 fee,
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapIn:  swapIn || defaultOpenLongPositionArgs.swapIn,
                 swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
             }),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -394,8 +393,8 @@ export const openLongPositionWithInvalidPosition = async (ctx: TradeContext, {
         const instructions = await Promise.all([
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
