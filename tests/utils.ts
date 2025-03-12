@@ -11,11 +11,13 @@ import {superAdminProgram, WASABI_PROGRAM_ID} from './hooks/rootHook';
 /**
  * Ixes to create a mint, the payer gains the Mint Tokens/Freeze authority
  * @param payer - pays account init fees, must sign
- * @param provider
+ * @param connection
  * @param decimals
+ * @param programId
  * @param mintKeypair - (optional) generates random keypair if not provided, must sign
  * @param lamps - (optional) lamports to pay for created acc, fetches minimum for Mint exemption if
  * not provided
+ * @param mintAuthority
  * @returns ixes, and keypair of new mint
  */
 export const createSimpleMint = async (
@@ -89,7 +91,6 @@ export const initDefaultPermission = async (newAuthority: web3.PublicKey): Promi
         canLiquidate:        true, // 2
         canInitPools:        true, // 8
         canBorrowFromVaults: true,
-        canBundleTxs:        true,
         status:              {active: {}}
     }).accountsPartial({
         payer: superAdminProgram.provider.publicKey,
