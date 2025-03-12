@@ -421,27 +421,32 @@ export class TradeContext extends PoolContext {
         swapIn,
         swapOut,
     }: OpenPositionArgs = defaultOpenShortPositionArgs) {
-        const instructions = await Promise.all([
-            this.openShortPositionSetup({
+        try {
+            const setupIx = await this.openShortPositionSetup({
                 minOut: minOut || defaultOpenShortPositionArgs.minOut,
                 downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
                 principal: principal || defaultOpenShortPositionArgs.principal,
                 fee: fee || defaultOpenShortPositionArgs.fee,
-            }),
+            });
 
-            this.createABSwapIx({
+            const swapIx = await this.createABSwapIx({
                 swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
                 swapOut: swapOut || defaultOpenShortPositionArgs.swapOut,
                 poolAtaA: this.shortPoolCurrencyVault,
                 poolAtaB: this.shortPoolCollateralVault,
-            }),
+            });
 
-            this.openShortPositionCleanup(),
-        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+            const cleanupIx = await this.openShortPositionCleanup();
+            
+            const instructions = [setupIx, ...swapIx, cleanupIx];
 
-        console.log("Sending openShortPosition instructions");
+            console.log("Sending openShortPosition instructions");
 
-        return await this.send(instructions);
+            return await this.send(instructions);
+        } catch (err) {
+            console.error("Error in openShortPosition:", err);
+            throw err;
+        }
     }
 
     async closeLongPosition({
