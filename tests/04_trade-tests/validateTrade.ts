@@ -225,7 +225,7 @@ export const validateOpenShortPosition = async (ctx: TradeContext, {
     }: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
     try {
-        const statesBefore = positionStates(ctx, false);
+        const statesBefore = await positionStates(ctx, false);
         await ctx.openShortPosition({
             minOut: minOut || defaultOpenShortPositionArgs.minOut,
             downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
@@ -234,7 +234,7 @@ export const validateOpenShortPosition = async (ctx: TradeContext, {
             swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
             swapOut: swapOut || defaultOpenShortPositionArgs.swapOut
         });
-        const statesAfter = positionStates(ctx, false);
+        const statesAfter = await positionStates(ctx, false);
         await validateOpenShortPositionStates(
             ctx, 
             statesBefore, 
