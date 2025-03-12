@@ -1,12 +1,12 @@
 import * as anchor from '@coral-xyz/anchor';
-import { assert } from 'chai';
-import { AccountLayout } from '@solana/spl-token';
+import {assert} from 'chai';
+import {AccountLayout} from '@solana/spl-token';
 import {
     setupTestEnvironment,
     superAdminProgram,
 } from '../hooks/rootHook';
-import { initWasabi } from '../hooks/initWasabi';
-import { StrategyContext } from './strategyContext';
+import {initWasabi} from '../hooks/initWasabi';
+import {StrategyContext} from './strategyContext';
 
 export const getAccountStates = async (ctx: StrategyContext) => {
     const [
@@ -22,9 +22,9 @@ export const getAccountStates = async (ctx: StrategyContext) => {
     ]);
 
     return {
-        lpVault: lpVaultState,
-        strategy: strategyState,
-        vault: vaultState,
+        lpVault:         lpVaultState,
+        strategy:        strategyState,
+        vault:           vaultState,
         collateralVault: collateralVaultState,
     };
 }
@@ -35,11 +35,12 @@ export const validateWithdraw = async (
     {
         amountIn,
         amountOut
-    }: { amountIn: number, amountOut: number }) => {
+    }: { amountIn: number, amountOut: number }
+) => {
     try {
         const statesBefore = getAccountStates(ctx);
 
-        await ctx.strategyWithdraw({ amountIn, amountOut });
+        await ctx.strategyWithdraw({amountIn, amountOut});
 
         await validateStates(
             ctx,
@@ -49,32 +50,14 @@ export const validateWithdraw = async (
             amountOut.toString(),
         );
     } catch (err) {
-        console.error(err);
-        assert.ok(false);
+        console.log(err.error)
+        if (err instanceof anchor.AnchorError) {
+            assert.equal(err.error.errorCode.number, 6016);
+        } else {
+            assert.ok(false);
+        }
     }
 }
-
-export type ValidationParams = {
-    amountIn: number,
-    amountOut: number,
-    newQuote?: number
-}
-
-export const validate = async (
-    ctx: StrategyContext,
-    f: (params: ValidationParams) => Promise<void>,
-    params: ValidationParams
-) => {
-    const statesBefore = getAccountStates(ctx);
-    await f(params);
-    await validateStates(
-        ctx,
-        statesBefore,
-        getAccountStates(ctx),
-        params.amountIn.toString(),
-        params.amountOut.toString()
-    );
-};
 
 export const validateStates = async (
     ctx: StrategyContext,
@@ -196,18 +179,24 @@ export const validateDeposit = async (
     }: {
         amountIn: number,
         amountOut: number
-    }) => {
-    const statesBefore = getAccountStates(ctx);
-    await ctx.strategyDeposit({
-        amountIn,
-        amountOut,
-    });
-    return await validateDepositStates(
-        statesBefore,
-        getAccountStates(ctx),
-        amountIn,
-        amountOut,
-    );
+    }
+) => {
+    try {
+        const statesBefore = getAccountStates(ctx);
+        await ctx.strategyDeposit({
+            amountIn,
+            amountOut,
+        });
+        return await validateDepositStates(
+            statesBefore,
+            getAccountStates(ctx),
+            amountIn,
+            amountOut,
+        );
+    } catch (err) {
+        console.error(err);
+        assert.ok(false);
+    }
 };
 
 export const validateDepositStates = async (

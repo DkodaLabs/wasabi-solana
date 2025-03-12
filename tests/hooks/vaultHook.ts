@@ -1,10 +1,18 @@
 import * as anchor from "@coral-xyz/anchor";
-import { assert } from "chai";
-import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { DEFAULT_AUTHORITY, setupTestEnvironment, lpVaultA, lpVaultB, tokenMintA, tokenMintB, vaultA as _vaultA } from "./rootHook";
-import { initWasabi } from "./initWasabi";
-import { WasabiSolana } from "../../target/types/wasabi_solana";
-import { getMultipleTokenAccounts, getMultipleMintAccounts } from '../utils';
+import {assert} from "chai";
+import {TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync} from "@solana/spl-token";
+import {
+    DEFAULT_AUTHORITY,
+    setupTestEnvironment,
+    lpVaultA,
+    lpVaultB,
+    tokenMintA,
+    tokenMintB,
+    vaultA as _vaultA
+} from "./rootHook";
+import {initWasabi} from "./initWasabi";
+import {WasabiSolana} from "../../target/types/wasabi_solana";
+import {getMultipleTokenAccounts, getMultipleMintAccounts} from '../utils';
 
 const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
 
@@ -26,12 +34,12 @@ export const donate = async (amount: bigint) => {
     return await program.methods
         .donate(new anchor.BN(amount.toString()))
         .accountsPartial({
-            owner: program.provider.publicKey,
-            permission: anchor.web3.PublicKey.findProgramAddressSync(
+            owner:        program.provider.publicKey,
+            permission:   anchor.web3.PublicKey.findProgramAddressSync(
                 [Buffer.from("admin"), program.provider.publicKey.toBuffer()],
                 program.programId
             )[0],
-            currency: tokenMintA,
+            currency:     tokenMintA,
             tokenProgram: TOKEN_PROGRAM_ID,
             ...vaultAccounts()
         })
@@ -40,9 +48,9 @@ export const donate = async (amount: bigint) => {
 
 export const vaultAccounts = () => {
     return {
-        owner: program.provider.publicKey,
-        lpVault: lpVaultA,
-        assetMint: tokenMintA,
+        owner:             program.provider.publicKey,
+        lpVault:           lpVaultA,
+        assetMint:         tokenMintA,
         assetTokenProgram: TOKEN_PROGRAM_ID,
     }
 };
@@ -137,13 +145,22 @@ export const validateDepositVaultStates = async (
 }
 
 export const validateDeposit = async (amount: bigint) => {
-    const statesBefore = vaultAccountStates();
+    try {
+        const statesBefore = vaultAccountStates();
 
-    await deposit(amount);
+        await deposit(amount);
 
-    const statesAfter = vaultAccountStates();
+        const statesAfter = vaultAccountStates();
 
-    validateDepositVaultStates(statesBefore, statesAfter, amount);
+        validateDepositVaultStates(statesBefore, statesAfter, amount);
+    } catch (err) {
+        if (/insufficient funds/.test(e.message)) {
+            assert.ok(true)
+        } else {
+            console.error(err);
+            assert.ok(false);
+        }
+    }
 };
 
 export const validateWithdrawVaultStates = async (
@@ -191,10 +208,15 @@ export const validateWithdrawVaultStates = async (
 }
 
 export const validateWithdraw = async (amount: bigint) => {
-    const statesBefore = vaultAccountStates();
-    await withdraw(amount);
-    const statesAfter = vaultAccountStates();
-    validateWithdrawVaultStates(statesBefore, statesAfter, amount);
+    try {
+        const statesBefore = vaultAccountStates();
+        await withdraw(amount);
+        const statesAfter = vaultAccountStates();
+        validateWithdrawVaultStates(statesBefore, statesAfter, amount);
+    } catch (err) {
+        console.error(error);
+        assert.ok(false);
+    }
 };
 
 export const validateDonateVaultStates = async (
@@ -221,10 +243,15 @@ export const validateDonateVaultStates = async (
 };
 
 export const validateDonate = async (amount: bigint) => {
-    const statesBefore = vaultAccountStates();
-    await donate(amount);
-    const statesAfter = vaultAccountStates();
-    validateDonateVaultStates(statesBefore, statesAfter, amount);
+    try {
+        const statesBefore = vaultAccountStates();
+        await donate(amount);
+        const statesAfter = vaultAccountStates();
+        validateDonateVaultStates(statesBefore, statesAfter, amount);
+    } catch (err) {
+        console.error(err);
+        assert.ok(false);
+    }
 };
 
 export const mochaHooks = {

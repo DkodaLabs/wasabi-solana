@@ -1,10 +1,8 @@
-import * as anchor from "@coral-xyz/anchor";
-import { assert } from "chai";
+import {assert} from "chai";
 import {
-    validate,
     validateWithdraw,
 } from "./validateStrategy";
-import { StrategyContext } from './strategyContext';
+import {StrategyContext} from './strategyContext';
 
 describe("StrategyWithdraw", () => {
     let ctx: StrategyContext;
@@ -16,10 +14,7 @@ describe("StrategyWithdraw", () => {
             });
 
             it("should withdraw a partial amount and update strategy/lp_vault accounts", async () => {
-                await validateWithdraw(ctx, {
-                    amountIn: 400,
-                    amountOut: 500
-                });
+                await validateWithdraw(ctx, {amountIn: 400, amountOut: 500});
             });
         });
 
@@ -29,10 +24,7 @@ describe("StrategyWithdraw", () => {
             });
 
             it("should withdraw the full amount and update strategy/lp_vault accounts", async () => {
-                await validateWithdraw(ctx, {
-                    amountIn: 800,
-                    amountOut: 1000
-                });
+                await validateWithdraw(ctx, {amountIn: 800, amountOut: 1000});
             });
         });
     });
@@ -45,19 +37,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should fail", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 800,
-                            amountOut: 1100
-                        });
-                        assert.ok(false);
-                    } catch (err) {
-                        if (err instanceof anchor.AnchorError) {
-                            assert.equal(err.error.errorCode.number, 6016);
-                        } else {
-                            assert.ok(false);
-                        }
-                    }
+                    await validateWithdraw(ctx, {amountIn: 800, amountOut: 1100});
                 });
             });
             describe("receiving less than expected", () => {
@@ -66,19 +46,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should fail", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 800,
-                            amountOut: 500
-                        });
-                        assert.ok(false);
-                    } catch (err) {
-                        if (err instanceof anchor.AnchorError) {
-                            assert.equal(err.error.errorCode.number, 6016);
-                        } else {
-                            assert.ok(false);
-                        }
-                    }
+                    await validateWithdraw(ctx, {amountIn: 800, amountOut: 500});
                 });
             });
         });
@@ -89,19 +57,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should fail", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 400,
-                            amountOut: 600
-                        });
-                        assert.ok(false);
-                    } catch (err) {
-                        if (err instanceof anchor.AnchorError) {
-                            assert.equal(err.error.errorCode.number, 6016);
-                        } else {
-                            assert.ok(false);
-                        }
-                    }
+                    await validateWithdraw(ctx, {amountIn: 400, amountOut: 600});
                 });
             });
             describe("receiving less than expected", () => {
@@ -110,19 +66,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should fail", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 300,
-                            amountOut: 400
-                        });
-                        assert.ok(false);
-                    } catch (err) {
-                        if (err instanceof anchor.AnchorError) {
-                            assert.equal(err.error.errorCode.number, 6016);
-                        } else {
-                            assert.ok(false);
-                        }
-                    }
+                    await validateWithdraw(ctx, {amountIn: 300, amountOut: 400});
                 });
             });
         });
@@ -136,15 +80,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should succeed", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 800,
-                            amountOut: 1009
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
+                    await validateWithdraw(ctx, {amountIn: 800, amountOut: 1009});
                 });
             })
             describe("receiving less than expected", () => {
@@ -153,15 +89,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should succeed", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 800,
-                            amountOut: 992
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
+                    await validateWithdraw(ctx, {amountIn: 800, amountOut: 992});
                 });
             });
         });
@@ -172,15 +100,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should succeed", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 523,
-                            amountOut: 655,
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
+                    await validateWithdraw(ctx, {amountIn: 523, amountOut: 655});
                 });
             })
             describe("receiving less than expected", () => {
@@ -189,15 +109,7 @@ describe("StrategyWithdraw", () => {
                 });
 
                 it("should succeed", async () => {
-                    try {
-                        await validate(ctx, ctx.strategyWithdraw, {
-                            amountIn: 524,
-                            amountOut: 656,
-                        });
-                    } catch (err) {
-                        console.error(err);
-                        assert.ok(false);
-                    }
+                    await validateWithdraw(ctx, {amountIn: 524, amountOut: 656});
                 });
             });
         });

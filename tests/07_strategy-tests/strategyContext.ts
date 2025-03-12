@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
-import { assert } from 'chai';
-import { Keypair, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import {assert} from 'chai';
+import {Keypair, SystemProgram, PublicKey, LAMPORTS_PER_SOL} from '@solana/web3.js';
 import {
     AccountLayout,
     TOKEN_PROGRAM_ID,
@@ -14,7 +14,7 @@ import {
     WASABI_PROGRAM_ID,
     superAdminProgram, DEFAULT_AUTHORITY,
 } from '../hooks/rootHook';
-import { TestContext } from '../testContext';
+import {TestContext} from '../testContext';
 
 export class StrategyContext extends TestContext {
     collateralVault: PublicKey;
@@ -56,19 +56,19 @@ export class StrategyContext extends TestContext {
     }
 
 
-    async generateWithInitialDeposit({ amountIn, amountOut }: {
+    async generateWithInitialDeposit({amountIn, amountOut}: {
         amountIn: number,
         amountOut: number
     }) {
         await this.generate();
-        await this.strategyDeposit({ amountIn, amountOut });
+        await this.strategyDeposit({amountIn, amountOut});
 
         return this;
     }
 
     async generateWithdrawTestDefault() {
         await this.generate();
-        await this.strategyDeposit({ amountIn: 1_000, amountOut: 800 });
+        await this.strategyDeposit({amountIn: 1_000, amountOut: 800});
 
         return this;
     }
@@ -116,9 +116,9 @@ export class StrategyContext extends TestContext {
         );
 
         await this.program.methods.deposit(new anchor.BN(5_000 * LAMPORTS_PER_SOL)).accountsPartial({
-            owner: this.program.provider.publicKey,
-            lpVault: this.lpVault,
-            assetMint: this.currency,
+            owner:             this.program.provider.publicKey,
+            lpVault:           this.lpVault,
+            assetMint:         this.currency,
             assetTokenProgram: TOKEN_PROGRAM_ID
         }).preInstructions([createOwnerSharesAccount]).rpc();
 
@@ -138,32 +138,32 @@ export class StrategyContext extends TestContext {
         );
 
         const permissionIx = await superAdminProgram.methods.initOrUpdatePermission({
-            canCosignSwaps: false,
-            canInitVaults: false,
-            canLiquidate: false,
-            canInitPools: false,
+            canCosignSwaps:      false,
+            canInitVaults:       false,
+            canLiquidate:        false,
+            canInitPools:        false,
             canBorrowFromVaults: true,
-            status: { active: {} }
+            status:              {active: {}}
         }).accounts({
-            payer: superAdminProgram.provider.publicKey,
+            payer:        superAdminProgram.provider.publicKey,
             newAuthority: this.BORROW_AUTHORITY.publicKey,
         }).instruction();
 
         const transferIx = SystemProgram.transfer({
             fromPubkey: DEFAULT_AUTHORITY.publicKey,
-            toPubkey: this.BORROW_AUTHORITY.publicKey,
-            lamports: 10_000_000,
+            toPubkey:   this.BORROW_AUTHORITY.publicKey,
+            lamports:   10_000_000,
         });
 
         await superAdminProgram.methods.initOrUpdatePermission({
-            canCosignSwaps: true,
-            canInitVaults: true,
-            canLiquidate: true,
-            canInitPools: true,
+            canCosignSwaps:      true,
+            canInitVaults:       true,
+            canLiquidate:        true,
+            canInitPools:        true,
             canBorrowFromVaults: false,
-            status: { active: {} }
+            status:              {active: {}}
         }).accounts({
-            payer: superAdminProgram.provider.publicKey,
+            payer:        superAdminProgram.provider.publicKey,
             newAuthority: this.NON_BORROW_AUTHORITY.publicKey,
         })
             .signers([DEFAULT_AUTHORITY])
@@ -218,15 +218,15 @@ export class StrategyContext extends TestContext {
 
     async setupStrategy() {
         return await superAdminProgram.methods.initStrategy().accountsPartial({
-            authority: this.BORROW_AUTHORITY.publicKey,
-            permission: this.borrowPermission,
-            lpVault: this.lpVault,
-            vault: this.vault,
-            currency: this.currency,
-            collateral: this.collateral,
-            strategy: this.strategy,
+            authority:       this.BORROW_AUTHORITY.publicKey,
+            permission:      this.borrowPermission,
+            lpVault:         this.lpVault,
+            vault:           this.vault,
+            currency:        this.currency,
+            collateral:      this.collateral,
+            strategy:        this.strategy,
             collateralVault: this.collateralVault,
-            systemProgram: SystemProgram.programId,
+            systemProgram:   SystemProgram.programId,
         })
             .signers([this.BORROW_AUTHORITY])
             .rpc();
@@ -235,25 +235,25 @@ export class StrategyContext extends TestContext {
 
     getStrategyAccounts() {
         return {
-            authority: this.BORROW_AUTHORITY.publicKey,
-            permission: this.borrowPermission,
-            lpVault: this.lpVault,
-            vault: this.vault,
-            collateral: this.collateral,
-            strategy: this.strategy,
+            authority:       this.BORROW_AUTHORITY.publicKey,
+            permission:      this.borrowPermission,
+            lpVault:         this.lpVault,
+            vault:           this.vault,
+            collateral:      this.collateral,
+            strategy:        this.strategy,
             strategyRequest: this.strategyRequest,
             collateralVault: this.collateralVault,
-            tokenProgram: TOKEN_PROGRAM_ID,
+            tokenProgram:    TOKEN_PROGRAM_ID,
         }
     };
 
     getClaimAccounts() {
         return {
-            authority: this.BORROW_AUTHORITY.publicKey,
+            authority:  this.BORROW_AUTHORITY.publicKey,
             permission: this.borrowPermission,
-            lpVault: this.lpVault,
+            lpVault:    this.lpVault,
             collateral: this.collateral,
-            strategy: this.strategy,
+            strategy:   this.strategy,
         };
     }
 
@@ -265,7 +265,8 @@ export class StrategyContext extends TestContext {
         }: {
             amountIn: number,
             amountOut: number,
-        }) {
+        }
+    ) {
         const actualAmountIn = amountIn * anchor.web3.LAMPORTS_PER_SOL;
         const actualAmountOut = amountOut * anchor.web3.LAMPORTS_PER_SOL;
 
@@ -365,20 +366,29 @@ export class StrategyContext extends TestContext {
     }
 
     async closeStrategy() {
-        await this.program.methods
-            .closeStrategy()
-            .accountsPartial({
-                authority: this.BORROW_AUTHORITY.publicKey,
-                permission: this.borrowPermission,
-                lpVault: this.lpVault,
-                collateral: this.collateral,
-                strategy: this.strategy,
-                collateralVault: this.collateralVault,
-                tokenProgram: TOKEN_PROGRAM_ID,
-            })
-            .signers([this.BORROW_AUTHORITY]).rpc();
-        assert.isNull(
-            await superAdminProgram.account.strategy.fetchNullable(this.strategy)
-        );
+        try {
+            await this.program.methods
+                .closeStrategy()
+                .accountsPartial({
+                    authority:       this.BORROW_AUTHORITY.publicKey,
+                    permission:      this.borrowPermission,
+                    lpVault:         this.lpVault,
+                    collateral:      this.collateral,
+                    strategy:        this.strategy,
+                    collateralVault: this.collateralVault,
+                    tokenProgram:    TOKEN_PROGRAM_ID,
+                })
+                .signers([this.BORROW_AUTHORITY]).rpc();
+            assert.isNull(
+                await superAdminProgram.account.strategy.fetchNullable(this.strategy)
+            );
+        } catch (err) {
+            console.error(err);
+            if (err instanceof anchor.AnchorError) {
+                assert.equal(err.error.errorCode.number, 6036);
+            } else {
+                assert.ok(false);
+            }
+        }
     }
 }

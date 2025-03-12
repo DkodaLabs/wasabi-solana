@@ -8,7 +8,6 @@ import { WasabiSolana } from '../../target/types/wasabi_solana';
 
 export const initWasabi = async () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-
     // Settings
     const initGlobalSettingsIx = await superAdminProgram.methods
         .initGlobalSettings({
@@ -29,7 +28,6 @@ export const initWasabi = async () => {
         superAdmin: superAdminProgram.provider.publicKey,
     }).instruction();
 
-
     await superAdminProgram.methods.initOrUpdatePermission({
         canCosignSwaps: true,
         canInitVaults: true,
@@ -41,10 +39,10 @@ export const initWasabi = async () => {
         payer: superAdminProgram.provider.publicKey,
         newAuthority: program.provider.publicKey
     }).preInstructions([initGlobalSettingsIx, initDebtControllerIx]).rpc();
+
 };
 
 export const mochaHooks = {
-
     beforeAll: async () => {
         await setupTestEnvironment();
         await initWasabi();
