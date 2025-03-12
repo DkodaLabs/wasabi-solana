@@ -156,8 +156,8 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
         const instructions = await Promise.all([
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn,
-                swapOut,
+                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -172,7 +172,6 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
         // 'Invalid pool'
         assert.ok(/6006/.test(err.toString()));
     }
-
 };
 
 export const openShortPositionWithInvalidPool = async (ctx: TradeContext, {
@@ -235,10 +234,17 @@ export const openLongPositionWithoutCosigner = async (ctx: TradeContext, {
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
         const instructions = await Promise.all([
-            openLongPositionSetupWithoutCosigner(ctx, {swapIn, swapOut, minOut, downPayment, principal, fee}),
+            openLongPositionSetupWithoutCosigner(ctx, {
+                minOut, 
+                downPayment, 
+                principal, 
+                fee,
+                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
+            }),
             ctx.createABSwapIx({
-                swapIn,
-                swapOut,
+                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -269,10 +275,10 @@ export const openLongPositionSetupWithoutCosigner = async (ctx: TradeContext, {
 
     return await ctx.program.methods.openLongPositionSetup(
         ctx.nonce,
-        new anchor.BN(minOut.toString()),
-        new anchor.BN(downPayment.toString()),
-        new anchor.BN(principal.toString()),
-        new anchor.BN(fee.toString()),
+        new anchor.BN(minOut ? minOut.toString() : defaultOpenLongPositionArgs.minOut.toString()),
+        new anchor.BN(downPayment ? downPayment.toString() : defaultOpenLongPositionArgs.downPayment.toString()),
+        new anchor.BN(principal ? principal.toString() : defaultOpenLongPositionArgs.principal.toString()),
+        new anchor.BN(fee ? fee.toString() : defaultOpenLongPositionArgs.fee.toString()),
         new anchor.BN(now + 3600),
     ).accountsPartial({
         owner:        ctx.program.provider.publicKey,
@@ -363,8 +369,8 @@ export const openLongPositionWithInvalidPosition = async (ctx: TradeContext, {
         const instructions = await Promise.all([
             ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn,
-                swapOut,
+                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),

@@ -11,34 +11,39 @@ import {
 import {defaultOpenShortPositionArgs, defaultOpenLongPositionArgs} from "./tradeContext";
 
 export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
-    const [
-        [vault, ownerToken, poolCurrencyAta, poolCollateralAta],
-        positionRequest,
-        position,
-    ] = await Promise.all([
-        getMultipleTokenAccounts(ctx.program.provider.connection, isLong ? [
-            ctx.vault,
-            ctx.ownerCurrencyAta,
-            ctx.longPoolCurrencyVault,
-            ctx.longPoolCollateralVault,
-        ] : [
-            ctx.vault,
-            ctx.ownerCurrencyAta,
-            ctx.shortPoolCurrencyVault,
-            ctx.shortPoolCollateralVault,
-        ], TOKEN_PROGRAM_ID),
-        ctx.program.account.openPositionRequest.fetchNullable(ctx.openPositionRequest),
-        ctx.program.account.position.fetchNullable(isLong ? ctx.longPosition : ctx.shortPosition),
-    ]);
+    try {
+        const [
+            [vault, ownerToken, poolCurrencyAta, poolCollateralAta],
+            positionRequest,
+            position,
+        ] = await Promise.all([
+            getMultipleTokenAccounts(ctx.program.provider.connection, isLong ? [
+                ctx.vault,
+                ctx.ownerCurrencyAta,
+                ctx.longPoolCurrencyVault,
+                ctx.longPoolCollateralVault,
+            ] : [
+                ctx.vault,
+                ctx.ownerCurrencyAta,
+                ctx.shortPoolCurrencyVault,
+                ctx.shortPoolCollateralVault,
+            ], TOKEN_PROGRAM_ID),
+            ctx.program.account.openPositionRequest.fetchNullable(ctx.openPositionRequest),
+            ctx.program.account.position.fetchNullable(isLong ? ctx.longPosition : ctx.shortPosition),
+        ]);
 
-    return {
-        vault,
-        ownerToken,
-        poolCurrencyAta,
-        poolCollateralAta,
-        positionRequest,
-        position,
-    };
+        return {
+            vault,
+            ownerToken,
+            poolCurrencyAta,
+            poolCollateralAta,
+            positionRequest,
+            position,
+        };
+    } catch (err) {
+        console.error("Error fetching position states:", err);
+        throw err;
+    }
 };
 
 export const validateOpenLongPositionStates = async (
@@ -178,10 +183,24 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
     swapOut,
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
-        const statesBefore = positionStates(ctx, true);
-        await ctx.openLongPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
-        const statesAfter = positionStates(ctx, true);
-        await validateOpenLongPositionStates(ctx, statesBefore, statesAfter, principal, downPayment, fee);
+        const statesBefore = await positionStates(ctx, true);
+        await ctx.openLongPosition({
+            minOut: minOut || defaultOpenLongPositionArgs.minOut,
+            downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
+            principal: principal || defaultOpenLongPositionArgs.principal,
+            fee: fee || defaultOpenLongPositionArgs.fee,
+            swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+            swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
+        });
+        const statesAfter = await positionStates(ctx, true);
+        await validateOpenLongPositionStates(
+            ctx, 
+            statesBefore, 
+            statesAfter, 
+            principal || defaultOpenLongPositionArgs.principal, 
+            downPayment || defaultOpenLongPositionArgs.downPayment, 
+            fee || defaultOpenLongPositionArgs.fee
+        );
     } catch (err) {
         // 'Insufficient funds'
         if (/insufficient funds/.test(err.toString())) {
