@@ -1,5 +1,5 @@
-import { assert } from "chai";
-import { OrderContext, defaultTakeProfitOrderArgs } from "./orderContext";
+import {assert} from "chai";
+import {OrderContext, defaultTakeProfitOrderArgs} from "./orderContext";
 import {
     initTakeProfitOrder,
     validateExecuteTakeProfitOrder,

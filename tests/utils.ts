@@ -1,12 +1,12 @@
-import { web3 } from "@coral-xyz/anchor";
+import {web3} from "@coral-xyz/anchor";
 import {
     createInitializeMintInstruction,
     MintLayout,
     unpackAccount,
     unpackMint,
 } from "@solana/spl-token";
-import { TransactionInstruction } from "@solana/web3.js";
-import { superAdminProgram, WASABI_PROGRAM_ID } from './hooks/rootHook';
+import {TransactionInstruction} from "@solana/web3.js";
+import {superAdminProgram, WASABI_PROGRAM_ID} from './hooks/rootHook';
 
 /**
  * Ixes to create a mint, the payer gains the Mint Tokens/Freeze authority
@@ -34,10 +34,10 @@ export const createSimpleMint = async (
         : await connection.getMinimumBalanceForRentExemption(MintLayout.span);
     ixes.push(
         web3.SystemProgram.createAccount({
-            fromPubkey: payer,
+            fromPubkey:       payer,
             newAccountPubkey: mint.publicKey,
-            space: MintLayout.span,
-            lamports: lamports,
+            space:            MintLayout.span,
+            lamports:         lamports,
             programId,
         }),
     );
@@ -51,14 +51,13 @@ export const createSimpleMint = async (
         ),
     );
 
-    return { ixes, mint };
+    return {ixes, mint};
 };
 
 export const getMultipleTokenAccounts = async (
     connection: web3.Connection,
     keys: web3.PublicKey[],
     tokenProgram: web3.PublicKey,
-
 ) => {
     const accountInfos = await connection.getMultipleAccountsInfo(keys);
     return accountInfos.map((accountInfo, index) =>
@@ -78,20 +77,20 @@ export const getMultipleMintAccounts = async (
 };
 
 export const defaultInitLpVaultArgs = {
-    name: "PLACEHOLDER",
+    name:   "PLACEHOLDER",
     symbol: "PLC",
-    uri: "https://placeholder.com",
+    uri:    "https://placeholder.com",
 };
 
 export const initDefaultPermission = async (newAuthority: web3.PublicKey): Promise<TransactionInstruction> => {
     return superAdminProgram.methods.initOrUpdatePermission({
-        canCosignSwaps: true, // 4
-        canInitVaults: true, // 1
-        canLiquidate: true, // 2
-        canInitPools: true, // 8
+        canCosignSwaps:      true, // 4
+        canInitVaults:       true, // 1
+        canLiquidate:        true, // 2
+        canInitPools:        true, // 8
         canBorrowFromVaults: true,
-        canBundleTxs: true,
-        status: { active: {} }
+        canBundleTxs:        true,
+        status:              {active: {}}
     }).accountsPartial({
         payer: superAdminProgram.provider.publicKey,
         newAuthority,

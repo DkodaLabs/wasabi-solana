@@ -1,12 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { WasabiSolana } from "../../target/types/wasabi_solana";
-import { assert } from "chai";
-import { 
-    superAdminProgram, 
+import {Program} from "@coral-xyz/anchor";
+import {WasabiSolana} from "../../target/types/wasabi_solana";
+import {assert} from "chai";
+import {
+    superAdminProgram,
     DEFAULT_AUTHORITY,
-    feeWalletKeypair, 
-    liquidationWalletKeypair 
+    feeWalletKeypair,
+    liquidationWalletKeypair
 } from "../hooks/rootHook";
 
 describe("wasabi-solana", () => {
@@ -18,12 +18,12 @@ describe("wasabi-solana", () => {
     after(async () => {
         await superAdminProgram.methods
             .initOrUpdatePermission({
-                canCosignSwaps: true,
-                canInitVaults: true,
-                canLiquidate: true,
+                canCosignSwaps:      true,
+                canInitVaults:       true,
+                canLiquidate:        true,
                 canBorrowFromVaults: true,
-                canInitPools: true,
-                status: { active: {} },
+                canInitPools:        true,
+                status:              {active: {}},
             })
             .accounts({
                 payer:        superAdminProgram.provider.publicKey,
@@ -43,10 +43,10 @@ describe("wasabi-solana", () => {
         );
         const tx = await program.methods
             .initGlobalSettings({
-                superAdmin: superAdminProgram.provider.publicKey,
-                feeWallet: feeWalletKeypair.publicKey,
+                superAdmin:        superAdminProgram.provider.publicKey,
+                feeWallet:         feeWalletKeypair.publicKey,
                 liquidationWallet: liquidationWalletKeypair.publicKey,
-                statuses: 3,
+                statuses:          3,
             })
             .accounts({
                 payer: program.provider.publicKey,
@@ -67,7 +67,7 @@ describe("wasabi-solana", () => {
         );
         assert.equal(
             JSON.stringify(superAdminPermissionAfter.status),
-            JSON.stringify({ active: {} }),
+            JSON.stringify({active: {}}),
         );
         assert.equal(superAdminPermissionAfter.permissionsMap, 2 ** 8 - 1);
     });

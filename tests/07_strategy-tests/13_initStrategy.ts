@@ -1,5 +1,5 @@
-import { assert } from "chai";
-import { StrategyContext } from "./strategyContext";
+import {assert} from "chai";
+import {StrategyContext} from "./strategyContext";
 
 
 describe("InitStrategy", () => {

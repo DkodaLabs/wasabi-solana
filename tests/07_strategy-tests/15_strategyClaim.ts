@@ -1,5 +1,5 @@
-import { validateClaim } from './validateStrategy';
-import { StrategyContext } from './strategyContext';
+import {validateClaim} from './validateStrategy';
+import {StrategyContext} from './strategyContext';
 
 describe("StrategyClaim", () => {
     let ctx: StrategyContext;

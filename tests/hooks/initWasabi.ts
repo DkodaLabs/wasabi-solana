@@ -4,17 +4,17 @@ import {
     feeWalletKeypair,
     liquidationWalletKeypair, setupTestEnvironment,
 } from "./rootHook";
-import { WasabiSolana } from '../../target/types/wasabi_solana';
+import {WasabiSolana} from '../../target/types/wasabi_solana';
 
 export const initWasabi = async () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
     // Settings
     const initGlobalSettingsIx = await superAdminProgram.methods
         .initGlobalSettings({
-            superAdmin: superAdminProgram.provider.publicKey,
-            feeWallet: feeWalletKeypair.publicKey,
+            superAdmin:        superAdminProgram.provider.publicKey,
+            feeWallet:         feeWalletKeypair.publicKey,
             liquidationWallet: liquidationWalletKeypair.publicKey,
-            statuses: 3,
+            statuses:          3,
         })
         .accounts({
             payer: superAdminProgram.provider.publicKey,
@@ -29,14 +29,14 @@ export const initWasabi = async () => {
     }).instruction();
 
     await superAdminProgram.methods.initOrUpdatePermission({
-        canCosignSwaps: true,
-        canInitVaults: true,
-        canLiquidate: true,
-        canInitPools: true,
+        canCosignSwaps:      true,
+        canInitVaults:       true,
+        canLiquidate:        true,
+        canInitPools:        true,
         canBorrowFromVaults: true,
-        status: { active: {} }
+        status:              {active: {}}
     }).accounts({
-        payer: superAdminProgram.provider.publicKey,
+        payer:        superAdminProgram.provider.publicKey,
         newAuthority: program.provider.publicKey
     }).preInstructions([initGlobalSettingsIx, initDebtControllerIx]).rpc();
 

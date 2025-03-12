@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
-import { assert } from "chai";
-import { superAdminProgram, DEFAULT_AUTHORITY } from "../hooks/rootHook";
+import {assert} from "chai";
+import {superAdminProgram, DEFAULT_AUTHORITY} from "../hooks/rootHook";
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {
@@ -12,12 +12,12 @@ describe("InitOrUpdatePermission", () => {
 
         await superAdminProgram.methods
             .initOrUpdatePermission({
-                canCosignSwaps: true, // 4
-                canInitVaults: true, // 1
-                canLiquidate: true, // 2
-                canInitPools: true, // 8
+                canCosignSwaps:      true, // 4
+                canInitVaults:       true, // 1
+                canLiquidate:        true, // 2
+                canInitPools:        true, // 8
                 canBorrowFromVaults: true,
-                status: { active: {} }
+                status:              {active: {}}
             })
             .accounts({
                 payer: superAdminProgram.provider.publicKey,
@@ -28,7 +28,7 @@ describe("InitOrUpdatePermission", () => {
         const permissionAfter = await superAdminProgram.account.permission.fetch(adminKey);
         assert.ok(!permissionAfter.isSuperAuthority);
         assert.equal(permissionAfter.authority.toString(), newAuthority.toString());
-        assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({ active: {} }));
+        assert.equal(JSON.stringify(permissionAfter.status), JSON.stringify({active: {}}));
         assert.equal(permissionAfter.permissionsMap, 31);
     });
 });
