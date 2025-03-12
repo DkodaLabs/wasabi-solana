@@ -9,11 +9,11 @@ import {
 describe("OpenLongPosition", () => {
     let ctx: TradeContext;
 
-    describe("with more than one setup instruction", () => {
-        before(async () => {
-            ctx = await new TradeContext().generateLongTest();
-        });
+    before(async () => {
+        ctx = await new TradeContext().generateLongTest();
+    });
 
+    describe("with more than one setup instruction", () => {
         it("should fail", async () => {
             await openLongPositionWithInvalidSetup(ctx);
         });
