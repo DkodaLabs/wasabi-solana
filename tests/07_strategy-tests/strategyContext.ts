@@ -12,8 +12,7 @@ import {
 } from '@solana/spl-token';
 import {
     WASABI_PROGRAM_ID,
-    superAdminProgram,
-    NON_SWAP_AUTHORITY
+    superAdminProgram, DEFAULT_AUTHORITY,
 } from '../hooks/rootHook';
 import { TestContext } from '../testContext';
 
@@ -151,7 +150,7 @@ export class StrategyContext extends TestContext {
         }).instruction();
 
         const transferIx = SystemProgram.transfer({
-            fromPubkey: NON_SWAP_AUTHORITY.publicKey,
+            fromPubkey: DEFAULT_AUTHORITY.publicKey,
             toPubkey: this.BORROW_AUTHORITY.publicKey,
             lamports: 10_000_000,
         });
@@ -167,7 +166,7 @@ export class StrategyContext extends TestContext {
             payer: superAdminProgram.provider.publicKey,
             newAuthority: this.NON_BORROW_AUTHORITY.publicKey,
         })
-            .signers([NON_SWAP_AUTHORITY])
+            .signers([DEFAULT_AUTHORITY])
             .preInstructions([permissionIx, collateralVaultAtaIx, transferIx])
             .rpc();
 

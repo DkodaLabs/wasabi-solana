@@ -15,7 +15,6 @@ export const liquidateLongPositionWithInvalidPermission = async (ctx: Liquidatio
     swapIn,
     swapOut,
 }: LiquidationArgs = defaultLiquidateLongPositionArgs) => {
-
     const instructions = await Promise.all([
         ctx.program.methods
             .liquidatePositionSetup(
@@ -34,12 +33,14 @@ export const liquidateLongPositionWithInvalidPermission = async (ctx: Liquidatio
                 tokenProgram: TOKEN_PROGRAM_ID,
             },
         }).instruction(),
+
         ctx.createBASwapIx({
             swapIn,
             swapOut,
             poolAtaA: ctx.longPoolCurrencyVault,
             poolAtaB: ctx.longPoolCollateralVault
         }),
+
         ctx.liquidateLongPositionCleanup()
     ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 

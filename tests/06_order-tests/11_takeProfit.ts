@@ -20,31 +20,31 @@ describe("TakeProfit", () => {
         });
 
         it("should init the TP order", async () => {
-            await initTakeProfitOrder(longCtx, defaultTakeProfitOrderArgs, true);
+            await initTakeProfitOrder(longCtx);
         });
 
         it("should fail to close the TP order without proper permissions", async () => {
-            await cancelTakeProfitOrderWithInvalidPermission(longCtx, true);
+            await cancelTakeProfitOrderWithInvalidPermission(longCtx);
         });
 
         it("should close the TP order when invoked by the user", async () => {
-            await cancelTakeProfitOrderWithUser(longCtx, true);
+            await cancelTakeProfitOrderWithUser(longCtx);
         });
 
         it("should close the TP order when invoked by the admin", async () => {
-            await cancelTakeProfitOrderWithAdmin(longCtx, true);
+            await cancelTakeProfitOrderWithAdmin(longCtx);
         });
 
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeTakeProfitOrderWithInvalidAuthority(longCtx, defaultTakeProfitOrderArgs, true);
+            await executeTakeProfitOrderWithInvalidAuthority(longCtx);
         });
 
         it("should fail when the TP taker amount is exceeded", async () => {
-            await executeTakeProfitOrderWithInvalidTakerAmount(longCtx, defaultTakeProfitOrderArgs, true);
+            await executeTakeProfitOrderWithInvalidTakerAmount(longCtx);
         });
 
         it("should execute TP order", async () => {
-            await validateExecuteTakeProfitOrder(longCtx, defaultTakeProfitOrderArgs, true);
+            await validateExecuteTakeProfitOrder(longCtx);
         });
     });
 
@@ -54,31 +54,31 @@ describe("TakeProfit", () => {
         });
 
         it("should init the TP order", async () => {
-            await initTakeProfitOrder(shortCtx, defaultTakeProfitOrderArgs, false);
+            await initTakeProfitOrder(shortCtx);
         });
 
         it("should fail to close the TP order without proper permissions", async () => {
-            await cancelTakeProfitOrderWithInvalidPermission(shortCtx, false);
+            await cancelTakeProfitOrderWithInvalidPermission(shortCtx);
         });
 
         it("should close the TP order when invoked by the user", async () => {
-            await cancelTakeProfitOrderWithUser(shortCtx, false);
+            await cancelTakeProfitOrderWithUser(shortCtx);
         });
 
         it("should close the TP order when invoked by the admin", async () => {
-            await cancelTakeProfitOrderWithAdmin(shortCtx, false);
+            await cancelTakeProfitOrderWithAdmin(shortCtx);
         });
 
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeTakeProfitOrderWithInvalidAuthority(shortCtx, defaultTakeProfitOrderArgs, false);
+            await executeTakeProfitOrderWithInvalidAuthority(shortCtx);
         });
 
         it("should fail when the TP taker amount is exceeded", async () => {
-            await executeTakeProfitOrderWithInvalidTakerAmount(shortCtx, defaultTakeProfitOrderArgs, false);
+            await executeTakeProfitOrderWithInvalidTakerAmount(shortCtx);
         });
 
         it("should execute TP order", async () => {
-            await validateExecuteTakeProfitOrder(shortCtx, defaultTakeProfitOrderArgs, false);
+            await validateExecuteTakeProfitOrder(shortCtx);
         });
     });
 });

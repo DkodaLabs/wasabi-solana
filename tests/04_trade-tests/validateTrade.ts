@@ -169,31 +169,6 @@ export const validateOpenShortPositionStates = async (
     );
 }
 
-export type ValidationParams = {
-    amountIn: number,
-    amountOut: number,
-};
-
-export type OpenPositionValidationParams = {
-    before: ReturnType<typeof positionStates>,
-    after: ReturnType<typeof positionStates>,
-    principal: bigint,
-    downPayment: bigint,
-    fee: bigint
-};
-
-export const validate = async (
-    ctx: TradeContext,
-    f: (params: ValidationParams) => Promise<void>,
-    params: ValidationParams,
-    validateStates: (ctx: TradeContext, params: OpenPositionValidationParams) => Promise<void>,
-    stateParams: OpenPositionValidationParams,
-) => {
-    const before = positionStates(ctx, ctx.isLongTest);
-    await f(params);
-    await validateStates(ctx, {before, after: positionStates(ctx, ctx.isLongTest), ...stateParams});
-};
-
 export const validateOpenLongPosition = async (ctx: TradeContext, {
     minOut,
     downPayment,
@@ -201,7 +176,7 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
     fee,
     swapIn,
     swapOut,
-}: OpenPositionArgs) => {
+}: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
         const statesBefore = positionStates(ctx, true);
         await ctx.openLongPosition({minOut, downPayment, principal, fee, swapIn, swapOut});
@@ -217,13 +192,13 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
 };
 
 export const validateOpenShortPosition = async (ctx: TradeContext, {
-                                                    minOut,
-                                                    downPayment,
-                                                    principal,
-                                                    fee,
-                                                    swapIn,
-                                                    swapOut,
-                                                }: OpenPositionArgs = defaultOpenShortPositionArgs
+        minOut,
+        downPayment,
+        principal,
+        fee,
+        swapIn,
+        swapOut,
+    }: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
     try {
 

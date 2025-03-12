@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
 import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { SWAP_AUTHORITY, setupTestEnvironment, lpVaultA, lpVaultB, tokenMintA, tokenMintB, vaultA as _vaultA } from "./rootHook";
+import { DEFAULT_AUTHORITY, setupTestEnvironment, lpVaultA, lpVaultB, tokenMintA, tokenMintB, vaultA as _vaultA } from "./rootHook";
 import { initWasabi } from "./initWasabi";
 import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { getMultipleTokenAccounts, getMultipleMintAccounts } from '../utils';

@@ -193,7 +193,7 @@ test suite:
     #!/usr/bin/env bash
     case "{{suite}}" in
     "strategy-withdraw")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/16_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/07_strategy-tests/16_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
         ;;
     "strategy-claim")
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/15_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
@@ -211,13 +211,13 @@ test suite:
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/04_trade-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
         ;;
     "liquidation")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/05_liquidation-tests/*.ts --require tests/hooks/liquidationHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/05_liquidation-tests/*.ts --require tests/hooks/initWasabi.ts"#' Anchor.toml
         ;;
     "order")
         sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/06_order-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
         ;;
     *)
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/allHook.ts"#' Anchor.toml
+        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
         ;;
     esac
     sed -i '' 's#cluster = ".*#cluster = "localnet"#' Anchor.toml

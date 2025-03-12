@@ -1,13 +1,23 @@
-import { validateInitPool } from "../hooks/poolHook";
+import {validateInitPool} from "./validatePool";
+import {PoolContext} from "./poolContext";
 
-describe("InitLongPool", () => {
-    it("should create the longPool", async () => {
-        await validateInitPool(true);
+describe("InitMarket", () => {
+    let ctx: PoolContext;
+    before(async () => {
+        ctx = await new PoolContext().generate();
     });
-});
 
-describe("InitShortPool", () => {
-    it("should create the shortPool", async () => {
-        await validateInitPool(false);
+    describe("InitLongPool", () => {
+        it("should create the longPool", async () => {
+            ctx.isLong = true;
+            await validateInitPool(ctx);
+        });
     });
-});
+
+    describe("InitShortPool", () => {
+        it("should create the shortPool", async () => {
+            ctx.isLong = false;
+            await validateInitPool(ctx);
+        });
+    });
+})

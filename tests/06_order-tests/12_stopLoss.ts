@@ -20,31 +20,31 @@ describe("StopLoss", () => {
         });
 
         it("should init the SL order", async () => {
-            await initStopLossOrder(longCtx, defaultStopLossOrderArgs, true);
+            await initStopLossOrder(longCtx);
         });
 
         it("should fail to close the SL order without proper permissions", async () => {
-            await cancelStopLossOrderWithInvalidPermission(longCtx, true);
+            await cancelStopLossOrderWithInvalidPermission(longCtx);
         });
 
         it("should close the SL order when invoked by the user", async () => {
-            await cancelStopLossOrderWithUser(longCtx, true);
+            await cancelStopLossOrderWithUser(longCtx);
         });
 
         it("should close the SL order when invoked by the admin", async () => {
-            await cancelStopLossOrderWithAdmin(longCtx, true);
+            await cancelStopLossOrderWithAdmin(longCtx);
         });
 
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeStopLossOrderWithInvalidAuthority(longCtx, defaultStopLossOrderArgs, true);
+            await executeStopLossOrderWithInvalidAuthority(longCtx);
         });
 
         it("should fail when the SL taker amount is exceeded", async () => {
-            await executeStopLossOrderWithInvalidTakerAmount(longCtx, defaultStopLossOrderArgs, true);
+            await executeStopLossOrderWithInvalidTakerAmount(longCtx);
         });
 
         it("should execute SL order", async () => {
-            await validateExecuteStopLossOrder(longCtx, defaultStopLossOrderArgs, true);
+            await validateExecuteStopLossOrder(longCtx);
         });
     });
 
@@ -54,31 +54,31 @@ describe("StopLoss", () => {
         });
 
         it("should init the SL order", async () => {
-            await initStopLossOrder(shortCtx, defaultStopLossOrderArgs, false);
+            await initStopLossOrder(shortCtx);
         });
 
         it("should fail to close the SL order without proper permissions", async () => {
-            await cancelStopLossOrderWithInvalidPermission(shortCtx, false);
+            await cancelStopLossOrderWithInvalidPermission(shortCtx);
         });
 
         it("should close the SL order when invoked by the user", async () => {
-            await cancelStopLossOrderWithUser(shortCtx, false);
+            await cancelStopLossOrderWithUser(shortCtx);
         });
 
         it("should close the SL order when invoked by the admin", async () => {
-            await cancelStopLossOrderWithAdmin(shortCtx, false);
+            await cancelStopLossOrderWithAdmin(shortCtx);
         });
 
         it("should fail when the authority cannot co-sign swaps", async () => {
-            await executeStopLossOrderWithInvalidAuthority(shortCtx, defaultStopLossOrderArgs, false);
+            await executeStopLossOrderWithInvalidAuthority(shortCtx);
         });
 
         it("should fail when the SL taker amount is exceeded", async () => {
-            await executeStopLossOrderWithInvalidTakerAmount(shortCtx, defaultStopLossOrderArgs, false);
+            await executeStopLossOrderWithInvalidTakerAmount(shortCtx);
         });
 
         it("should execute SL order", async () => {
-            await validateExecuteStopLossOrder(shortCtx, defaultStopLossOrderArgs, false);
+            await validateExecuteStopLossOrder(shortCtx);
         });
     });
 });

@@ -4,7 +4,7 @@ import { WasabiSolana } from "../../target/types/wasabi_solana";
 import { assert } from "chai";
 import { 
     superAdminProgram, 
-    SWAP_AUTHORITY, 
+    DEFAULT_AUTHORITY,
     feeWalletKeypair, 
     liquidationWalletKeypair 
 } from "../hooks/rootHook";
@@ -19,15 +19,15 @@ describe("wasabi-solana", () => {
         await superAdminProgram.methods
             .initOrUpdatePermission({
                 canCosignSwaps: true,
-                canInitVaults: false,
+                canInitVaults: true,
                 canLiquidate: true,
                 canBorrowFromVaults: true,
                 canInitPools: true,
                 status: { active: {} },
             })
             .accounts({
-                payer: superAdminProgram.provider.publicKey,
-                newAuthority: SWAP_AUTHORITY.publicKey,
+                payer:        superAdminProgram.provider.publicKey,
+                newAuthority: DEFAULT_AUTHORITY.publicKey,
             })
             .rpc();
     });

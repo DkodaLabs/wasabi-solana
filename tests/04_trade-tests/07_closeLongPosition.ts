@@ -20,103 +20,38 @@ describe("CloseLongPosition", () => {
 
     describe("with more than one setup instruction", () => {
         it("should fail", async () => {
-            try {
-                await closeLongPositionWithInvalidSetup(ctx);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                // 'Account already exists'
-                assert.ok(/already in use/.test(err.toString()));
-            }
+            await closeLongPositionWithInvalidSetup(ctx);
         });
     });
-    
+
     describe("without a cleanup instruction", () => {
         it("should fail", async () => {
-            try {
-                await closeLongPositionWithoutCleanup(ctx);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                // 'Missing cleanup'
-                assert.ok(/6002/.test(err.toString()))
-            }
+            await closeLongPositionWithoutCleanup(ctx);
         });
     });
-    
+
     describe("with incorrect owner", () => {
         it("should fail", async () => {
-            try {
-                await closeLongPositionWithIncorrectOwner(ctx, defaultCloseLongPositionArgs);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                assert.ok(/owner constraint/.test(err.toString()) || /6000/.test(err.toString()));
-            }
+            await closeLongPositionWithIncorrectOwner(ctx);
         });
     });
 
     describe("without a swap co-signer", () => {
         it("should fail", async () => {
-            try {
-                await closeLongPositionWithoutCosigner(ctx, defaultCloseLongPositionArgs);
-                assert.ok(false);
-            } catch (err) {
-                if (err instanceof AnchorError) {
-                    assert.equal(err.error.errorCode.number, 6008);
-                } else if (err instanceof ProgramError) {
-                    assert.equal(err.code, 6008);
-                } else {
-                    console.log(err);
-                    assert.ok(false);
-                }
-            }
+            await closeLongPositionWithoutCosigner(ctx);
         });
     });
-    
+
     describe("with bad debt", () => {
         it("should fail", async () => {
-            try {
-                await closeLongPositionWithBadDebt(ctx, defaultCloseLongPositionArgs);
-                assert.ok(false);
-            } catch (err) {
-                console.error(err);
-                if (err instanceof AnchorError) {
-                    assert.equal(err.error.errorCode.number, 6011);
-                } else if (err instanceof ProgramError) {
-                    assert.equal(err.code, 6011);
-                } else {
-                    assert.ok(true);
-                }
-            }
+            await closeLongPositionWithBadDebt(ctx);
         });
     });
-    
+
     describe("with correct parameters", () => {
         it("should correctly close the position", async () => {
-            try {
-                await validateCloseLongPosition(ctx, defaultCloseLongPositionArgs);
-                
-                // Verify position is closed
-                const position = await ctx.program.account.position.fetchNullable(ctx.longPosition);
-                assert.isNull(position, "Position should be closed");
-                
-                // Verify event was emitted
-                assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
-                assert.equal(
-                    ctx.closePositionEvent.id.toString(),
-                    ctx.longPosition.toString(),
-                    "Position ID in event should match"
-                );
-                assert.equal(
-                    ctx.closePositionEvent.trader.toString(),
-                    ctx.program.provider.publicKey.toString(),
-                    "Trader in event should match"
-                );
-            } catch (err) {
-                console.error(err);
-                assert.ok(false);
-            }
+            await validateCloseLongPosition(ctx);
+
         });
     });
 });

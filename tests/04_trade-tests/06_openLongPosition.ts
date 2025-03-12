@@ -52,9 +52,8 @@ describe("OpenLongPosition", () => {
 
         describe("correct parameters", () => {
             it("should correctly open a new position", async () => {
-                await validateOpenLongPosition(ctx, defaultOpenLongPositionArgs);
+                await validateOpenLongPosition(ctx);
             });
         });
     });
-})
-;
+});

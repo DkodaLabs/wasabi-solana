@@ -2,17 +2,12 @@ import * as anchor from "@coral-xyz/anchor";
 import {
     superAdminProgram,
     feeWalletKeypair,
-    liquidationWalletKeypair,
+    liquidationWalletKeypair, setupTestEnvironment,
 } from "./rootHook";
 import { WasabiSolana } from '../../target/types/wasabi_solana';
 
 export const initWasabi = async () => {
     const program = anchor.workspace.WasabiSolana as anchor.Program<WasabiSolana>;
-    const [superAdminPermissionKey] =
-        anchor.web3.PublicKey.findProgramAddressSync(
-            [anchor.utils.bytes.utf8.encode("super_admin")],
-            superAdminProgram.programId,
-        );
 
     // Settings
     const initGlobalSettingsIx = await superAdminProgram.methods
@@ -47,3 +42,11 @@ export const initWasabi = async () => {
         newAuthority: program.provider.publicKey
     }).preInstructions([initGlobalSettingsIx, initDebtControllerIx]).rpc();
 };
+
+export const mochaHooks = {
+
+    beforeAll: async () => {
+        await setupTestEnvironment();
+        await initWasabi();
+    }
+}

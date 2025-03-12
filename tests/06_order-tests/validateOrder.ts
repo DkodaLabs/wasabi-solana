@@ -1,24 +1,34 @@
 import {assert} from "chai";
 import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {getMultipleTokenAccounts} from "../utils";
-import {OrderContext, OrderArgs} from "./orderContext";
+import {
+    OrderContext,
+    OrderArgs,
+    OrderInitArgs,
+    defaultInitStopLossOrderArgs,
+    defaultInitTakeProfitOrderArgs
+} from "./orderContext";
 import {defaultTakeProfitOrderArgs, defaultStopLossOrderArgs} from "./orderContext";
 import * as anchor from '@coral-xyz/anchor';
 import {TransactionInstruction} from "@solana/web3.js";
 
-export const validateExecuteTakeProfitOrder = async (ctx: OrderContext, {
-    makerAmount,
-    takerAmount,
-    interest,
-    executionFee,
-    swapIn,
-    swapOut,
-}: OrderArgs = defaultTakeProfitOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+export const validateExecuteTakeProfitOrder = async (
+    ctx: OrderContext, {
+        makerAmount,
+        takerAmount,
+    }: OrderInitArgs = defaultInitTakeProfitOrderArgs,
+    {
+        interest,
+        executionFee,
+        swapIn,
+        swapOut,
+    }: OrderArgs = defaultTakeProfitOrderArgs
+) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await ctx.send([await ctx.initTakeProfitOrder({makerAmount, takerAmount}, isLong)]);
+    await ctx.send([await ctx.initTakeProfitOrder({makerAmount, takerAmount})]);
 
     // Verify the take profit order was created correctly
     const orderBefore = await ctx.program.account.takeProfitOrder.fetch(takeProfitOrder);
@@ -41,7 +51,7 @@ export const validateExecuteTakeProfitOrder = async (ctx: OrderContext, {
     );
 
     // Execute the take profit order
-    await ctx.executeTakeProfitOrder(ctx, {interest, executionFee, swapIn, swapOut}, isLong);
+    await ctx.executeTakeProfitOrder({interest, executionFee, swapIn, swapOut});
 
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(position);
@@ -94,19 +104,23 @@ export const validateExecuteTakeProfitOrder = async (ctx: OrderContext, {
     );
 }
 
-export const validateExecuteStopLossOrder = async (ctx: OrderContext, {
-    makerAmount,
-    takerAmount,
-    interest,
-    executionFee,
-    swapIn,
-    swapOut,
-}: OrderArgs = defaultStopLossOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+export const validateExecuteStopLossOrder = async (
+    ctx: OrderContext, {
+        makerAmount,
+        takerAmount,
+    }: OrderInitArgs = defaultInitStopLossOrderArgs,
+    {
+        interest,
+        executionFee,
+        swapIn,
+        swapOut,
+    }: OrderArgs = defaultStopLossOrderArgs
+) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await ctx.send([await ctx.initStopLossOrder({makerAmount, takerAmount}, isLong)]);
+    await ctx.send([await ctx.initStopLossOrder({makerAmount, takerAmount})]);
 
     // Verify the stop loss order was created correctly
     const orderBefore = await ctx.program.account.stopLossOrder.fetch(stopLossOrder);
@@ -129,7 +143,7 @@ export const validateExecuteStopLossOrder = async (ctx: OrderContext, {
     );
 
     // Execute the stop loss order
-    await ctx.executeStopLossOrder({interest, executionFee, swapIn, swapOut}, isLong);
+    await ctx.executeStopLossOrder({interest, executionFee, swapIn, swapOut});
 
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(position);
@@ -186,15 +200,12 @@ export const validateExecuteStopLossOrder = async (ctx: OrderContext, {
 export const initTakeProfitOrder = async (ctx: OrderContext, {
     makerAmount,
     takerAmount,
-}: {
-    makerAmount: bigint,
-    takerAmount: bigint,
-} = defaultTakeProfitOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+}: OrderInitArgs = defaultInitTakeProfitOrderArgs) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await ctx.send([await ctx.initTakeProfitOrder({makerAmount, takerAmount}, isLong)]);
+    await ctx.send([await ctx.initTakeProfitOrder({makerAmount, takerAmount})]);
 
     // Verify the take profit order was created correctly
     const order = await ctx.program.account.takeProfitOrder.fetch(takeProfitOrder);
@@ -208,15 +219,12 @@ export const initTakeProfitOrder = async (ctx: OrderContext, {
 export const initStopLossOrder = async (ctx: OrderContext, {
     makerAmount,
     takerAmount,
-}: {
-    makerAmount: bigint,
-    takerAmount: bigint,
-} = defaultStopLossOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+}: OrderInitArgs = defaultInitStopLossOrderArgs) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await ctx.send([await ctx.initStopLossOrder({makerAmount, takerAmount}, isLong)]);
+    await ctx.send([await ctx.initStopLossOrder({makerAmount, takerAmount})]);
 
     // Verify the stop loss order was created correctly
     const order = await ctx.program.account.stopLossOrder.fetch(stopLossOrder);
@@ -227,12 +235,12 @@ export const initStopLossOrder = async (ctx: OrderContext, {
     return order;
 }
 
-export const cancelTakeProfitOrderWithInvalidPermission = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+export const cancelTakeProfitOrderWithInvalidPermission = async (ctx: OrderContext) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await initTakeProfitOrder(ctx, defaultTakeProfitOrderArgs, isLong);
+    await initTakeProfitOrder(ctx);
 
     // Try to cancel with invalid permission
     try {
@@ -240,7 +248,8 @@ export const cancelTakeProfitOrderWithInvalidPermission = async (ctx: OrderConte
             await ctx.program.methods
                 .closeTakeProfitOrder()
                 .accounts({
-                    closer:     ctx.NON_ORDER_AUTHORITY.publicKey,
+                    closer: ctx.NON_ORDER_AUTHORITY.publicKey,
+                    //@ts-ignore
                     trader:     ctx.program.provider.publicKey,
                     permission: ctx.nonOrderPermission,
                     position:   position,
@@ -259,12 +268,12 @@ export const cancelTakeProfitOrderWithInvalidPermission = async (ctx: OrderConte
     assert.ok(order, "Take profit order should still exist");
 }
 
-export const cancelStopLossOrderWithInvalidPermission = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+export const cancelStopLossOrderWithInvalidPermission = async (ctx: OrderContext) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await initStopLossOrder(ctx, defaultStopLossOrderArgs, isLong);
+    await initStopLossOrder(ctx);
 
     // Try to cancel with invalid permission
     try {
@@ -272,7 +281,8 @@ export const cancelStopLossOrderWithInvalidPermission = async (ctx: OrderContext
             await ctx.program.methods
                 .closeStopLossOrder()
                 .accounts({
-                    closer:     ctx.NON_ORDER_AUTHORITY.publicKey,
+                    closer: ctx.NON_ORDER_AUTHORITY.publicKey,
+                    //@ts-ignore
                     trader:     ctx.program.provider.publicKey,
                     permission: ctx.nonOrderPermission,
                     position:   position,
@@ -291,60 +301,56 @@ export const cancelStopLossOrderWithInvalidPermission = async (ctx: OrderContext
     assert.ok(order, "Stop loss order should still exist");
 }
 
-export const cancelTakeProfitOrderWithUser = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+export const cancelTakeProfitOrderWithUser = async (ctx: OrderContext) => {
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await initTakeProfitOrder(ctx, defaultTakeProfitOrderArgs, isLong);
+    await initTakeProfitOrder(ctx);
 
     // Cancel with user
-    await ctx.send([await ctx.cancelTakeProfitOrder(isLong, true)]);
+    await ctx.send([await ctx.cancelTakeProfitOrder()]);
 
     // Verify the take profit order is closed
     const order = await ctx.program.account.takeProfitOrder.fetchNullable(takeProfitOrder);
     assert.isNull(order, "Take profit order should be closed");
 }
 
-export const cancelStopLossOrderWithUser = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+export const cancelStopLossOrderWithUser = async (ctx: OrderContext) => {
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await initStopLossOrder(ctx, defaultStopLossOrderArgs, isLong);
+    await initStopLossOrder(ctx);
 
     // Cancel with user
-    await ctx.send([await ctx.cancelStopLossOrder(isLong, true)]);
+    await ctx.send([await ctx.cancelStopLossOrder()]);
 
     // Verify the stop loss order is closed
     const order = await ctx.program.account.stopLossOrder.fetchNullable(stopLossOrder);
     assert.isNull(order, "Stop loss order should be closed");
 }
 
-export const cancelTakeProfitOrderWithAdmin = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+export const cancelTakeProfitOrderWithAdmin = async (ctx: OrderContext) => {
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await initTakeProfitOrder(ctx, defaultTakeProfitOrderArgs, isLong);
+    await initTakeProfitOrder(ctx);
 
     // Cancel with admin
-    await ctx.send([await ctx.cancelTakeProfitOrder(isLong, false)], ctx.ORDER_AUTHORITY);
+    await ctx.send([await ctx.cancelTakeProfitOrder()], ctx.ORDER_AUTHORITY);
 
     // Verify the take profit order is closed
     const order = await ctx.program.account.takeProfitOrder.fetchNullable(takeProfitOrder);
     assert.isNull(order, "Take profit order should be closed");
 }
 
-export const cancelStopLossOrderWithAdmin = async (ctx: OrderContext, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+export const cancelStopLossOrderWithAdmin = async (ctx: OrderContext) => {
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await initStopLossOrder(ctx, defaultStopLossOrderArgs, isLong);
+    await initStopLossOrder(ctx);
 
     // Cancel with admin
-    await ctx.send([await ctx.cancelStopLossOrder(isLong, false)], ctx.ORDER_AUTHORITY);
+    await ctx.send([await ctx.cancelStopLossOrder()], ctx.ORDER_AUTHORITY);
 
     // Verify the stop loss order is closed
     const order = await ctx.program.account.stopLossOrder.fetchNullable(stopLossOrder);
@@ -356,12 +362,12 @@ export const executeTakeProfitOrderWithInvalidAuthority = async (ctx: OrderConte
     executionFee,
     swapIn,
     swapOut,
-}: OrderArgs = defaultTakeProfitOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+}: OrderArgs = defaultTakeProfitOrderArgs) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await initTakeProfitOrder(ctx, defaultTakeProfitOrderArgs, isLong);
+    await initTakeProfitOrder(ctx);
 
     // Try to execute with invalid authority
     try {
@@ -375,17 +381,18 @@ export const executeTakeProfitOrderWithInvalidAuthority = async (ctx: OrderConte
                 )
                 .accounts({
                     closePositionSetup: {
-                        owner:        ctx.program.provider.publicKey,
-                        position:     position,
-                        pool:         isLong ? ctx.longPool : ctx.shortPool,
-                        collateral:   ctx.collateral,
+                        owner:      ctx.program.provider.publicKey,
+                        position:   position,
+                        pool:       ctx.isLong ? ctx.longPool : ctx.shortPool,
+                        collateral: ctx.collateral,
+                        //@ts-ignore
                         authority:    ctx.NON_ORDER_AUTHORITY.publicKey,
                         permission:   ctx.nonOrderPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction(),
-            isLong ?
+            ctx.isLong ?
                 ctx.createBASwapIx({
                     swapIn,
                     swapOut,
@@ -398,7 +405,7 @@ export const executeTakeProfitOrderWithInvalidAuthority = async (ctx: OrderConte
                     poolAtaA: ctx.shortPoolCurrencyVault,
                     poolAtaB: ctx.shortPoolCollateralVault
                 }),
-            ctx.takeProfitCleanup(isLong)
+            ctx.takeProfitCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
         await ctx.send(instructions, ctx.NON_ORDER_AUTHORITY);
@@ -418,12 +425,12 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
     executionFee,
     swapIn,
     swapOut,
-}: OrderArgs = defaultStopLossOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+}: OrderArgs = defaultStopLossOrderArgs) => {
+    const position = ctx.isLong ? ctx.longPosition : ctx.shortPosition;
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await initStopLossOrder(ctx, defaultStopLossOrderArgs, isLong);
+    await initStopLossOrder(ctx);
 
     // Try to execute with invalid authority
     try {
@@ -437,17 +444,18 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
                 )
                 .accounts({
                     closePositionSetup: {
-                        owner:        ctx.program.provider.publicKey,
-                        position:     position,
-                        pool:         isLong ? ctx.longPool : ctx.shortPool,
-                        collateral:   ctx.collateral,
+                        owner:      ctx.program.provider.publicKey,
+                        position:   position,
+                        pool:       ctx.isLong ? ctx.longPool : ctx.shortPool,
+                        collateral: ctx.collateral,
+                        //@ts-ignore
                         authority:    ctx.NON_ORDER_AUTHORITY.publicKey,
                         permission:   ctx.nonOrderPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
                 .instruction(),
-            isLong ?
+            ctx.isLong ?
                 ctx.createBASwapIx({
                     swapIn,
                     swapOut,
@@ -460,7 +468,7 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
                     poolAtaA: ctx.shortPoolCurrencyVault,
                     poolAtaB: ctx.shortPoolCollateralVault
                 }),
-            ctx.stopLossCleanup(isLong)
+            ctx.stopLossCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
         await ctx.send(instructions, ctx.NON_ORDER_AUTHORITY);
@@ -478,17 +486,14 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
 export const executeTakeProfitOrderWithInvalidTakerAmount = async (ctx: OrderContext, {
     interest,
     executionFee,
-    swapIn,
-    swapOut,
-}: OrderArgs = defaultTakeProfitOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+}: OrderArgs = defaultTakeProfitOrderArgs) => {
+    const takeProfitOrder = ctx.isLong ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order with high taker amount requirement
     await initTakeProfitOrder(ctx, {
         makerAmount: BigInt(100),
         takerAmount: BigInt(10000), // Very high taker amount that won't be met
-    }, isLong);
+    });
 
     // Try to execute with insufficient swap amount
     try {
@@ -497,7 +502,7 @@ export const executeTakeProfitOrderWithInvalidTakerAmount = async (ctx: OrderCon
             executionFee,
             swapIn:  BigInt(100), // Small swap amount
             swapOut: BigInt(110), // Small swap out amount
-        }, isLong);
+        });
 
         assert.fail("Should have failed with taker amount not met");
     } catch (err) {
@@ -513,17 +518,14 @@ export const executeTakeProfitOrderWithInvalidTakerAmount = async (ctx: OrderCon
 export const executeStopLossOrderWithInvalidTakerAmount = async (ctx: OrderContext, {
     interest,
     executionFee,
-    swapIn,
-    swapOut,
-}: OrderArgs = defaultStopLossOrderArgs, isLong: boolean = true) => {
-    const position = isLong ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+}: OrderArgs = defaultStopLossOrderArgs) => {
+    const stopLossOrder = ctx.isLong ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order with high taker amount requirement
     await initStopLossOrder(ctx, {
         makerAmount: BigInt(100),
         takerAmount: BigInt(10000), // Very high taker amount that won't be met
-    }, isLong);
+    });
 
     // Try to execute with insufficient swap amount
     try {
@@ -532,7 +534,7 @@ export const executeStopLossOrderWithInvalidTakerAmount = async (ctx: OrderConte
             executionFee,
             swapIn:  BigInt(100), // Small swap amount
             swapOut: BigInt(110), // Small swap out amount
-        }, isLong);
+        });
 
         assert.fail("Should have failed with taker amount not met");
     } catch (err) {

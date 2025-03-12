@@ -16,16 +16,23 @@ export interface OpenPositionArgs {
     downPayment: bigint;
     principal: bigint; // maxIn
     fee: bigint;
-    swapIn: bigint;
-    swapOut: bigint;
+    swapIn?: bigint;
+    swapOut?: bigint;
 }
 
 export interface ClosePositionArgs {
     minOut: bigint;
     interest: bigint;
     executionFee: bigint;
+    swapIn?: bigint;
+    swapOut?: bigint;
+}
+
+export interface SwapArgs {
     swapIn: bigint;
     swapOut: bigint;
+    poolAtaA: PublicKey;
+    poolAtaB: PublicKey;
 }
 
 export const defaultOpenLongPositionArgs = <OpenPositionArgs>{
@@ -270,13 +277,7 @@ export class TradeContext extends TestContext {
         swapOut,
         poolAtaA,
         poolAtaB,
-    }: {
-        swapIn: bigint,
-        swapOut: bigint,
-        poolAtaA: PublicKey,
-        poolAtaB: PublicKey,
-
-    }) {
+    }: SwapArgs) {
         return await Promise.all([
             createBurnCheckedInstruction(
                 poolAtaA,
@@ -300,13 +301,8 @@ export class TradeContext extends TestContext {
         swapOut,
         poolAtaA,
         poolAtaB,
-    }: {
-        swapIn: bigint,
-        swapOut: bigint,
-        poolAtaA: PublicKey,
-        poolAtaB: PublicKey,
-    }) {
-        return Promise.all([
+    }: SwapArgs) {
+        return await Promise.all([
             createBurnCheckedInstruction(
                 poolAtaB,
                 this.collateral,
@@ -433,12 +429,7 @@ export class TradeContext extends TestContext {
         downPayment,
         principal,
         fee,
-    }: {
-        minOut: bigint,
-        downPayment: bigint,
-        principal: bigint,
-        fee: bigint,
-    } = defaultOpenLongPositionArgs) {
+    }: OpenPositionArgs = defaultOpenLongPositionArgs) {
         const now = new Date().getTime() / 1_000;
 
         return await this.program.methods.openLongPositionSetup(
@@ -477,12 +468,7 @@ export class TradeContext extends TestContext {
         downPayment,
         principal,
         fee,
-    }: {
-        minOut: bigint,
-        downPayment: bigint,
-        principal: bigint,
-        fee: bigint,
-    }) {
+    }: OpenPositionArgs = defaultOpenShortPositionArgs) {
         const now = new Date().getTime() / 1_000;
 
         return await this.program.methods.openShortPositionSetup(
@@ -521,11 +507,7 @@ export class TradeContext extends TestContext {
         minOut,
         interest,
         executionFee,
-    }: {
-        minOut: bigint,
-        interest: bigint,
-        executionFee: bigint,
-    }) {
+    }: ClosePositionArgs = defaultCloseLongPositionArgs) {
         const expiration = Date.now() / 1_000 + 60 * 60;
 
         return await this.program.methods
@@ -569,11 +551,7 @@ export class TradeContext extends TestContext {
         minOut,
         interest,
         executionFee,
-    }: {
-        minOut: bigint,
-        interest: bigint,
-        executionFee: bigint,
-    }) {
+    }: ClosePositionArgs = defaultCloseShortPositionArgs) {
         return await this.program.methods.closeShortPositionSetup(
             new anchor.BN(minOut.toString()),
             new anchor.BN(interest.toString()),
