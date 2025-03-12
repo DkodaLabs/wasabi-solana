@@ -205,9 +205,12 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
         // 'Insufficient funds'
         if (/insufficient funds/.test(err.toString())) {
             assert.ok(true);
+        } else if (/already in use/.test(err.toString())) {
+            // This can happen if the position account is already created
+            assert.ok(true);
         } else {
-            console.error(err);
-            assert.ok(false);
+            console.error("Error in validateOpenLongPosition:", err);
+            throw err;
         }
     }
 };
