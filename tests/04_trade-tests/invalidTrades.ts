@@ -774,7 +774,6 @@ export const closeLongPositionWithBadDebt = async (ctx: TradeContext, {
     swapOut,
 }: ClosePositionArgs = defaultCloseLongPositionArgs) => {
     try {
-        // If we reach here, the bad debt was handled correctly
         // In a bad debt scenario, the collateral value is less than the principal + interest
         // This is simulated by setting a very small swapOut value
         const badDebtSwapOut = BigInt(10); // Very small amount, not enough to cover debt
@@ -786,8 +785,8 @@ export const closeLongPositionWithBadDebt = async (ctx: TradeContext, {
                 executionFee
             }),
             ctx.createBASwapIx({
-                swapIn,
-                swapOut:  badDebtSwapOut, // Use the bad debt swap out value
+                swapIn: swapIn || defaultCloseLongPositionArgs.swapIn,
+                swapOut: badDebtSwapOut, // Use the bad debt swap out value
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -796,10 +795,18 @@ export const closeLongPositionWithBadDebt = async (ctx: TradeContext, {
 
         await ctx.send(instructions);
 
-        assert.ok(true);
+        assert.fail("Should have thrown a BadDebt error");
     } catch (err) {
-        console.error(err);
-        assert.ok(false, "Bad debt scenario should be handled gracefully");
+        if (err instanceof AnchorError) {
+            assert.equal(err.error.errorCode.number, 6011, "Should fail with BadDebt error code");
+        } else if (err instanceof ProgramError) {
+            assert.equal(err.code, 6011, "Should fail with BadDebt error code");
+        } else if (/BadDebt/.test(err.toString())) {
+            assert.ok(true, "Error contains BadDebt message");
+        } else {
+            console.error("Unexpected error:", err);
+            assert.fail("Should have failed with BadDebt error");
+        }
     }
 };
 
@@ -822,8 +829,8 @@ export const closeShortPositionWithBadDebt = async (ctx: TradeContext, {
                 executionFee
             }),
             ctx.createABSwapIx({
-                swapIn,
-                swapOut:  badDebtSwapOut, // Use the bad debt swap out value
+                swapIn: swapIn || defaultCloseShortPositionArgs.swapIn,
+                swapOut: badDebtSwapOut, // Use the bad debt swap out value
                 poolAtaA: ctx.shortPoolCurrencyVault,
                 poolAtaB: ctx.shortPoolCollateralVault
             }),
@@ -832,15 +839,17 @@ export const closeShortPositionWithBadDebt = async (ctx: TradeContext, {
 
         await ctx.send(instructions);
 
-        assert.ok(false);
+        assert.fail("Should have thrown a BadDebt error");
     } catch (err) {
-        console.error(err);
         if (err instanceof AnchorError) {
-            assert.equal(err.error.errorCode.number, 6011);
+            assert.equal(err.error.errorCode.number, 6011, "Should fail with BadDebt error code");
         } else if (err instanceof ProgramError) {
-            assert.equal(err.code, 6011);
+            assert.equal(err.code, 6011, "Should fail with BadDebt error code");
+        } else if (/BadDebt/.test(err.toString())) {
+            assert.ok(true, "Error contains BadDebt message");
         } else {
-            assert.ok(true);
+            console.error("Unexpected error:", err);
+            assert.fail("Should have failed with BadDebt error");
         }
     }
 };
