@@ -4,6 +4,7 @@ import {getMultipleTokenAccounts} from "../utils";
 import {LiquidationContext, LiquidationArgs} from "./liquidationContext";
 import {defaultLiquidateLongPositionArgs, defaultLiquidateShortPositionArgs} from "./liquidationContext";
 import * as anchor from '@coral-xyz/anchor';
+import {AnchorError, ProgramError} from "@coral-xyz/anchor";
 
 
 export const validateLiquidateLongPosition = async (ctx: LiquidationContext, {

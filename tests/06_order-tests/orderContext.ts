@@ -3,6 +3,7 @@ import {Keypair, PublicKey, TransactionInstruction} from '@solana/web3.js';
 import {TradeContext} from '../04_trade-tests/tradeContext';
 import {WASABI_PROGRAM_ID} from "../hooks/rootHook";
 import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {AnchorError, ProgramError} from "@coral-xyz/anchor";
 
 export interface OrderInitArgs {
     makerAmount?: bigint;

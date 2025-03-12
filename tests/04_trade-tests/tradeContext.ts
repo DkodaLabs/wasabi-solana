@@ -592,9 +592,8 @@ export class TradeContext extends PoolContext {
 
     async closeLongPositionCleanup() {
         return await this.program.methods.closeLongPositionCleanup().accountsPartial({
-            owner: this.program.provider.publicKey,
-            //@ts-ignore
-            ownerPayoutAccount:     ownerTokenA,
+            owner:                  this.program.provider.publicKey,
+            ownerPayoutAccount:     this.ownerCurrencyAta,
             pool:                   this.longPool,
             position:               this.longPosition,
             currency:               this.currency,
@@ -637,10 +636,7 @@ export class TradeContext extends PoolContext {
 
     async closeShortPositionCleanup() {
         return await this.program.methods.closeShortPositionCleanup().accountsPartial({
-            owner: this.program.provider.publicKey,
-            //@ts-ignore
-            collateral:             this.collateral,
-            collateralTokenProgram: TOKEN_PROGRAM_ID,
+            owner:                  this.program.provider.publicKey,
             closePositionCleanup:   {
                 owner:                  this.program.provider.publicKey,
                 ownerPayoutAccount:     this.ownerCurrencyAta,

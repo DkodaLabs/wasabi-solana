@@ -184,8 +184,6 @@ export const openShortPositionWithInvalidPool = async (ctx: TradeContext, {
     swapOut,
 }: OpenPositionArgs = defaultOpenShortPositionArgs) => {
     try {
-        await openShortPositionWithInvalidPool(ctx, defaultOpenShortPositionArgs);
-
         const instructions = await Promise.all([
             ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
@@ -520,7 +518,6 @@ export const closeLongPositionWithInvalidSetup = async (ctx: TradeContext, {
     executionFee,
 }: ClosePositionArgs = defaultCloseLongPositionArgs) => {
     try {
-        await closeLongPositionWithInvalidSetup(ctx);
         const instructions = await ctx.closeLongPositionSetup({
             minOut,
             interest,
@@ -662,7 +659,6 @@ export const closeShortPositionWithInvalidSetup = async (ctx: TradeContext, {
     executionFee,
 }: ClosePositionArgs = defaultCloseShortPositionArgs) => {
     try {
-        await closeShortPositionWithInvalidSetup(ctx);
         const instructions = await ctx.closeShortPositionSetup({
             minOut,
             interest,
@@ -745,7 +741,6 @@ export const closeShortPositionWithBadDebt = async (ctx: TradeContext, {
     swapOut,
 }: ClosePositionArgs = defaultCloseShortPositionArgs) => {
     try {
-        await closeShortPositionWithBadDebt(ctx, defaultCloseShortPositionArgs);
         // In a bad debt scenario, the collateral value is less than the principal + interest
         // This is simulated by setting a very small swapOut value
         const badDebtSwapOut = BigInt(10); // Very small amount, not enough to cover debt

@@ -7,6 +7,7 @@ import {
 } from '../hooks/rootHook';
 import {initWasabi} from '../hooks/initWasabi';
 import {StrategyContext} from './strategyContext';
+import {AnchorError} from "@coral-xyz/anchor";
 
 export const getAccountStates = async (ctx: StrategyContext) => {
     const [

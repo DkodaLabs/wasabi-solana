@@ -11,6 +11,7 @@ import {
 import {defaultTakeProfitOrderArgs, defaultStopLossOrderArgs} from "./orderContext";
 import * as anchor from '@coral-xyz/anchor';
 import {TransactionInstruction} from "@solana/web3.js";
+import {AnchorError, ProgramError} from "@coral-xyz/anchor";
 
 export const validateExecuteTakeProfitOrder = async (
     ctx: OrderContext, {
