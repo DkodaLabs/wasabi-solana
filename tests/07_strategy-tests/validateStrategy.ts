@@ -7,7 +7,7 @@ import {
 } from '../hooks/rootHook';
 import {initWasabi} from '../hooks/initWasabi';
 import {StrategyContext} from './strategyContext';
-import {AnchorError} from "@coral-xyz/anchor";
+import {AnchorError, ProgramError} from "@coral-xyz/anchor";
 
 export const getAccountStates = async (ctx: StrategyContext) => {
     const [
@@ -51,11 +51,13 @@ export const validateWithdraw = async (
             amountOut.toString(),
         );
     } catch (err) {
-        console.log(err.error)
-        if (err instanceof anchor.AnchorError) {
+        console.log(err)
+        if (err instanceof AnchorError) {
             assert.equal(err.error.errorCode.number, 6016);
+        } else if (err instanceof ProgramError) {
+            assert.equal(err.code, 6016);
         } else {
-            assert.ok(false);
+            throw err;
         }
     }
 }

@@ -366,29 +366,17 @@ export class StrategyContext extends TestContext {
     }
 
     async closeStrategy() {
-        try {
-            await this.program.methods
-                .closeStrategy()
-                .accountsPartial({
-                    authority:       this.BORROW_AUTHORITY.publicKey,
-                    permission:      this.borrowPermission,
-                    lpVault:         this.lpVault,
-                    collateral:      this.collateral,
-                    strategy:        this.strategy,
-                    collateralVault: this.collateralVault,
-                    tokenProgram:    TOKEN_PROGRAM_ID,
-                })
-                .signers([this.BORROW_AUTHORITY]).rpc();
-            assert.isNull(
-                await superAdminProgram.account.strategy.fetchNullable(this.strategy)
-            );
-        } catch (err) {
-            console.error(err);
-            if (err instanceof anchor.AnchorError) {
-                assert.equal(err.error.errorCode.number, 6036);
-            } else {
-                assert.ok(false);
-            }
-        }
+        return await this.program.methods
+            .closeStrategy()
+            .accountsPartial({
+                authority:       this.BORROW_AUTHORITY.publicKey,
+                permission:      this.borrowPermission,
+                lpVault:         this.lpVault,
+                collateral:      this.collateral,
+                strategy:        this.strategy,
+                collateralVault: this.collateralVault,
+                tokenProgram:    TOKEN_PROGRAM_ID,
+            })
+            .signers([this.BORROW_AUTHORITY]).rpc();
     }
 }
