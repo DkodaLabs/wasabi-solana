@@ -1,8 +1,8 @@
-import { assert } from "chai";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { getMultipleTokenAccounts } from "../utils";
-import { LiquidationContext, LiquidationArgs } from "./liquidationContext";
-import { defaultLiquidateLongPositionArgs, defaultLiquidateShortPositionArgs } from "./liquidationContext";
+import {assert} from "chai";
+import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {getMultipleTokenAccounts} from "../utils";
+import {LiquidationContext, LiquidationArgs} from "./liquidationContext";
+import {defaultLiquidateLongPositionArgs, defaultLiquidateShortPositionArgs} from "./liquidationContext";
 import * as anchor from '@coral-xyz/anchor';
 
 
@@ -65,7 +65,11 @@ export const validateLiquidateLongPosition = async (ctx: LiquidationContext, {
 
     // Verify fee wallet received execution fee
     const feeWalletDiff = feeWalletAfter.amount - feeWalletBefore.amount;
-    assert.equal(feeWalletDiff.toString(), ctx.liquidationEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
+    assert.equal(
+        feeWalletDiff.toString(),
+        ctx.liquidationEvent.feeAmount.toString(),
+        "Fee wallet should receive execution fee"
+    );
 
     // Verify LP vault received principal + interest
     const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
@@ -150,7 +154,11 @@ export const validateLiquidateShortPosition = async (ctx: LiquidationContext, {
 
     // Verify fee wallet received execution fee
     const feeWalletDiff = feeWalletAfter.amount - feeWalletBefore.amount;
-    assert.equal(feeWalletDiff.toString(), ctx.liquidationEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
+    assert.equal(
+        feeWalletDiff.toString(),
+        ctx.liquidationEvent.feeAmount.toString(),
+        "Fee wallet should receive execution fee"
+    );
 
 }
 

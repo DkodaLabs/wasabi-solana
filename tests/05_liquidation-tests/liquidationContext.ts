@@ -1,7 +1,7 @@
 import * as anchor from '@coral-xyz/anchor';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { TradeContext } from '../04_trade-tests/tradeContext';
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {PublicKey, TransactionInstruction} from '@solana/web3.js';
+import {TradeContext} from '../04_trade-tests/tradeContext';
+import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
 
 export interface LiquidationArgs {
     minOut: bigint;
@@ -13,19 +13,19 @@ export interface LiquidationArgs {
 }
 
 export const defaultLiquidateLongPositionArgs = <LiquidationArgs>{
-    minOut: BigInt(0),
-    interest: BigInt(1),
+    minOut:       BigInt(0),
+    interest:     BigInt(1),
     executionFee: BigInt(11),
-    swapIn: BigInt(1_900),
-    swapOut: BigInt(1_050),
+    swapIn:       BigInt(1_900),
+    swapOut:      BigInt(1_050),
 };
 
 export const defaultLiquidateShortPositionArgs = <LiquidationArgs>{
-    minOut: BigInt(0),
-    interest: BigInt(1),
+    minOut:       BigInt(0),
+    interest:     BigInt(1),
     executionFee: BigInt(11),
-    swapIn: BigInt(170),
-    swapOut: BigInt(1001),
+    swapIn:       BigInt(170),
+    swapOut:      BigInt(1001),
 };
 
 export class LiquidationContext extends TradeContext {
@@ -63,7 +63,7 @@ export class LiquidationContext extends TradeContext {
         authority,
     }: LiquidationArgs = defaultLiquidateLongPositionArgs) {
         const instructions = await Promise.all([
-            this.liquidateLongPositionSetup({ minOut, interest, executionFee }),
+            this.liquidateLongPositionSetup({minOut, interest, executionFee}),
             this.createBASwapIx({
                 swapIn,
                 swapOut,
@@ -86,7 +86,7 @@ export class LiquidationContext extends TradeContext {
         authority,
     }: LiquidationArgs = defaultLiquidateShortPositionArgs) {
         const instructions = await Promise.all([
-            this.liquidateShortPositionSetup({ minOut, interest, executionFee }),
+            this.liquidateShortPositionSetup({minOut, interest, executionFee}),
             this.createBASwapIx({
                 swapIn,
                 swapOut,
@@ -119,12 +119,12 @@ export class LiquidationContext extends TradeContext {
                 new anchor.BN(expiration)
             ).accountsPartial({
                 closePositionSetup: {
-                    owner: this.program.provider.publicKey,
-                    position: this.longPosition,
-                    pool: this.longPool,
-                    collateral: this.collateral,
-                    authority: this.SWAP_AUTHORITY.publicKey,
-                    permission: this.swapPermission,
+                    owner:        this.program.provider.publicKey,
+                    position:     this.longPosition,
+                    pool:         this.longPool,
+                    collateral:   this.collateral,
+                    authority:    this.SWAP_AUTHORITY.publicKey,
+                    permission:   this.swapPermission,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             }).instruction();
@@ -133,17 +133,17 @@ export class LiquidationContext extends TradeContext {
     async liquidateLongPositionCleanup(authority: PublicKey = this.SWAP_AUTHORITY.publicKey) {
         return await this.program.methods.liquidatePositionCleanup().accountsPartial({
             closePositionCleanup: {
-                owner: this.program.provider.publicKey,
-                ownerPayoutAccount: this.ownerCurrencyAta,
-                position: this.longPosition,
-                pool: this.longPool,
-                currency: this.currency,
-                collateral: this.collateral,
+                owner:                  this.program.provider.publicKey,
+                ownerPayoutAccount:     this.ownerCurrencyAta,
+                position:               this.longPosition,
+                pool:                   this.longPool,
+                currency:               this.currency,
+                collateral:             this.collateral,
                 authority,
-                lpVault: this.lpVault,
-                feeWallet: this.feeWallet,
-                liquidationWallet: this.liquidationWallet,
-                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                lpVault:                this.lpVault,
+                feeWallet:              this.feeWallet,
+                liquidationWallet:      this.liquidationWallet,
+                currencyTokenProgram:   TOKEN_PROGRAM_ID,
                 collateralTokenProgram: TOKEN_PROGRAM_ID,
             },
         }).instruction();
@@ -167,12 +167,12 @@ export class LiquidationContext extends TradeContext {
             new anchor.BN(expiration)
         ).accountsPartial({
             closePositionSetup: {
-                owner: this.program.provider.publicKey,
-                position: this.shortPosition,
-                pool: this.shortPool,
-                collateral: this.collateral,
-                authority: this.SWAP_AUTHORITY.publicKey,
-                permission: this.swapPermission,
+                owner:        this.program.provider.publicKey,
+                position:     this.shortPosition,
+                pool:         this.shortPool,
+                collateral:   this.collateral,
+                authority:    this.SWAP_AUTHORITY.publicKey,
+                permission:   this.swapPermission,
                 tokenProgram: TOKEN_PROGRAM_ID,
             }
         }).instruction();
@@ -181,18 +181,18 @@ export class LiquidationContext extends TradeContext {
     async liquidateShortPositionCleanup(authority: PublicKey = this.SWAP_AUTHORITY.publicKey) {
         return await this.program.methods.liquidatePositionCleanup().accountsPartial({
             closePositionCleanup: {
-                owner: this.program.provider.publicKey,
-                ownerPayoutAccount: this.ownerCollateralAta,
-                position: this.shortPosition,
-                pool: this.shortPool,
-                collateral: this.collateral,
-                currency: this.currency,
+                owner:                  this.program.provider.publicKey,
+                ownerPayoutAccount:     this.ownerCollateralAta,
+                position:               this.shortPosition,
+                pool:                   this.shortPool,
+                collateral:             this.collateral,
+                currency:               this.currency,
                 authority,
-                lpVault: this.lpVault,
-                feeWallet: this.feeWallet,
-                liquidationWallet: this.liquidationWallet,
+                lpVault:                this.lpVault,
+                feeWallet:              this.feeWallet,
+                liquidationWallet:      this.liquidationWallet,
                 collateralTokenProgram: TOKEN_PROGRAM_ID,
-                currencyTokenProgram: TOKEN_PROGRAM_ID,
+                currencyTokenProgram:   TOKEN_PROGRAM_ID,
             }
         }).instruction();
     }

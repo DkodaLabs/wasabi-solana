@@ -1,8 +1,8 @@
 import * as anchor from '@coral-xyz/anchor';
-import { PublicKey, TransactionInstruction } from '@solana/web3.js';
-import { TradeContext } from '../04_trade-tests/tradeContext';
-import { WASABI_PROGRAM_ID } from "../hooks/rootHook";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import {PublicKey, TransactionInstruction} from '@solana/web3.js';
+import {TradeContext} from '../04_trade-tests/tradeContext';
+import {WASABI_PROGRAM_ID} from "../hooks/rootHook";
+import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
 
 export interface OrderInitArgs {
     makerAmount?: bigint;
@@ -23,28 +23,35 @@ export const defaultInitTakeProfitOrderArgs = <OrderInitArgs>{
 
 export const defaultInitStopLossOrderArgs = <OrderInitArgs>{
     makerAmount: BigInt(100),
-    takerAmount: BigInt(2_000),
+    takerAmount: BigInt(2000),
 }
 
 export const defaultLongTakeProfitOrderArgs = <OrderArgs>{
-    interest: BigInt(1),
+    interest:     BigInt(1),
     executionFee: BigInt(11),
-    swapIn: BigInt(1_900),
-    swapOut: BigInt(2_100),
+    swapIn:       BigInt(1_900),
+    swapOut:      BigInt(2_100),
 };
 
 export const defaultShortTakeProfitOrderArgs = <OrderArgs>{
-    interest: BigInt(1),
+    interest:     BigInt(1),
     executionFee: BigInt(11),
-    swapIn: BigInt(70),
-    swapOut: BigInt(1001),
+    swapIn:       BigInt(70),
+    swapOut:      BigInt(1001),
 };
 
-export const defaultStopLossOrderArgs = <OrderArgs>{
-    interest: BigInt(10),
+export const defaultLongStopLossOrderArgs = <OrderArgs>{
+    interest:     BigInt(1),
     executionFee: BigInt(11),
-    swapIn: BigInt(100),
-    swapOut: BigInt(1101),
+    swapIn:       BigInt(1900),
+    swapOut:      BigInt(1080),
+};
+
+export const defaultShortStopLossOrderArgs = <OrderArgs>{
+    interest:     BigInt(1),
+    executionFee: BigInt(11),
+    swapIn:       BigInt(90),
+    swapOut:      BigInt(1001),
 };
 
 export class OrderContext extends TradeContext {
@@ -149,7 +156,7 @@ export class OrderContext extends TradeContext {
         swapOut,
     }: OrderArgs = defaultLongTakeProfitOrderArgs) {
         const instructions = await Promise.all([
-            this.takeProfitSetup({ interest, executionFee }),
+            this.takeProfitSetup({interest, executionFee}),
             this.isLongTest ?
                 this.createBASwapIx({
                     swapIn,
@@ -189,13 +196,13 @@ export class OrderContext extends TradeContext {
             )
             .accounts({
                 closePositionSetup: {
-                    owner: this.program.provider.publicKey,
-                    position: position,
-                    pool: pool,
+                    owner:      this.program.provider.publicKey,
+                    position:   position,
+                    pool:       pool,
                     collateral: this.collateral,
                     //@ts-ignore
-                    authority: this.SWAP_AUTHORITY.publicKey,
-                    permission: this.swapPermission,
+                    authority:    this.SWAP_AUTHORITY.publicKey,
+                    permission:   this.swapPermission,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             })
@@ -212,20 +219,20 @@ export class OrderContext extends TradeContext {
             .accounts({
                 closePositionCleanup: {
                     //@ts-ignore
-                    owner: this.program.provider.publicKey,
+                    owner:                  this.program.provider.publicKey,
                     ownerPayoutAccount,
-                    position: position,
-                    pool: pool,
-                    currency: this.currency,
-                    collateral: this.collateral,
-                    authority: signer.publicKey,
-                    lpVault: this.lpVault,
-                    feeWallet: this.feeWallet,
-                    liquidationWallet: this.liquidationWallet,
-                    currencyTokenProgram: TOKEN_PROGRAM_ID,
+                    position:               position,
+                    pool:                   pool,
+                    currency:               this.currency,
+                    collateral:             this.collateral,
+                    authority:              signer.publicKey,
+                    lpVault:                this.lpVault,
+                    feeWallet:              this.feeWallet,
+                    liquidationWallet:      this.liquidationWallet,
+                    currencyTokenProgram:   TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID,
                 },
-                takeProfitOrder: takeProfitOrder,
+                takeProfitOrder:      takeProfitOrder,
             })
             .instruction();
     }
@@ -237,9 +244,9 @@ export class OrderContext extends TradeContext {
         const baseMethodCall = this.program.methods.closeTakeProfitOrder().accounts({
             closer,
             //@ts-ignore
-            trader: this.program.provider.publicKey,
+            trader:     this.program.provider.publicKey,
             permission: this.swapPermission,
-            position: position,
+            position:   position,
         });
 
         if (signer) {
@@ -263,7 +270,7 @@ export class OrderContext extends TradeContext {
             )
             .accounts({
                 //@ts-ignore
-                trader: this.program.provider.publicKey,
+                trader:   this.program.provider.publicKey,
                 position: position,
             })
             .rpc();
@@ -274,9 +281,9 @@ export class OrderContext extends TradeContext {
         executionFee,
         swapIn,
         swapOut,
-    }: OrderArgs = defaultStopLossOrderArgs) {
+    }: OrderArgs) {
         const instructions = await Promise.all([
-            this.stopLossSetup({ interest, executionFee }),
+            this.stopLossSetup({interest, executionFee}),
             this.isLongTest ?
                 this.createBASwapIx({
                     swapIn,
@@ -284,7 +291,7 @@ export class OrderContext extends TradeContext {
                     poolAtaA: this.longPoolCurrencyVault,
                     poolAtaB: this.longPoolCollateralVault
                 }) :
-                this.createABSwapIx({
+                this.createBASwapIx({
                     swapIn,
                     swapOut,
                     poolAtaA: this.shortPoolCurrencyVault,
@@ -304,8 +311,10 @@ export class OrderContext extends TradeContext {
         executionFee: bigint,
     }) {
         const expiration = Date.now() / 1_000 + 60 * 60;
-        const position = this.isLongTest ? this.longPosition : this.shortPosition;
-        const pool = this.isLongTest ? this.longPool : this.shortPool;
+        const [position, pool] = this.isLongTest ? [this.longPosition, this.longPool] : [
+            this.shortPosition,
+            this.shortPool
+        ];
 
         return await this.program.methods
             .stopLossSetup(
@@ -316,13 +325,13 @@ export class OrderContext extends TradeContext {
             )
             .accounts({
                 closePositionSetup: {
-                    owner: this.program.provider.publicKey,
-                    position: position,
-                    pool: pool,
+                    owner:      this.program.provider.publicKey,
+                    position:   position,
+                    pool:       pool,
                     collateral: this.collateral,
                     //@ts-ignore
-                    authority: this.SWAP_AUTHORITY.publicKey,
-                    permission: this.swapPermission,
+                    authority:    this.SWAP_AUTHORITY.publicKey,
+                    permission:   this.swapPermission,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             })
@@ -330,28 +339,28 @@ export class OrderContext extends TradeContext {
     }
 
     async stopLossCleanup(signer: anchor.web3.Keypair) {
-        const position = this.isLongTest ? this.longPosition : this.shortPosition;
-        const pool = this.isLongTest ? this.longPool : this.shortPool;
-        const stopLossOrder = this.isLongTest ? this.longStopLossOrder : this.shortStopLossOrder;
+        const [position, pool, stopLossOrder, ownerPayoutAccount] = this.isLongTest ?
+            [this.longPosition, this.longPool, this.longStopLossOrder, this.ownerCurrencyAta] :
+            [this.shortPosition, this.shortPool, this.shortStopLossOrder, this.ownerCollateralAta];
 
         return await this.program.methods.stopLossCleanup()
             .accounts({
                 closePositionCleanup: {
                     //@ts-ignore
-                    owner: this.program.provider.publicKey,
-                    ownerPayoutAccount: this.ownerCurrencyAta,
-                    position: position,
-                    pool: pool,
-                    currency: this.currency,
-                    collateral: this.collateral,
-                    authority: signer.publicKey,
-                    lpVault: this.lpVault,
-                    feeWallet: this.feeWallet,
-                    liquidationWallet: this.liquidationWallet,
-                    currencyTokenProgram: TOKEN_PROGRAM_ID,
+                    owner:                  this.program.provider.publicKey,
+                    ownerPayoutAccount,
+                    position,
+                    pool,
+                    currency:               this.currency,
+                    collateral:             this.collateral,
+                    authority:              signer.publicKey,
+                    lpVault:                this.lpVault,
+                    feeWallet:              this.feeWallet,
+                    liquidationWallet:      this.liquidationWallet,
+                    currencyTokenProgram:   TOKEN_PROGRAM_ID,
                     collateralTokenProgram: TOKEN_PROGRAM_ID,
                 },
-                stopLossOrder: stopLossOrder,
+                stopLossOrder,
             })
             .instruction();
     }
@@ -363,9 +372,9 @@ export class OrderContext extends TradeContext {
         const baseMethodCall = this.program.methods.closeStopLossOrder().accounts({
             closer,
             //@ts-ignore
-            trader: this.program.provider.publicKey,
+            trader:     this.program.provider.publicKey,
             permission: this.swapPermission,
-            position: position,
+            position:   position,
         });
 
         if (signer) {

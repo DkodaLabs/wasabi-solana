@@ -1,6 +1,6 @@
-import { assert } from "chai";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { getMultipleTokenAccounts } from "../utils";
+import {assert} from "chai";
+import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {getMultipleTokenAccounts} from "../utils";
 import {
     OrderContext,
     OrderArgs,
@@ -9,9 +9,14 @@ import {
     defaultInitTakeProfitOrderArgs,
     defaultShortTakeProfitOrderArgs
 } from "./orderContext";
-import { defaultLongTakeProfitOrderArgs, defaultStopLossOrderArgs } from "./orderContext";
+import {
+    defaultLongTakeProfitOrderArgs,
+    defaultLongStopLossOrderArgs,
+    defaultShortStopLossOrderArgs
+} from "./orderContext";
 import * as anchor from '@coral-xyz/anchor';
-import { TransactionInstruction } from "@solana/web3.js";
+import {TransactionInstruction} from "@solana/web3.js";
+import {owner} from "../../scripts/raydiumConfig";
 
 export const validateExecuteTakeProfitOrder = async (
     ctx: OrderContext, {
@@ -25,11 +30,12 @@ export const validateExecuteTakeProfitOrder = async (
         swapOut,
     }: OrderArgs = ctx.isLongTest ? defaultLongTakeProfitOrderArgs : defaultShortTakeProfitOrderArgs
 ) => {
-    const position = ctx.isLongTest ? ctx.longPosition : ctx.shortPosition;
-    const takeProfitOrder = ctx.isLongTest ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
+    const [position, takeProfitOrder, ownerPayoutAccount] = ctx.isLongTest
+        ? [ctx.longPosition, ctx.longTakeProfitOrder, ctx.ownerCurrencyAta]
+        : [ctx.shortPosition, ctx.shortTakeProfitOrder, ctx.ownerCollateralAta];
 
     // Initialize the take profit order
-    await ctx.initTakeProfitOrder({ makerAmount, takerAmount });
+    await ctx.initTakeProfitOrder({makerAmount, takerAmount});
 
     // Verify the take profit order was created correctly
     const orderBefore = await ctx.program.account.takeProfitOrder.fetch(takeProfitOrder);
@@ -45,14 +51,14 @@ export const validateExecuteTakeProfitOrder = async (
         ctx.program.provider.connection,
         [
             ctx.vault,
-            ctx.isLongTest ? ctx.ownerCurrencyAta : ctx.ownerCollateralAta,
+            ownerPayoutAccount,
             ctx.feeWallet,
         ],
         TOKEN_PROGRAM_ID
     );
 
     // Execute the take profit order
-    await ctx.executeTakeProfitOrder({ interest, executionFee, swapIn, swapOut });
+    await ctx.executeTakeProfitOrder({interest, executionFee, swapIn, swapOut});
 
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(position);
@@ -67,7 +73,7 @@ export const validateExecuteTakeProfitOrder = async (
         ctx.program.provider.connection,
         [
             ctx.vault,
-            ctx.isLongTest ? ctx.ownerCurrencyAta : ctx.ownerCollateralAta,
+            ownerPayoutAccount,
             ctx.feeWallet,
         ],
         TOKEN_PROGRAM_ID
@@ -102,7 +108,11 @@ export const validateExecuteTakeProfitOrder = async (
 
     // Verify fee wallet received execution fee
     const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-    assert.equal(feeBalanceDiff.toString(), ctx.takeProfitEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
+    assert.equal(
+        feeBalanceDiff.toString(),
+        ctx.takeProfitEvent.feeAmount.toString(),
+        "Fee wallet should receive execution fee"
+    );
 }
 
 export const validateExecuteStopLossOrder = async (
@@ -115,13 +125,14 @@ export const validateExecuteStopLossOrder = async (
         executionFee,
         swapIn,
         swapOut,
-    }: OrderArgs = defaultStopLossOrderArgs
+    }: OrderArgs = ctx.isLongTest ? defaultLongStopLossOrderArgs : defaultShortStopLossOrderArgs
 ) => {
-    const position = ctx.isLongTest ? ctx.longPosition : ctx.shortPosition;
-    const stopLossOrder = ctx.isLongTest ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
+    const [position, stopLossOrder, ownerPayoutAccount] = ctx.isLongTest
+        ? [ctx.longPosition, ctx.longStopLossOrder, ctx.ownerCurrencyAta]
+        : [ctx.shortPosition, ctx.shortStopLossOrder, ctx.ownerCollateralAta];
 
     // Initialize the stop loss order
-    await ctx.initStopLossOrder({ makerAmount, takerAmount });
+    await ctx.initStopLossOrder({makerAmount, takerAmount});
 
     // Verify the stop loss order was created correctly
     const orderBefore = await ctx.program.account.stopLossOrder.fetch(stopLossOrder);
@@ -133,18 +144,18 @@ export const validateExecuteStopLossOrder = async (
     const positionBefore = await ctx.program.account.position.fetch(position);
 
     // Get token account balances before execution
-    const [vaultBefore, ownerTokenABefore, feeBalanceBefore] = await getMultipleTokenAccounts(
+    const [vaultBefore, ownerTokenBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
         ctx.program.provider.connection,
         [
             ctx.vault,
-            ctx.ownerCurrencyAta,
+            ownerPayoutAccount,
             ctx.feeWallet,
         ],
         TOKEN_PROGRAM_ID
     );
 
     // Execute the stop loss order
-    await ctx.executeStopLossOrder({ interest, executionFee, swapIn, swapOut });
+    await ctx.executeStopLossOrder({interest, executionFee, swapIn, swapOut});
 
     // Verify position is closed
     const positionAfter = await ctx.program.account.position.fetchNullable(position);
@@ -155,11 +166,11 @@ export const validateExecuteStopLossOrder = async (
     assert.isNull(orderAfter, "Stop loss order should be closed");
 
     // Get token account balances after execution
-    const [vaultAfter, ownerTokenAAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
+    const [vaultAfter, ownerTokenAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
         ctx.program.provider.connection,
         [
             ctx.vault,
-            ctx.ownerCurrencyAta,
+            ownerPayoutAccount,
             ctx.feeWallet,
         ],
         TOKEN_PROGRAM_ID
@@ -188,13 +199,17 @@ export const validateExecuteStopLossOrder = async (
     const vaultDiff = vaultAfter.amount - vaultBefore.amount;
     assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString(), "LP vault should receive principal + interest");
 
-    // Verify user received payout
-    const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-    assert.isTrue(ownerADiff > BigInt(0), "User should receive payout");
-
     // Verify fee wallet received execution fee
     const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-    assert.equal(feeBalanceDiff.toString(), ctx.stopLossEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
+    assert.equal(
+        feeBalanceDiff.toString(),
+        ctx.stopLossEvent.feeAmount.toString(),
+        "Fee wallet should receive execution fee"
+    );
+
+    // Verify user received payout
+    const ownerADiff = ownerTokenAfter.amount - ownerTokenBefore.amount;
+    assert.isTrue(ownerADiff > BigInt(0), "User should receive payout");
 }
 
 // Invalid order functions
@@ -206,7 +221,7 @@ export const validateInitTakeProfitOrder = async (ctx: OrderContext, {
     const takeProfitOrder = ctx.isLongTest ? ctx.longTakeProfitOrder : ctx.shortTakeProfitOrder;
 
     // Initialize the take profit order
-    await ctx.initTakeProfitOrder({ makerAmount, takerAmount });
+    await ctx.initTakeProfitOrder({makerAmount, takerAmount});
 
     // Verify the take profit order was created correctly
     const order = await ctx.program.account.takeProfitOrder.fetch(takeProfitOrder);
@@ -225,7 +240,7 @@ export const initStopLossOrder = async (ctx: OrderContext, {
     const stopLossOrder = ctx.isLongTest ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order
-    await ctx.initStopLossOrder({ makerAmount, takerAmount });
+    await ctx.initStopLossOrder({makerAmount, takerAmount});
 
     // Verify the stop loss order was created correctly
     const order = await ctx.program.account.stopLossOrder.fetch(stopLossOrder);
@@ -251,9 +266,9 @@ export const cancelTakeProfitOrderWithInvalidPermission = async (ctx: OrderConte
                 .accounts({
                     closer: ctx.NON_SWAP_AUTHORITY.publicKey,
                     //@ts-ignore
-                    trader: ctx.program.provider.publicKey,
+                    trader:     ctx.program.provider.publicKey,
                     permission: ctx.nonSwapPermission,
-                    position: position,
+                    position:   position,
                 })
                 .instruction()
         ], ctx.NON_SWAP_AUTHORITY);
@@ -288,9 +303,9 @@ export const cancelStopLossOrderWithInvalidPermission = async (ctx: OrderContext
                 .accounts({
                     closer: ctx.NON_SWAP_AUTHORITY.publicKey,
                     //@ts-ignore
-                    trader: ctx.program.provider.publicKey,
+                    trader:     ctx.program.provider.publicKey,
                     permission: ctx.nonSwapPermission,
-                    position: position,
+                    position:   position,
                 })
                 .instruction()
         ], ctx.NON_SWAP_AUTHORITY);
@@ -394,13 +409,13 @@ export const executeTakeProfitOrderWithInvalidAuthority = async (ctx: OrderConte
                 )
                 .accounts({
                     closePositionSetup: {
-                        owner: ctx.program.provider.publicKey,
-                        position: position,
-                        pool: ctx.isLongTest ? ctx.longPool : ctx.shortPool,
+                        owner:      ctx.program.provider.publicKey,
+                        position:   position,
+                        pool:       ctx.isLongTest ? ctx.longPool : ctx.shortPool,
                         collateral: ctx.collateral,
                         //@ts-ignore
-                        authority: ctx.NON_SWAP_AUTHORITY.publicKey,
-                        permission: ctx.nonSwapPermission,
+                        authority:    ctx.NON_SWAP_AUTHORITY.publicKey,
+                        permission:   ctx.nonSwapPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
@@ -409,15 +424,15 @@ export const executeTakeProfitOrderWithInvalidAuthority = async (ctx: OrderConte
                 ctx.createBASwapIx({
                     swapIn,
                     swapOut,
-                    poolAtaA: ctx.longPoolCurrencyVault,
-                    poolAtaB: ctx.longPoolCollateralVault,
+                    poolAtaA:  ctx.longPoolCurrencyVault,
+                    poolAtaB:  ctx.longPoolCollateralVault,
                     authority: ctx.NON_SWAP_AUTHORITY.publicKey
                 }) :
                 ctx.createBASwapIx({
                     swapIn,
                     swapOut,
-                    poolAtaA: ctx.shortPoolCurrencyVault,
-                    poolAtaB: ctx.shortPoolCollateralVault,
+                    poolAtaA:  ctx.shortPoolCurrencyVault,
+                    poolAtaB:  ctx.shortPoolCollateralVault,
                     authority: ctx.NON_SWAP_AUTHORITY.publicKey
                 }),
             ctx.takeProfitCleanup(ctx.NON_SWAP_AUTHORITY)
@@ -444,7 +459,7 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
     executionFee,
     swapIn,
     swapOut,
-}: OrderArgs = defaultStopLossOrderArgs) => {
+}: OrderArgs = ctx.isLongTest ? defaultLongStopLossOrderArgs : defaultShortTakeProfitOrderArgs) => {
     const position = ctx.isLongTest ? ctx.longPosition : ctx.shortPosition;
     const stopLossOrder = ctx.isLongTest ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
@@ -463,13 +478,13 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
                 )
                 .accounts({
                     closePositionSetup: {
-                        owner: ctx.program.provider.publicKey,
-                        position: position,
-                        pool: ctx.isLongTest ? ctx.longPool : ctx.shortPool,
+                        owner:      ctx.program.provider.publicKey,
+                        position:   position,
+                        pool:       ctx.isLongTest ? ctx.longPool : ctx.shortPool,
                         collateral: ctx.collateral,
                         //@ts-ignore
-                        authority: ctx.NON_SWAP_AUTHORITY.publicKey,
-                        permission: ctx.nonSwapPermission,
+                        authority:    ctx.NON_SWAP_AUTHORITY.publicKey,
+                        permission:   ctx.nonSwapPermission,
                         tokenProgram: TOKEN_PROGRAM_ID,
                     },
                 })
@@ -478,15 +493,15 @@ export const executeStopLossOrderWithInvalidAuthority = async (ctx: OrderContext
                 ctx.createBASwapIx({
                     swapIn,
                     swapOut,
-                    poolAtaA: ctx.longPoolCurrencyVault,
-                    poolAtaB: ctx.longPoolCollateralVault,
+                    poolAtaA:  ctx.longPoolCurrencyVault,
+                    poolAtaB:  ctx.longPoolCollateralVault,
                     authority: ctx.NON_SWAP_AUTHORITY.publicKey
                 }) :
-                ctx.createABSwapIx({
+                ctx.createBASwapIx({
                     swapIn,
                     swapOut,
-                    poolAtaA: ctx.shortPoolCurrencyVault,
-                    poolAtaB: ctx.shortPoolCollateralVault,
+                    poolAtaA:  ctx.shortPoolCurrencyVault,
+                    poolAtaB:  ctx.shortPoolCollateralVault,
                     authority: ctx.NON_SWAP_AUTHORITY.publicKey
                 }),
             ctx.stopLossCleanup(ctx.NON_SWAP_AUTHORITY)
@@ -568,13 +583,15 @@ export const executeTakeProfitOrderWithInvalidTakerAmount = async (ctx: OrderCon
 export const executeStopLossOrderWithInvalidTakerAmount = async (ctx: OrderContext, {
     interest,
     executionFee,
-}: OrderArgs = defaultStopLossOrderArgs) => {
+    swapIn,
+    swapOut,
+}: OrderArgs = ctx.isLongTest ? defaultLongStopLossOrderArgs : defaultShortStopLossOrderArgs) => {
     const stopLossOrder = ctx.isLongTest ? ctx.longStopLossOrder : ctx.shortStopLossOrder;
 
     // Initialize the stop loss order with high taker amount requirement
     await initStopLossOrder(ctx, {
         makerAmount: BigInt(100),
-        takerAmount: BigInt(10000), // Very high taker amount that won't be met
+        takerAmount: ctx.isLongTest ? BigInt(1000) : BigInt(500),
     });
 
     // Try to execute with insufficient swap amount
@@ -582,8 +599,8 @@ export const executeStopLossOrderWithInvalidTakerAmount = async (ctx: OrderConte
         await ctx.executeStopLossOrder({
             interest,
             executionFee,
-            swapIn: BigInt(1900), // Small swap amount
-            swapOut: BigInt(2000), // Small swap out amount
+            swapIn,
+            swapOut,
         });
 
         assert.fail("Should have failed with taker amount not met");

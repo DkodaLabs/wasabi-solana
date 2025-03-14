@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor"
-import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { TransactionInstruction } from "@solana/web3.js";
+import {getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {TransactionInstruction} from "@solana/web3.js";
 import {
     TradeContext,
     OpenPositionArgs,
@@ -10,8 +10,8 @@ import {
     defaultCloseLongPositionArgs,
     defaultCloseShortPositionArgs
 } from "./tradeContext";
-import { assert } from "chai";
-import { AnchorError, ProgramError } from "@coral-xyz/anchor";
+import {assert} from "chai";
+import {AnchorError, ProgramError} from "@coral-xyz/anchor";
 
 /**
  * Invalid Open Positions
@@ -24,11 +24,11 @@ export const openLongPositionWithInvalidSetup = async (ctx: TradeContext, {
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
         const instructions = await Promise.all([
-            ctx.openLongPositionSetup({ minOut, downPayment, principal, fee }),
-            ctx.openLongPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
+            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
         ])
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -45,19 +45,19 @@ export const openLongPositionWithInvalidSetup = async (ctx: TradeContext, {
 };
 
 export const openShortPositionWithInvalidSetup = async (ctx: TradeContext, {
-    minOut,
-    downPayment,
-    principal,
-    fee,
-}: OpenPositionArgs = defaultOpenShortPositionArgs
+        minOut,
+        downPayment,
+        principal,
+        fee,
+    }: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
     try {
         const instructions = await Promise.all([
-            ctx.openShortPositionSetup({ minOut, downPayment, principal, fee }),
-            ctx.openShortPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
+            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
         ])
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -83,7 +83,7 @@ export const openLongPositionWithoutCleanup = async (ctx: TradeContext, {
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
         const instructions = await Promise.all([
-            ctx.openLongPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
                 swapIn,
                 swapOut,
@@ -92,7 +92,7 @@ export const openLongPositionWithoutCleanup = async (ctx: TradeContext, {
             }),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
         assert.ok(false);
     } catch (err) {
         // 'Missing cleanup'
@@ -117,7 +117,7 @@ export const openShortPositionWithoutCleanup = async (ctx: TradeContext, {
 }: OpenPositionArgs = defaultOpenShortPositionArgs) => {
     try {
         const instructions = await Promise.all([
-            ctx.openShortPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
                 swapIn,
                 swapOut,
@@ -126,7 +126,7 @@ export const openShortPositionWithoutCleanup = async (ctx: TradeContext, {
             }),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -161,15 +161,15 @@ export const openShortPositionWithInvalidPool = async (ctx: TradeContext, {
 
         // Setup the position and swap instructions normally
         const setupIx = await ctx.openShortPositionSetup({
-            minOut: minOut || defaultOpenShortPositionArgs.minOut,
+            minOut:      minOut || defaultOpenShortPositionArgs.minOut,
             downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
-            principal: principal || defaultOpenShortPositionArgs.principal,
-            fee: fee || defaultOpenShortPositionArgs.fee
+            principal:   principal || defaultOpenShortPositionArgs.principal,
+            fee:         fee || defaultOpenShortPositionArgs.fee
         });
 
         const swapIx = await ctx.createABSwapIx({
-            swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
-            swapOut: swapOut || defaultOpenShortPositionArgs.swapOut,
+            swapIn:   swapIn || defaultOpenShortPositionArgs.swapIn,
+            swapOut:  swapOut || defaultOpenShortPositionArgs.swapOut,
             poolAtaA: ctx.shortPoolCurrencyVault,
             poolAtaB: ctx.shortPoolCollateralVault
         });
@@ -184,7 +184,7 @@ export const openShortPositionWithInvalidPool = async (ctx: TradeContext, {
 
         // Flatten all instructions and send them
         const instructions = [setupIx, ...swapIx, cleanupIx];
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown an error");
     } catch (err) {
@@ -221,15 +221,15 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
 
         // Setup the position and swap instructions normally
         const setupIx = await ctx.openLongPositionSetup({
-            minOut: minOut || defaultOpenLongPositionArgs.minOut,
+            minOut:      minOut || defaultOpenLongPositionArgs.minOut,
             downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
-            principal: principal || defaultOpenLongPositionArgs.principal,
-            fee: fee || defaultOpenLongPositionArgs.fee
+            principal:   principal || defaultOpenLongPositionArgs.principal,
+            fee:         fee || defaultOpenLongPositionArgs.fee
         });
 
         const swapIx = await ctx.createABSwapIx({
-            swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-            swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+            swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+            swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
             poolAtaA: ctx.longPoolCurrencyVault,
             poolAtaB: ctx.longPoolCollateralVault
         });
@@ -244,7 +244,7 @@ export const openLongPositionWithInvalidPool = async (ctx: TradeContext, {
 
         // Flatten all instructions and send them
         const instructions = [setupIx, ...swapIx, cleanupIx];
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown an error");
     } catch (err) {
@@ -277,12 +277,12 @@ export const openLongPositionWithoutCosigner = async (ctx: TradeContext, {
                 downPayment,
                 principal,
                 fee,
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapIn:  swapIn || defaultOpenLongPositionArgs.swapIn,
                 swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
             }),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
@@ -322,14 +322,14 @@ export const openLongPositionSetupWithoutCosigner = async (ctx: TradeContext, {
         new anchor.BN(fee ? fee.toString() : defaultOpenLongPositionArgs.fee.toString()),
         new anchor.BN(now + 3600),
     ).accountsPartial({
-        owner: ctx.program.provider.publicKey,
-        lpVault: ctx.lpVault,
-        pool: ctx.longPool,
-        collateral: ctx.collateral,
-        currency: ctx.currency,
-        authority: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-        permission: ctx.nonSwapPermission,
-        feeWallet: ctx.feeWallet,
+        owner:        ctx.program.provider.publicKey,
+        lpVault:      ctx.lpVault,
+        pool:         ctx.longPool,
+        collateral:   ctx.collateral,
+        currency:     ctx.currency,
+        authority:    ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
+        permission:   ctx.nonSwapPermission,
+        feeWallet:    ctx.feeWallet,
         tokenProgram: TOKEN_PROGRAM_ID,
     }).instruction();
 };
@@ -350,18 +350,18 @@ export const openShortPositionWithoutCosigner = async (ctx: TradeContext, {
         new anchor.BN(fee ? fee.toString() : defaultOpenShortPositionArgs.fee.toString()),
         new anchor.BN(now + 3600),
     ).accountsPartial({
-        owner: ctx.program.provider.publicKey,
-        lpVault: ctx.lpVault,
-        vault: ctx.vault,
-        pool: ctx.shortPool,
-        collateral: ctx.collateral,
-        currency: ctx.currency,
-        collateralVault: ctx.shortPoolCollateralVault,
-        currencyVault: ctx.shortPoolCurrencyVault,
-        authority: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-        permission: ctx.nonSwapPermission,
-        feeWallet: ctx.feeWallet,
-        currencyTokenProgram: TOKEN_PROGRAM_ID,
+        owner:                  ctx.program.provider.publicKey,
+        lpVault:                ctx.lpVault,
+        vault:                  ctx.vault,
+        pool:                   ctx.shortPool,
+        collateral:             ctx.collateral,
+        currency:               ctx.currency,
+        collateralVault:        ctx.shortPoolCollateralVault,
+        currencyVault:          ctx.shortPoolCurrencyVault,
+        authority:              ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
+        permission:             ctx.nonSwapPermission,
+        feeWallet:              ctx.feeWallet,
+        currencyTokenProgram:   TOKEN_PROGRAM_ID,
         collateralTokenProgram: TOKEN_PROGRAM_ID,
     }).instruction();
 };
@@ -382,16 +382,16 @@ export const openShortPositionSetupWithoutCosigner = async (ctx: TradeContext, {
         new anchor.BN(fee.toString()),
         new anchor.BN(now + 3600),
     ).accountsPartial({
-        owner: ctx.program.provider.publicKey,
-        lpVault: ctx.lpVault,
-        pool: ctx.shortPool,
-        collateral: ctx.collateral,
-        currency: ctx.currency,
-        authority: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-        permission: ctx.nonSwapPermission,
-        feeWallet: ctx.feeWallet,
+        owner:                  ctx.program.provider.publicKey,
+        lpVault:                ctx.lpVault,
+        pool:                   ctx.shortPool,
+        collateral:             ctx.collateral,
+        currency:               ctx.currency,
+        authority:              ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
+        permission:             ctx.nonSwapPermission,
+        feeWallet:              ctx.feeWallet,
         collateralTokenProgram: TOKEN_PROGRAM_ID,
-        currencyTokenProgram: TOKEN_PROGRAM_ID,
+        currencyTokenProgram:   TOKEN_PROGRAM_ID,
     }).instruction();
 };
 
@@ -407,27 +407,27 @@ export const openShortPositionWithInvalidPosition = async (ctx: TradeContext, {
     try {
         // First run a successful position creation
         await ctx.openShortPosition({
-            minOut: minOut || defaultOpenShortPositionArgs.minOut,
+            minOut:      minOut || defaultOpenShortPositionArgs.minOut,
             downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
-            principal: principal || defaultOpenShortPositionArgs.principal,
-            fee: fee || defaultOpenShortPositionArgs.fee,
-            swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
-            swapOut: swapOut || defaultOpenShortPositionArgs.swapOut
+            principal:   principal || defaultOpenShortPositionArgs.principal,
+            fee:         fee || defaultOpenShortPositionArgs.fee,
+            swapIn:      swapIn || defaultOpenShortPositionArgs.swapIn,
+            swapOut:     swapOut || defaultOpenShortPositionArgs.swapOut
         });
 
         // Now try to create it again, which should fail
         const instructions = await Promise.all([
-            ctx.openShortPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenShortPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenShortPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenShortPositionArgs.swapOut,
                 poolAtaA: ctx.shortPoolCurrencyVault,
                 poolAtaB: ctx.shortPoolCollateralVault
             }),
             ctx.openShortPositionCleanup(),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown an error");
     } catch (err) {
@@ -452,27 +452,27 @@ export const openLongPositionWithInvalidPosition = async (ctx: TradeContext, {
     try {
         // First run a successful position creation
         await ctx.openLongPosition({
-            minOut: minOut || defaultOpenLongPositionArgs.minOut,
+            minOut:      minOut || defaultOpenLongPositionArgs.minOut,
             downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
-            principal: principal || defaultOpenLongPositionArgs.principal,
-            fee: fee || defaultOpenLongPositionArgs.fee,
-            swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-            swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
+            principal:   principal || defaultOpenLongPositionArgs.principal,
+            fee:         fee || defaultOpenLongPositionArgs.fee,
+            swapIn:      swapIn || defaultOpenLongPositionArgs.swapIn,
+            swapOut:     swapOut || defaultOpenLongPositionArgs.swapOut
         });
 
         // Now try to create it again, which should fail
         const instructions = await Promise.all([
-            ctx.openLongPositionSetup({ minOut, downPayment, principal, fee }),
+            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
             ctx.createABSwapIx({
-                swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenLongPositionArgs.swapOut,
+                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
             ctx.openLongPositionCleanup(),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown an error");
     } catch (err) {
@@ -503,14 +503,14 @@ export const closeLongPositionWithIncorrectOwner = async (ctx: TradeContext, {
                 new anchor.BN(executionFee.toString()),
                 new anchor.BN(Date.now() / 1_000 + 60 * 60),
             ).accountsPartial({
-                owner: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
+                owner:              ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
                 closePositionSetup: {
-                    pool: ctx.longPool,
-                    owner: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
-                    collateral: ctx.collateral,
-                    position: ctx.longPosition,
-                    permission: ctx.swapPermission,
-                    authority: ctx.SWAP_AUTHORITY.publicKey,
+                    pool:         ctx.longPool,
+                    owner:        ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
+                    collateral:   ctx.collateral,
+                    position:     ctx.longPosition,
+                    permission:   ctx.swapPermission,
+                    authority:    ctx.SWAP_AUTHORITY.publicKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             }).instruction(),
@@ -525,7 +525,7 @@ export const closeLongPositionWithIncorrectOwner = async (ctx: TradeContext, {
             ctx.closeLongPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -555,14 +555,14 @@ export const closeLongPositionWithoutCosigner = async (ctx: TradeContext, {
                 new anchor.BN(executionFee.toString()),
                 new anchor.BN(Date.now() / 1_000 + 60 * 60),
             ).accountsPartial({
-                owner: ctx.program.provider.publicKey,
+                owner:              ctx.program.provider.publicKey,
                 closePositionSetup: {
-                    pool: ctx.longPool,
-                    owner: ctx.program.provider.publicKey,
-                    collateral: ctx.collateral,
-                    position: ctx.longPosition,
-                    permission: ctx.nonSwapPermission, // Valid permission w/o singer permission
-                    authority: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
+                    pool:         ctx.longPool,
+                    owner:        ctx.program.provider.publicKey,
+                    collateral:   ctx.collateral,
+                    position:     ctx.longPosition,
+                    permission:   ctx.nonSwapPermission, // Valid permission w/o singer permission
+                    authority:    ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             }).instruction(),
@@ -601,13 +601,13 @@ export const closeLongPositionWithInvalidSetup = async (ctx: TradeContext, {
 }: ClosePositionArgs = defaultCloseLongPositionArgs) => {
     try {
         const instructions = await ctx.closeLongPositionSetup({
-            minOut: minOut || defaultCloseLongPositionArgs.minOut,
-            interest: interest || defaultCloseLongPositionArgs.interest,
+            minOut:       minOut || defaultCloseLongPositionArgs.minOut,
+            interest:     interest || defaultCloseLongPositionArgs.interest,
             executionFee: executionFee || defaultCloseLongPositionArgs.executionFee,
         });
         const cleanup = await ctx.closeLongPositionCleanup();
 
-        await ctx.send([instructions, instructions, cleanup]);
+        await ctx.send([instructions, instructions, cleanup], ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -633,7 +633,7 @@ export const closeLongPositionWithoutCleanup = async (ctx: TradeContext, {
                 interest,
                 executionFee
             })
-        ]);
+        ], ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -662,14 +662,14 @@ export const closeShortPositionWithIncorrectOwner = async (ctx: TradeContext, {
                 new anchor.BN(executionFee.toString()),
                 new anchor.BN(Date.now() / 1_000 + 60 * 60),
             ).accountsPartial({
-                owner: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
+                owner:              ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
                 closePositionSetup: {
-                    pool: ctx.shortPool,
-                    owner: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
-                    collateral: ctx.collateral,
-                    position: ctx.shortPosition,
-                    permission: ctx.swapPermission,
-                    authority: ctx.SWAP_AUTHORITY.publicKey,
+                    pool:         ctx.shortPool,
+                    owner:        ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect owner
+                    collateral:   ctx.collateral,
+                    position:     ctx.shortPosition,
+                    permission:   ctx.swapPermission,
+                    authority:    ctx.SWAP_AUTHORITY.publicKey,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
             }).instruction(),
@@ -684,7 +684,7 @@ export const closeShortPositionWithIncorrectOwner = async (ctx: TradeContext, {
             ctx.closeShortPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -714,17 +714,17 @@ export const closeShortPositionWithoutCosigner = async (ctx: TradeContext, {
                 new anchor.BN(executionFee.toString()),
                 new anchor.BN(Date.now() / 1_000 + 60 * 60),
             ).accountsPartial({
-                owner: ctx.program.provider.publicKey,
+                owner:              ctx.program.provider.publicKey,
                 closePositionSetup: {
-                    pool: ctx.longPool,
-                    owner: ctx.program.provider.publicKey,
-                    collateral: ctx.collateral,
+                    pool:            ctx.longPool,
+                    owner:           ctx.program.provider.publicKey,
+                    collateral:      ctx.collateral,
                     collateralVault: ctx.shortPoolCollateralVault,
-                    currencyVault: ctx.shortPoolCurrencyVault,
-                    position: ctx.shortPosition,
-                    permission: ctx.nonSwapPermission, // Valid permission w/o singer permission
-                    authority: ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
-                    tokenProgram: TOKEN_PROGRAM_ID,
+                    currencyVault:   ctx.shortPoolCurrencyVault,
+                    position:        ctx.shortPosition,
+                    permission:      ctx.nonSwapPermission, // Valid permission w/o singer permission
+                    authority:       ctx.NON_SWAP_AUTHORITY.publicKey, // Incorrect authority
+                    tokenProgram:    TOKEN_PROGRAM_ID,
                 },
             }).instruction(),
 
@@ -766,7 +766,7 @@ export const closeShortPositionWithInvalidSetup = async (ctx: TradeContext, {
         });
 
         const cleanup = await ctx.closeShortPositionCleanup();
-        await ctx.send([instructions, instructions, cleanup]);
+        await ctx.send([instructions, instructions, cleanup], ctx.SWAP_AUTHORITY);
 
         assert.ok(false);
     } catch (err) {
@@ -792,7 +792,7 @@ export const closeShortPositionWithoutCleanup = async (ctx: TradeContext, {
                 interest,
                 executionFee
             })
-        ]);
+        ], ctx.SWAP_AUTHORITY);
         assert.ok(false);
     } catch (err) {
         // 'Missing cleanup'
@@ -824,15 +824,15 @@ export const closeLongPositionWithBadDebt = async (ctx: TradeContext, {
                 executionFee
             }),
             ctx.createBASwapIx({
-                swapIn: swapIn || defaultCloseLongPositionArgs.swapIn,
-                swapOut: badDebtSwapOut, // Use the bad debt swap out value
+                swapIn:   swapIn || defaultCloseLongPositionArgs.swapIn,
+                swapOut:  badDebtSwapOut, // Use the bad debt swap out value
                 poolAtaA: ctx.longPoolCurrencyVault,
                 poolAtaB: ctx.longPoolCollateralVault
             }),
             ctx.closeLongPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown a BadDebt error");
     } catch (err) {
@@ -868,15 +868,15 @@ export const closeShortPositionWithBadDebt = async (ctx: TradeContext, {
                 executionFee
             }),
             ctx.createBASwapIx({
-                swapIn: swapIn || defaultCloseShortPositionArgs.swapIn,
-                swapOut: badDebtSwapOut, // Use the bad debt swap out value
+                swapIn:   swapIn || defaultCloseShortPositionArgs.swapIn,
+                swapOut:  badDebtSwapOut, // Use the bad debt swap out value
                 poolAtaA: ctx.shortPoolCurrencyVault,
                 poolAtaB: ctx.shortPoolCollateralVault
             }),
             ctx.closeShortPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        await ctx.send(instructions);
+        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
 
         assert.fail("Should have thrown a BadDebt error");
     } catch (err) {
