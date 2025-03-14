@@ -16,7 +16,7 @@ describe("Liquidations", () => {
 
     describe("Long position", () => {
         before(async () => {
-            longCtx = await new LiquidationContext().generateLongTestWithDefaultPosition();
+            longCtx = await new LiquidationContext().generateLongOrderTest();
         });
 
         describe("without liquidation permission", () => {
@@ -40,7 +40,7 @@ describe("Liquidations", () => {
 
     describe("Short position", () => {
         before(async () => {
-            shortCtx = await new LiquidationContext().generateShortTestWithDefaultPosition();
+            shortCtx = await new LiquidationContext().generateShortOrderTest();
         });
 
         describe("without liquidation permission", () => {

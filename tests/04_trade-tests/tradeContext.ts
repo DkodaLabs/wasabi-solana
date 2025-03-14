@@ -1,9 +1,14 @@
 import * as anchor from '@coral-xyz/anchor';
-import {Keypair, LAMPORTS_PER_SOL, PublicKey, TransactionInstruction} from '@solana/web3.js';
+import {Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, TransactionInstruction} from '@solana/web3.js';
 import {PoolContext} from '../03_pool-tests/poolContext';
-import {feeWalletKeypair, liquidationWalletKeypair, superAdminProgram, WASABI_PROGRAM_ID} from "../hooks/rootHook";
 import {
-    createBurnCheckedInstruction,
+    DEFAULT_AUTHORITY,
+    feeWalletKeypair,
+    liquidationWalletKeypair,
+    superAdminProgram,
+    WASABI_PROGRAM_ID
+} from "../hooks/rootHook";
+import {
     createMintToInstruction,
     createAssociatedTokenAccountIdempotentInstruction,
     getAssociatedTokenAddressSync,
@@ -33,6 +38,7 @@ export interface SwapArgs {
     swapOut: bigint;
     poolAtaA: PublicKey;
     poolAtaB: PublicKey;
+    authority?: PublicKey;
 }
 
 export const defaultOpenLongPositionArgs = <OpenPositionArgs>{
@@ -45,12 +51,12 @@ export const defaultOpenLongPositionArgs = <OpenPositionArgs>{
 };
 
 export const defaultOpenShortPositionArgs = <OpenPositionArgs>{
-    minOut:      BigInt(1),
-    downPayment: BigInt(1_000),
-    principal:   BigInt(1_000),
+    minOut:      BigInt(100),
+    downPayment: BigInt(100),
+    principal:   BigInt(1000),
     fee:         BigInt(10),
-    swapIn:      BigInt(1_000),
-    swapOut:     BigInt(1),
+    swapIn:      BigInt(1000),
+    swapOut:     BigInt(100),
 };
 
 export const defaultCloseLongPositionArgs = <ClosePositionArgs>{
@@ -66,6 +72,9 @@ export const defaultCloseShortPositionArgs = <ClosePositionArgs>{
     minOut:       BigInt(0),
     interest:     BigInt(1),
     executionFee: BigInt(10),
+    expiration:   BigInt(Math.floor(Date.now() / 1_000 + 60 * 60)),
+    swapIn:       BigInt(100),
+    swapOut:      BigInt(1_001),
 };
 
 export class TradeContext extends PoolContext {
@@ -86,6 +95,7 @@ export class TradeContext extends PoolContext {
     longPosition: PublicKey;
     shortPosition: PublicKey;
     openPositionRequest: PublicKey;
+    closePositionRequest: PublicKey;
 
     constructor(
         readonly SWAP_AUTHORITY = Keypair.generate(),
@@ -121,10 +131,9 @@ export class TradeContext extends PoolContext {
     }
 
     async generateLongTestWithDefaultPosition(): Promise<this> {
-        await Promise.all([
-            this.generateLongTest(),
-            this.openLongPosition()
-        ]);
+        this.isCloseTest = true;
+        await this.generateLongTest();
+        await this.openLongPosition();
 
         return this;
     }
@@ -144,25 +153,34 @@ export class TradeContext extends PoolContext {
     }
 
     async generateShortTestWithDefaultPosition(): Promise<this> {
-        await Promise.all([
-            this.generateShortTest(),
-            this.openShortPosition()
-        ]);
+        this.isCloseTest = true;
+        await this.generateShortTest();
+        await this.openShortPosition();
         return this;
     }
 
     async generate(): Promise<this> {
         await super.generate();
 
-        this.feeWallet = getAssociatedTokenAddressSync(
+        this.feeWallet = this.isLongTest ? getAssociatedTokenAddressSync(
             this.currency,
             feeWalletKeypair.publicKey,
             false,
             TOKEN_PROGRAM_ID
-        );
+        ) : getAssociatedTokenAddressSync(
+            this.collateral,
+            feeWalletKeypair.publicKey,
+            false,
+            TOKEN_PROGRAM_ID
+        )
 
-        this.liquidationWallet = getAssociatedTokenAddressSync(
+        this.liquidationWallet = this.isLongTest ? getAssociatedTokenAddressSync(
             this.currency,
+            liquidationWalletKeypair.publicKey,
+            false,
+            TOKEN_PROGRAM_ID
+        ) : getAssociatedTokenAddressSync(
+            this.collateral,
             liquidationWalletKeypair.publicKey,
             false,
             TOKEN_PROGRAM_ID
@@ -172,21 +190,34 @@ export class TradeContext extends PoolContext {
             superAdminProgram.provider.publicKey,
             this.feeWallet,
             feeWalletKeypair.publicKey,
-            this.currency
+            this.isLongTest ? this.currency : this.collateral,
         );
 
         const liqWalletIx = createAssociatedTokenAccountIdempotentInstruction(
             superAdminProgram.provider.publicKey,
             this.liquidationWallet,
             liquidationWalletKeypair.publicKey,
-            this.currency
+            this.isLongTest ? this.currency : this.collateral,
         );
+
+        const transferIx = SystemProgram.transfer({
+            fromPubkey: DEFAULT_AUTHORITY.publicKey,
+            toPubkey:   this.SWAP_AUTHORITY.publicKey,
+            lamports:   10_000_000,
+        });
+
+        const transferIxNonSwap = SystemProgram.transfer({
+            fromPubkey: DEFAULT_AUTHORITY.publicKey,
+            toPubkey:   this.NON_SWAP_AUTHORITY.publicKey,
+            lamports:   10_000_000,
+        });
+
 
         const permissionIx = await superAdminProgram.methods
             .initOrUpdatePermission({
                 canCosignSwaps:      true, // 4
                 canInitVaults:       false, // 1
-                canLiquidate:        false, // 2
+                canLiquidate:        true, // 2
                 canInitPools:        false, // 8
                 canBorrowFromVaults: false,
                 status:              {active: {}}
@@ -200,7 +231,7 @@ export class TradeContext extends PoolContext {
             .initOrUpdatePermission({
                 canCosignSwaps:      false, // 4
                 canInitVaults:       true, // 1
-                canLiquidate:        true, // 2
+                canLiquidate:        false, // 2
                 canInitPools:        true, // 8
                 canBorrowFromVaults: true,
                 status:              {active: {}}
@@ -209,12 +240,18 @@ export class TradeContext extends PoolContext {
                 payer:        superAdminProgram.provider.publicKey,
                 newAuthority: this.NON_SWAP_AUTHORITY.publicKey,
             })
-            .preInstructions([feeWalletIx, liqWalletIx, permissionIx])
+            .signers([DEFAULT_AUTHORITY])
+            .preInstructions([feeWalletIx, liqWalletIx, transferIx, transferIxNonSwap, permissionIx])
             .rpc();
 
 
         this.openPositionRequest = PublicKey.findProgramAddressSync([
             anchor.utils.bytes.utf8.encode('open_pos'),
+            this.program.provider.publicKey.toBuffer(),
+        ], WASABI_PROGRAM_ID)[0];
+
+        this.closePositionRequest = PublicKey.findProgramAddressSync([
+            anchor.utils.bytes.utf8.encode('close_pos'),
             this.program.provider.publicKey.toBuffer(),
         ], WASABI_PROGRAM_ID)[0];
 
@@ -303,7 +340,7 @@ export class TradeContext extends PoolContext {
         return this;
     }
 
-    async send(instructions: TransactionInstruction[], signer: Keypair = this.SWAP_AUTHORITY) {
+    async send(instructions: TransactionInstruction[], signer: Keypair) {
         const connection = this.program.provider.connection;
         const message = new anchor.web3.TransactionMessage({
             instructions,
@@ -328,13 +365,10 @@ export class TradeContext extends PoolContext {
         poolAtaA,
         poolAtaB,
     }: SwapArgs) {
-        console.log(`Swap In AB: ${swapIn || 'undefined'}`)
-        console.log(`Swap Out AB: ${swapOut || 'undefined'}`)
-        
         // Use default values if not provided
         const actualSwapIn = swapIn || BigInt(1000);
         const actualSwapOut = swapOut || BigInt(900);
-        
+
         return await Promise.all([
             createBurnInstruction(
                 poolAtaA,
@@ -357,19 +391,17 @@ export class TradeContext extends PoolContext {
         swapOut,
         poolAtaA,
         poolAtaB,
+        authority = this.SWAP_AUTHORITY.publicKey,
     }: SwapArgs) {
-        console.log(`Swap In BA: ${swapIn || 'undefined'}`)
-        console.log(`Swap Out BA: ${swapOut || 'undefined'}`)
-        
         // Use default values if not provided
         const actualSwapIn = swapIn || BigInt(1000);
         const actualSwapOut = swapOut || BigInt(900);
-        
+
         return await Promise.all([
             createBurnInstruction(
                 poolAtaB,
                 this.collateral,
-                this.SWAP_AUTHORITY.publicKey,
+                authority,
                 actualSwapIn,
             ),
 
@@ -408,9 +440,7 @@ export class TradeContext extends PoolContext {
             this.openLongPositionCleanup(),
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        console.log(JSON.stringify(instructions));
-
-        return await this.send(instructions);
+        return await this.send(instructions, this.SWAP_AUTHORITY);
     }
 
     async openShortPosition({
@@ -421,32 +451,25 @@ export class TradeContext extends PoolContext {
         swapIn,
         swapOut,
     }: OpenPositionArgs = defaultOpenShortPositionArgs) {
-        try {
-            const setupIx = await this.openShortPositionSetup({
-                minOut: minOut || defaultOpenShortPositionArgs.minOut,
-                downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
-                principal: principal || defaultOpenShortPositionArgs.principal,
-                fee: fee || defaultOpenShortPositionArgs.fee,
-            });
+        const setupIx = await this.openShortPositionSetup({
+            minOut:      minOut || defaultOpenShortPositionArgs.minOut,
+            downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
+            principal:   principal || defaultOpenShortPositionArgs.principal,
+            fee:         fee || defaultOpenShortPositionArgs.fee,
+        });
 
-            const swapIx = await this.createABSwapIx({
-                swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
-                swapOut: swapOut || defaultOpenShortPositionArgs.swapOut,
-                poolAtaA: this.shortPoolCurrencyVault,
-                poolAtaB: this.shortPoolCollateralVault,
-            });
+        const swapIx = await this.createABSwapIx({
+            swapIn:   swapIn || defaultOpenShortPositionArgs.swapIn,
+            swapOut:  swapOut || defaultOpenShortPositionArgs.swapOut,
+            poolAtaA: this.shortPoolCurrencyVault,
+            poolAtaB: this.shortPoolCollateralVault,
+        });
 
-            const cleanupIx = await this.openShortPositionCleanup();
-            
-            const instructions = [setupIx, ...swapIx, cleanupIx];
+        const cleanupIx = await this.openShortPositionCleanup();
 
-            console.log("Sending openShortPosition instructions");
+        const instructions = [setupIx, ...swapIx, cleanupIx];
 
-            return await this.send(instructions);
-        } catch (err) {
-            console.error("Error in openShortPosition:", err);
-            throw err;
-        }
+        return await this.send(instructions, this.SWAP_AUTHORITY);
     }
 
     async closeLongPosition({
@@ -467,7 +490,7 @@ export class TradeContext extends PoolContext {
             this.closeLongPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        return await this.send(instructions);
+        return await this.send(instructions, this.SWAP_AUTHORITY);
     };
 
     async closeShortPosition({
@@ -479,21 +502,20 @@ export class TradeContext extends PoolContext {
     }: ClosePositionArgs = defaultCloseShortPositionArgs) {
         const instructions = await Promise.all([
             this.closeShortPositionSetup({
-                minOut: minOut || defaultCloseShortPositionArgs.minOut,
-                interest: interest || defaultCloseShortPositionArgs.interest,
+                minOut:       minOut || defaultCloseShortPositionArgs.minOut,
+                interest:     interest || defaultCloseShortPositionArgs.interest,
                 executionFee: executionFee || defaultCloseShortPositionArgs.executionFee
             }),
-            this.createABSwapIx({
-                swapIn: swapIn || BigInt(1000),
-                swapOut: swapOut || BigInt(900),
+            this.createBASwapIx({
+                swapIn:   swapIn || BigInt(1000),
+                swapOut:  swapOut || BigInt(900),
                 poolAtaA: this.shortPoolCurrencyVault,
                 poolAtaB: this.shortPoolCollateralVault
             }),
             this.closeShortPositionCleanup()
         ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
 
-        console.log("Sending closeShortPosition instructions");
-        return await this.send(instructions);
+        return await this.send(instructions, this.SWAP_AUTHORITY);
     };
 
     async openLongPositionSetup({
@@ -555,27 +577,33 @@ export class TradeContext extends PoolContext {
             new anchor.BN(fee.toString()),
             new anchor.BN(now + 3600),
         ).accountsPartial({
-            owner:                  this.program.provider.publicKey,
-            lpVault:                this.lpVault,
-            pool:                   this.shortPool,
-            collateral:             this.collateral,
-            currency:               this.currency,
-            collateralVault:        this.shortPoolCollateralVault,
-            currencyVault:          this.shortPoolCurrencyVault,
-            authority:              this.SWAP_AUTHORITY.publicKey,
-            permission:             this.swapPermission,
-            feeWallet:              this.feeWallet,
-            currencyTokenProgram:   TOKEN_PROGRAM_ID,
-            collateralTokenProgram: TOKEN_PROGRAM_ID,
+            owner:                      this.program.provider.publicKey,
+            ownerTargetCurrencyAccount: this.ownerCollateralAta,
+            lpVault:                    this.lpVault,
+            vault:                      this.vault,
+            pool:                       this.shortPool,
+            collateral:                 this.collateral,
+            currency:                   this.currency,
+            collateralVault:            this.shortPoolCollateralVault,
+            currencyVault:              this.shortPoolCurrencyVault,
+            authority:                  this.SWAP_AUTHORITY.publicKey,
+            permission:                 this.swapPermission,
+            feeWallet:                  this.feeWallet,
+            currencyTokenProgram:       TOKEN_PROGRAM_ID,
+            collateralTokenProgram:     TOKEN_PROGRAM_ID,
         }).instruction();
     };
 
     async openShortPositionCleanup() {
-        return this.program.methods
+        return await this.program.methods
             .openShortPositionCleanup()
             .accountsPartial({
                 owner:        this.program.provider.publicKey,
                 pool:         this.shortPool,
+                lpVault:      this.lpVault,
+                vault:        this.vault,
+                currency:     this.currency,
+                collateral:   this.collateral,
                 position:     this.shortPosition,
                 tokenProgram: TOKEN_PROGRAM_ID,
             }).instruction();
@@ -597,14 +625,14 @@ export class TradeContext extends PoolContext {
             ).accountsPartial({
                 owner:              this.program.provider.publicKey,
                 closePositionSetup: {
-                    pool:            this.longPool,
                     owner:           this.program.provider.publicKey,
-                    collateral:      this.collateral,
+                    position:        this.longPosition,
+                    pool:            this.longPool,
                     collateralVault: this.longPoolCollateralVault,
                     currencyVault:   this.longPoolCurrencyVault,
-                    position:        this.longPosition,
-                    permission:      this.swapPermission,
+                    collateral:      this.collateral,
                     authority:       this.SWAP_AUTHORITY.publicKey,
+                    permission:      this.swapPermission,
                     tokenProgram:    TOKEN_PROGRAM_ID,
                 },
             }).instruction();
@@ -612,19 +640,23 @@ export class TradeContext extends PoolContext {
 
     async closeLongPositionCleanup() {
         return await this.program.methods.closeLongPositionCleanup().accountsPartial({
-            owner:                  this.program.provider.publicKey,
-            ownerPayoutAccount:     this.ownerCurrencyAta,
-            pool:                   this.longPool,
-            position:               this.longPosition,
-            currency:               this.currency,
-            collateral:             this.collateral,
-            currencyVault:          this.longPoolCurrencyVault,
-            collateralVault:        this.longPoolCollateralVault,
-            authority:              this.SWAP_AUTHORITY.publicKey,
-            feeWallet:              this.feeWallet,
-            liquidationWallet:      this.liquidationWallet,
-            collateralTokenProgram: TOKEN_PROGRAM_ID,
-            currencyTokenProgram:   TOKEN_PROGRAM_ID,
+            owner:                this.program.provider.publicKey,
+            closePositionCleanup: {
+                owner:                  this.program.provider.publicKey,
+                ownerPayoutAccount:     this.ownerCurrencyAta,
+                pool:                   this.longPool,
+                position:               this.longPosition,
+                currency:               this.currency,
+                collateral:             this.collateral,
+                currencyVault:          this.longPoolCurrencyVault,
+                closePositionRequest:   this.closePositionRequest,
+                collateralVault:        this.longPoolCollateralVault,
+                authority:              this.SWAP_AUTHORITY.publicKey,
+                feeWallet:              this.feeWallet,
+                liquidationWallet:      this.liquidationWallet,
+                collateralTokenProgram: TOKEN_PROGRAM_ID,
+                currencyTokenProgram:   TOKEN_PROGRAM_ID,
+            }
         }).instruction();
     };
 
@@ -656,10 +688,10 @@ export class TradeContext extends PoolContext {
 
     async closeShortPositionCleanup() {
         return await this.program.methods.closeShortPositionCleanup().accountsPartial({
-            owner:                  this.program.provider.publicKey,
-            closePositionCleanup:   {
+            owner:                this.program.provider.publicKey,
+            closePositionCleanup: {
                 owner:                  this.program.provider.publicKey,
-                ownerPayoutAccount:     this.ownerCurrencyAta,
+                ownerPayoutAccount:     this.ownerCollateralAta,
                 pool:                   this.shortPool,
                 collateral:             this.collateral,
                 currency:               this.currency,

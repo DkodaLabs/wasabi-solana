@@ -40,6 +40,7 @@ describe("setDebtControllerLiquidationFee", () => {
             } else if (err instanceof anchor.ProgramError) {
                 assert.equal(err.code, 6013);
             } else {
+                console.error(err);
                 assert.ok(false);
             }
         }

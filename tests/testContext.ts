@@ -4,7 +4,7 @@ import {WasabiSolana} from '../target/types/wasabi_solana';
 import {
     createAssociatedTokenAccountIdempotentInstruction,
     createMintToCheckedInstruction,
-    getAssociatedTokenAddressSync
+    getAssociatedTokenAddressSync, TOKEN_2022_PROGRAM_ID
 } from '@solana/spl-token';
 import {TOKEN_PROGRAM_ID} from '@coral-xyz/anchor/dist/cjs/utils/token';
 import {createSimpleMint, initDefaultPermission, defaultInitLpVaultArgs} from './utils';
@@ -45,6 +45,18 @@ export class TestContext {
             false,
             TOKEN_PROGRAM_ID,
         ),
+        readonly sharesMint = web3.PublicKey.findProgramAddressSync(
+            [
+                lpVault.toBuffer(), currency.toBuffer()
+            ],
+            WASABI_PROGRAM_ID
+        )[0],
+        readonly ownerSharesAta = getAssociatedTokenAddressSync(
+            sharesMint,
+            program.provider.publicKey,
+            false,
+            TOKEN_2022_PROGRAM_ID,
+        )
     ) {
     }
 
@@ -130,6 +142,14 @@ export class TestContext {
             TOKEN_PROGRAM_ID
         );
 
+        const ownerSharesAta = createAssociatedTokenAccountIdempotentInstruction(
+            superAdminProgram.provider.publicKey,
+            this.ownerSharesAta,
+            this.program.provider.publicKey,
+            this.sharesMint,
+            TOKEN_2022_PROGRAM_ID
+        )
+
         return await superAdminProgram.methods
             .initLpVault(defaultInitLpVaultArgs)
             .accountsPartial({
@@ -144,6 +164,7 @@ export class TestContext {
                 sysvarInstructions:   SYSVAR_INSTRUCTIONS_PUBKEY,
             })
             .preInstructions([permissionIx, vaultIx])
+            .postInstructions([ownerSharesAta])
             .rpc();
     }
 }

@@ -1,5 +1,4 @@
-import {assert} from "chai";
-import {OrderContext, defaultStopLossOrderArgs} from "./orderContext";
+import {OrderContext} from "./orderContext";
 import {
     initStopLossOrder,
     validateExecuteStopLossOrder,
@@ -16,7 +15,7 @@ describe("StopLoss", () => {
 
     describe("Long position", () => {
         before(async () => {
-            longCtx = await new OrderContext().generateLongTestWithDefaultPosition();
+            longCtx = await new OrderContext().generateLongOrderTest();
         });
 
         it("should init the SL order", async () => {
@@ -50,7 +49,7 @@ describe("StopLoss", () => {
 
     describe("Short position", () => {
         before(async () => {
-            shortCtx = await new OrderContext().generateShortTestWithDefaultPosition();
+            shortCtx = await new OrderContext().generateShortOrderTest();
         });
 
         it("should init the SL order", async () => {

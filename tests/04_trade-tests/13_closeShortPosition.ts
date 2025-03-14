@@ -13,7 +13,7 @@ describe("CloseShortPosition", () => {
     let ctx: TradeContext;
 
     before(async () => {
-        ctx = await new TradeContext().generateShortTestWithDefaultPosition();
+        ctx = await new TradeContext().generateShortOrderTest();
         ctx.isCloseTest = true;
     });
 

@@ -1,13 +1,13 @@
 import * as anchor from '@coral-xyz/anchor';
-import {assert} from 'chai';
-import {AccountLayout} from '@solana/spl-token';
+import { assert } from 'chai';
+import { AccountLayout } from '@solana/spl-token';
 import {
     setupTestEnvironment,
     superAdminProgram,
 } from '../hooks/rootHook';
-import {initWasabi} from '../hooks/initWasabi';
-import {StrategyContext} from './strategyContext';
-import {AnchorError, ProgramError} from "@coral-xyz/anchor";
+import { initWasabi } from '../hooks/initWasabi';
+import { StrategyContext } from './strategyContext';
+import { AnchorError, ProgramError } from "@coral-xyz/anchor";
 
 export const getAccountStates = async (ctx: StrategyContext) => {
     const [
@@ -23,9 +23,9 @@ export const getAccountStates = async (ctx: StrategyContext) => {
     ]);
 
     return {
-        lpVault:         lpVaultState,
-        strategy:        strategyState,
-        vault:           vaultState,
+        lpVault: lpVaultState,
+        strategy: strategyState,
+        vault: vaultState,
         collateralVault: collateralVaultState,
     };
 }
@@ -41,7 +41,7 @@ export const validateWithdraw = async (
     try {
         const statesBefore = getAccountStates(ctx);
 
-        await ctx.strategyWithdraw({amountIn, amountOut});
+        await ctx.strategyWithdraw({ amountIn, amountOut });
 
         await validateStates(
             ctx,
@@ -51,12 +51,12 @@ export const validateWithdraw = async (
             amountOut.toString(),
         );
     } catch (err) {
-        console.log(err)
         if (err instanceof AnchorError) {
             assert.equal(err.error.errorCode.number, 6016);
         } else if (err instanceof ProgramError) {
             assert.equal(err.code, 6016);
         } else {
+            console.log(err)
             throw err;
         }
     }

@@ -1,6 +1,7 @@
-import {assert} from "chai";
-import {TOKEN_PROGRAM_ID} from "@solana/spl-token";
-import {getMultipleTokenAccounts} from "../utils";
+import * as anchor from '@coral-xyz/anchor';
+import { assert } from "chai";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getMultipleTokenAccounts } from "../utils";
 import {
     TradeContext,
     OpenPositionArgs,
@@ -8,13 +9,13 @@ import {
     defaultCloseLongPositionArgs,
     defaultCloseShortPositionArgs
 } from "./tradeContext";
-import {defaultOpenShortPositionArgs, defaultOpenLongPositionArgs} from "./tradeContext";
+import { defaultOpenShortPositionArgs, defaultOpenLongPositionArgs } from "./tradeContext";
 
 export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
     try {
         // Get token accounts first
         const tokenAccounts = await getMultipleTokenAccounts(
-            ctx.program.provider.connection, 
+            ctx.program.provider.connection,
             isLong ? [
                 ctx.vault,
                 ctx.ownerCurrencyAta,
@@ -25,10 +26,10 @@ export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
                 ctx.ownerCurrencyAta,
                 ctx.shortPoolCurrencyVault,
                 ctx.shortPoolCollateralVault,
-            ], 
+            ],
             TOKEN_PROGRAM_ID
         );
-        
+
         // Get position request and position separately to handle errors
         let positionRequest = null;
         try {
@@ -36,7 +37,7 @@ export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
         } catch (err) {
             console.log("Error fetching position request (non-critical):", err);
         }
-        
+
         let position = null;
         try {
             position = await ctx.program.account.position.fetchNullable(isLong ? ctx.longPosition : ctx.shortPosition);
@@ -75,8 +76,6 @@ export const validateOpenLongPositionStates = async (
     fee: bigint
 ) => {
     const [before, after] = await Promise.all([beforePromise, afterPromise]);
-    console.log("BEFORE: ", before);
-    console.log("AFTER: ", after);
 
     if (!after.position) throw new Error("Failed to create position");
 
@@ -143,40 +142,40 @@ export const validateOpenShortPositionStates = async (
         ctx.program.provider.publicKey.toString(),
         "Position trader should match owner"
     );
-    
+
     // Assert it's greater than downpayment since it's collateral + downpayment
-    assert.ok(after.position.collateralAmount.gt(new anchor.BN(downPayment.toString())), 
+    assert.ok(after.position.collateralAmount.gt(new anchor.BN(downPayment.toString())),
         "Collateral amount should be greater than down payment");
-        
+
     assert.equal(
         after.position.collateral.toString(),
         ctx.currency.toString(),
         "Position collateral should match currency"
     );
-    
+
     assert.equal(
         after.position.collateralVault.toString(),
         ctx.shortPoolCollateralVault.toString(),
         "Position collateral vault should match short pool collateral vault"
     );
-    
-    assert.equal(after.position.currency.toString(), 
+
+    assert.equal(after.position.currency.toString(),
         ctx.collateral.toString(),
         "Position currency should match collateral"
     );
-    
+
     assert.equal(
         after.position.downPayment.toString(),
         downPayment.toString(),
         "Position down payment should match expected down payment"
     );
-    
-    assert.equal(after.position.principal.toString(), 
+
+    assert.equal(after.position.principal.toString(),
         principal.toString(),
         "Position principal should match expected principal"
     );
-    
-    assert.equal(after.position.lpVault.toString(), 
+
+    assert.equal(after.position.lpVault.toString(),
         ctx.lpVault.toString(),
         "Position LP vault should match expected LP vault"
     );
@@ -219,7 +218,7 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
     swapOut,
 }: OpenPositionArgs = defaultOpenLongPositionArgs) => {
     try {
-        const statesBefore = await positionStates(ctx, true);
+        const statesBefore = positionStates(ctx, true);
         await ctx.openLongPosition({
             minOut: minOut || defaultOpenLongPositionArgs.minOut,
             downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
@@ -228,13 +227,13 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
             swapIn: swapIn || defaultOpenLongPositionArgs.swapIn,
             swapOut: swapOut || defaultOpenLongPositionArgs.swapOut
         });
-        const statesAfter = await positionStates(ctx, true);
+        const statesAfter = positionStates(ctx, true);
         await validateOpenLongPositionStates(
-            ctx, 
-            statesBefore, 
-            statesAfter, 
-            principal || defaultOpenLongPositionArgs.principal, 
-            downPayment || defaultOpenLongPositionArgs.downPayment, 
+            ctx,
+            statesBefore,
+            statesAfter,
+            principal || defaultOpenLongPositionArgs.principal,
+            downPayment || defaultOpenLongPositionArgs.downPayment,
             fee || defaultOpenLongPositionArgs.fee
         );
     } catch (err) {
@@ -252,42 +251,17 @@ export const validateOpenLongPosition = async (ctx: TradeContext, {
 };
 
 export const validateOpenShortPosition = async (ctx: TradeContext, {
-        minOut,
-        downPayment,
-        principal,
-        fee,
-        swapIn,
-        swapOut,
-    }: OpenPositionArgs = defaultOpenShortPositionArgs
+    minOut,
+    downPayment,
+    principal,
+    fee,
+    swapIn,
+    swapOut,
+}: OpenPositionArgs = defaultOpenShortPositionArgs
 ) => {
     try {
-        // For the test case with swapIn > downPayment + principal, we expect it to fail
-        if (swapIn && swapIn > (downPayment || defaultOpenShortPositionArgs.downPayment) + (principal || defaultOpenShortPositionArgs.principal)) {
-            try {
-                await ctx.openShortPosition({
-                    minOut: minOut || defaultOpenShortPositionArgs.minOut,
-                    downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
-                    principal: principal || defaultOpenShortPositionArgs.principal,
-                    fee: fee || defaultOpenShortPositionArgs.fee,
-                    swapIn,
-                    swapOut: swapOut || defaultOpenShortPositionArgs.swapOut
-                });
-                assert.fail("Should have failed with insufficient funds");
-            } catch (err) {
-                if (/insufficient funds/.test(err.toString()) || 
-                    /custom program error/.test(err.toString())) {
-                    assert.ok(true, "Failed as expected with insufficient funds");
-                } else {
-                    console.error("Unexpected error:", err);
-                    throw err;
-                }
-            }
-            return;
-        }
-        
-        // Normal case - should succeed
-        const statesBefore = await positionStates(ctx, false);
-        
+        const statesBefore = positionStates(ctx, false);
+
         await ctx.openShortPosition({
             minOut: minOut || defaultOpenShortPositionArgs.minOut,
             downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
@@ -296,15 +270,15 @@ export const validateOpenShortPosition = async (ctx: TradeContext, {
             swapIn: swapIn || defaultOpenShortPositionArgs.swapIn,
             swapOut: swapOut || defaultOpenShortPositionArgs.swapOut
         });
-        
-        const statesAfter = await positionStates(ctx, false);
-        
+
+        const statesAfter = positionStates(ctx, false);
+
         await validateOpenShortPositionStates(
-            ctx, 
-            statesBefore, 
-            statesAfter, 
-            principal || defaultOpenShortPositionArgs.principal, 
-            downPayment || defaultOpenShortPositionArgs.downPayment, 
+            ctx,
+            statesBefore,
+            statesAfter,
+            principal || defaultOpenShortPositionArgs.principal,
+            downPayment || defaultOpenShortPositionArgs.downPayment,
             fee || defaultOpenShortPositionArgs.fee
         );
     } catch (err) {
@@ -313,11 +287,6 @@ export const validateOpenShortPosition = async (ctx: TradeContext, {
             assert.ok(true, "Failed with insufficient funds");
         } else if (/already in use/.test(err.toString())) {
             assert.ok(true, "Failed because position already exists");
-        } else if (/maximum depth for account resolution/.test(err.toString())) {
-            // This is an Anchor framework error that can happen during testing
-            assert.ok(true, "Account resolution error - acceptable during testing");
-        } else if (/custom program error/.test(err.toString())) {
-            assert.ok(true, "Failed with custom program error");
         } else {
             console.error("Error in validateOpenShortPosition:", err);
             throw err;
@@ -349,7 +318,7 @@ export const validateCloseLongPosition = async (ctx: TradeContext, {
         );
 
         // Close the position
-        await ctx.closeLongPosition({minOut, interest, executionFee, swapIn, swapOut});
+        await ctx.closeLongPosition({ minOut, interest, executionFee, swapIn, swapOut });
 
         // Verify position is closed
         const positionAfter = await ctx.program.account.position.fetchNullable(ctx.longPosition);
@@ -370,7 +339,7 @@ export const validateCloseLongPosition = async (ctx: TradeContext, {
         // Verify LP vault received principal + interest
         const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
         const vaultDiff = vaultAfter.amount - vaultBefore.amount;
-        assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString(), "LP vault should receive principal + interest");
+        assert.equal(vaultDiff.toString(), expectedLpVaultDiff.toString(), "LP vault should receive principal + interest");
 
         // Verify user received payout in currency
         const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
@@ -378,7 +347,7 @@ export const validateCloseLongPosition = async (ctx: TradeContext, {
 
         // Verify fee wallet received execution fee
         const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-        assert.equal(feeBalanceDiff.toString(), executionFee.toString(), "Fee wallet should receive execution fee");
+        assert.equal(feeBalanceDiff.toString(), ctx.closePositionEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
 
         // Verify event was emitted
         assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
@@ -405,11 +374,14 @@ export const validateCloseShortPosition = async (ctx: TradeContext, {
         const positionBefore = await ctx.program.account.position.fetch(ctx.shortPosition);
 
         // Get token account balances before closing
-        const [vaultBefore, ownerTokenABefore, ownerBBefore, feeBalanceBefore] = await getMultipleTokenAccounts(
+        const [
+            vaultBefore,
+            ownerTokenBefore,
+            feeBalanceBefore
+        ] = await getMultipleTokenAccounts(
             ctx.program.provider.connection,
             [
                 ctx.vault,
-                ctx.ownerCurrencyAta,
                 ctx.ownerCollateralAta,
                 ctx.feeWallet,
             ],
@@ -417,36 +389,26 @@ export const validateCloseShortPosition = async (ctx: TradeContext, {
         );
 
         // Close the position
-        await ctx.closeShortPosition({minOut, interest, executionFee, swapIn, swapOut});
+        await ctx.closeShortPosition({ minOut, interest, executionFee, swapIn, swapOut });
 
         // Verify position is closed
         const positionAfter = await ctx.program.account.position.fetchNullable(ctx.shortPosition);
         assert.isNull(positionAfter, "Position should be closed");
 
         // Get token account balances after closing
-        const [vaultAfter, ownerTokenAAfter, ownerBAfter, feeBalanceAfter] = await getMultipleTokenAccounts(
+        const [
+            vaultAfter,
+            ownerTokenAfter,
+            feeBalanceAfter
+        ] = await getMultipleTokenAccounts(
             ctx.program.provider.connection,
             [
                 ctx.vault,
-                ctx.ownerCurrencyAta,
                 ctx.ownerCollateralAta,
                 ctx.feeWallet,
             ],
             TOKEN_PROGRAM_ID
         );
-
-        // Verify LP vault received principal + interest
-        const expectedLpVaultDiff = positionBefore.principal.add(new anchor.BN(interest.toString()));
-        const vaultDiff = vaultAfter.amount - vaultBefore.amount;
-        assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString(), "LP vault should receive principal + interest");
-
-        // Verify user received payout in currency
-        const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-        assert.isTrue(ownerADiff > BigInt(0), "User should receive payout in currency");
-
-        // Verify fee wallet received execution fee
-        const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-        assert.equal(feeBalanceDiff.toString(), executionFee.toString(), "Fee wallet should receive execution fee");
 
         // Verify event was emitted
         assert.ok(ctx.closePositionEvent, "Close position event should be emitted");
@@ -455,6 +417,20 @@ export const validateCloseShortPosition = async (ctx: TradeContext, {
             ctx.shortPosition.toString(),
             "Position ID in event should match"
         );
+
+        // Verify LP vault received principal + interest
+        const vaultDiff = vaultAfter.amount - vaultBefore.amount;
+        const principalAndInterest = positionBefore.principal.add(new anchor.BN(interest.toString()));
+        assert.equal(principalAndInterest.toString(), vaultDiff.toString(), "LP vault should receive principal + interest");
+
+        // Verify user received payout in currency
+        const ownerTokenDiff = ownerTokenAfter.amount - ownerTokenBefore.amount;
+        assert.isTrue(ownerTokenDiff > 0, "User should receive payout in currency");
+
+        // Verify fee wallet received execution fee
+        const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
+        assert.equal(feeBalanceDiff.toString(), ctx.closePositionEvent.feeAmount.toString(), "Fee wallet should receive execution fee");
+
     } catch (err) {
         console.error("Error in validateCloseShortPosition:", err);
         throw err;

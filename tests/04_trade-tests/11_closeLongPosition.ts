@@ -1,6 +1,4 @@
-import {assert} from "chai";
-import {AnchorError, ProgramError} from "@coral-xyz/anchor";
-import {TradeContext, defaultCloseLongPositionArgs} from "./tradeContext";
+import {TradeContext} from "./tradeContext";
 import {validateCloseLongPosition} from "./validateTrade";
 import {
     closeLongPositionWithIncorrectOwner,

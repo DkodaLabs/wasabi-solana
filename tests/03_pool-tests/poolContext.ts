@@ -110,17 +110,21 @@ export class PoolContext extends TestContext {
         }
     }
 
-    async initLongPool(signer: Keypair = this.INIT_AUTHORITY) {
+    async initLongPool(signer: Keypair = this.INIT_AUTHORITY, permission: PublicKey = this.initPermission) {
         return await this.program.methods.initLongPool().accountsPartial({
-            permission: this.initPermission,
+            payer: this.program.provider.publicKey,
+            authority: signer.publicKey,
+            permission,
             ...this.poolAccounts,
         }).signers([signer]).rpc()
 
     }
 
-    async initShortPool(signer: Keypair = this.INIT_AUTHORITY) {
+    async initShortPool(signer: Keypair = this.INIT_AUTHORITY, permission: PublicKey = this.initPermission) {
         return await this.program.methods.initShortPool().accountsPartial({
-            permission: this.initPermission,
+            payer: this.program.provider.publicKey,
+            authority: signer.publicKey,
+            permission,
             ...this.poolAccounts,
         }).signers([signer]).rpc()
     }

@@ -36,25 +36,25 @@ describe("OpenShortPosition", () => {
 
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
-                await openShortPositionWithInvalidPool(ctx, defaultOpenShortPositionArgs);
+                await openShortPositionWithInvalidPool(ctx);
             });
         });
 
         describe("with an incorrect position", () => {
             it("should fail", async () => {
-                await openShortPositionWithInvalidPosition(ctx, defaultOpenShortPositionArgs);
+                await openShortPositionWithInvalidPosition(ctx);
             });
         });
 
         describe("without a swap co-signer", () => {
             it("should fail", async () => {
-                await openShortPositionWithoutCosigner(ctx, defaultOpenShortPositionArgs);
+                await openShortPositionWithoutCosigner(ctx);
             });
         });
 
         describe("correct parameters", () => {
             it("should correctly open a new position", async () => {
-                await validateOpenShortPosition(ctx, defaultOpenShortPositionArgs);
+                await validateOpenShortPosition(ctx);
             });
         });
     });

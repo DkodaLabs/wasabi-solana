@@ -1,7 +1,6 @@
-import {assert} from "chai";
-import {OrderContext, defaultTakeProfitOrderArgs} from "./orderContext";
+import {OrderContext} from "./orderContext";
 import {
-    initTakeProfitOrder,
+    validateInitTakeProfitOrder,
     validateExecuteTakeProfitOrder,
     cancelTakeProfitOrderWithInvalidPermission,
     cancelTakeProfitOrderWithUser,
@@ -16,11 +15,11 @@ describe("TakeProfit", () => {
 
     describe("Long position", () => {
         before(async () => {
-            longCtx = await new OrderContext().generateLongTestWithDefaultPosition();
+            longCtx = await new OrderContext().generateLongOrderTest();
         });
 
         it("should init the TP order", async () => {
-            await initTakeProfitOrder(longCtx);
+            await validateInitTakeProfitOrder(longCtx);
         });
 
         it("should fail to close the TP order without proper permissions", async () => {
@@ -50,11 +49,11 @@ describe("TakeProfit", () => {
 
     describe("Short position", () => {
         before(async () => {
-            shortCtx = await new OrderContext().generateShortTestWithDefaultPosition();
+            shortCtx = await new OrderContext().generateShortOrderTest();
         });
 
         it("should init the TP order", async () => {
-            await initTakeProfitOrder(shortCtx);
+            await validateInitTakeProfitOrder(shortCtx);
         });
 
         it("should fail to close the TP order without proper permissions", async () => {

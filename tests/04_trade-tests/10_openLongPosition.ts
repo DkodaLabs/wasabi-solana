@@ -1,9 +1,9 @@
-import {TradeContext, defaultOpenLongPositionArgs} from "./tradeContext";
-import {validateOpenLongPosition} from "./validateTrade";
+import { TradeContext, defaultOpenLongPositionArgs } from "./tradeContext";
+import { validateOpenLongPosition } from "./validateTrade";
 import {
     openLongPositionWithInvalidPool,
-    openLongPositionWithInvalidPosition, 
-    openLongPositionWithInvalidSetup, 
+    openLongPositionWithInvalidPosition,
+    openLongPositionWithInvalidSetup,
     openLongPositionWithoutCleanup,
     openLongPositionWithoutCosigner
 } from "./invalidTrades";
@@ -30,7 +30,7 @@ describe("OpenLongPosition", () => {
     describe("with one setup and one cleanup ix", () => {
         describe("when amount swapped is more than the sum of downpayment + principal", () => {
             it("should fail", async () => {
-                await validateOpenLongPosition(ctx, {...defaultOpenLongPositionArgs, swapIn: BigInt(3_000)});
+                await validateOpenLongPosition(ctx, { ...defaultOpenLongPositionArgs, swapIn: BigInt(3_000) });
             });
         });
 

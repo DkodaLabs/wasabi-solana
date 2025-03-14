@@ -34,7 +34,11 @@ export const validatePoolState = async (
     const after = await statePromise;
     const {currencyVault, collateralVault} = ctx.getPoolAtas();
 
-    assert.equal(after.pool.collateral.toString(), ctx.currency.toString());
+    assert.isNotNull(collateralVault);
+    assert.isNotNull(currencyVault);
+    ctx.isLong ? assert.ok(after.pool.isLongPool) : assert.ok(!after.pool.isLongPool);
+
+    assert.equal(after.pool.collateral.toString(), ctx.collateral.toString());
     assert.equal(
         after.pool.collateralVault.toString(),
         collateralVault.toString()
@@ -44,13 +48,10 @@ export const validatePoolState = async (
         after.pool.currencyVault.toString(),
         currencyVault.toString()
     );
-    assert.isNotNull(collateralVault);
-    assert.isNotNull(currencyVault);
-    ctx.isLong ? assert.ok(after.pool.isLongPool) : assert.ok(!after.pool.isLongPool);
 }
 
 export const validateInitPool = async (ctx: PoolContext) => {
-
+    ctx.isLong ? await ctx.initLongPool() : await ctx.initShortPool();
     const stateAfter = getPoolStates(ctx);
     await validatePoolState(ctx, stateAfter);
 };

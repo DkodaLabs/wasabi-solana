@@ -34,11 +34,15 @@ export const setupTestEnvironment = async () => {
     await Promise.all([
         superAdminProgram.provider.connection.requestAirdrop(
             superAdminProgram.provider.publicKey!,
-            100_000_000_000
+            200_000_000_000
         ),
         superAdminProgram.provider.connection.requestAirdrop(
             DEFAULT_AUTHORITY.publicKey,
-            100_000_000_000
+            200_000_000_000
+        ),
+        superAdminProgram.provider.connection.requestAirdrop(
+            program.provider.publicKey,
+            200_000_000_000
         ),
     ]);
 
