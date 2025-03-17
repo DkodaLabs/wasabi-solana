@@ -17,3 +17,4 @@ test_mint.json
 validator.log
 test-ledger/
 temp.json
+.aider*

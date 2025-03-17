@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { assert } from "chai";
-import { superAdminProgram, NON_SWAP_AUTHORITY } from "../hooks/allHook";
+import { superAdminProgram, NON_SWAP_AUTHORITY } from "../hooks/rootHook";
 
 describe("InitOrUpdatePermission", () => {
     it("Is initialized!", async () => {

@@ -18,7 +18,7 @@ import {
     feeWalletKeypair,
     liquidationWalletKeypair,
     SWAP_AUTHORITY,
-} from "./allHook";
+} from "./rootHook";
 import { WasabiSolana } from '../../target/types/wasabi_solana';
 
 export const initWasabi = async () => {

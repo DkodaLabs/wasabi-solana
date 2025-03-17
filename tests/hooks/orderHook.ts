@@ -1,4 +1,4 @@
-import { setupTestEnvironment } from './allHook'
+import { setupTestEnvironment } from './rootHook'
 import { initWasabi } from './initWasabi';
 import { initPools } from './poolHook';
 import {
