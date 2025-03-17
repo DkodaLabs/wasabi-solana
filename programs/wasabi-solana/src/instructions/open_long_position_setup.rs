@@ -66,7 +66,7 @@ pub struct OpenLongPositionSetup<'info> {
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = owner,
         seeds = [
             b"position",
@@ -180,6 +180,7 @@ impl<'info> OpenLongPositionSetup<'info> {
         token_interface::transfer_checked(cpi_ctx, amount, self.currency.decimals)
     }
 
+
     fn approve_owner_delegation(&self, amount: u64) -> Result<()> {
         let cpi_accounts = Approve {
             to: self.currency_vault.to_account_info(),
@@ -234,18 +235,33 @@ impl<'info> OpenLongPositionSetup<'info> {
                 taker_bal_before: self.collateral_vault.amount,
             },
         });
-        self.position.set_inner(Position {
-            trader: self.owner.key(),
-            currency: self.currency.key(),
-            collateral: self.collateral.key(),
-            down_payment,
-            principal,
-            collateral_vault: self.collateral_vault.key(),
-            lp_vault: self.lp_vault.key(),
-            collateral_amount: 0,
-            fees_to_be_paid: fee,
-            last_funding_timestamp: Clock::get()?.unix_timestamp,
-        });
+
+
+        if self.position.down_payment == 0 && self.position.principal == 0 {
+            self.position.set_inner(Position {
+                trader: self.owner.key(),
+                currency: self.currency.key(),
+                collateral: self.collateral.key(),
+                down_payment,
+                principal,
+                collateral_vault: self.collateral_vault.key(),
+                lp_vault: self.lp_vault.key(),
+                collateral_amount: 0,
+                fees_to_be_paid: fee,
+                last_funding_timestamp: Clock::get()?.unix_timestamp,
+            });
+        } else {
+            self.position.down_payment = self
+                .position
+                .down_payment
+                .checked_add(down_payment)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+            self.position.principal = self
+                .position
+                .principal
+                .checked_add(principal)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
 
         Ok(())
     }

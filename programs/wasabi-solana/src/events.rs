@@ -85,6 +85,29 @@ impl PositionOpened {
 }
 
 #[event]
+pub struct PositionIncreased {
+    position_id: Pubkey,
+    trader: Pubkey,
+    down_payment: u64,
+    principal: u64,
+    collateral_amount: u64,
+    fee: u64,
+}
+
+impl PositionIncreased {
+    pub fn new(position: &Account<'_, Position>) -> Self {
+        Self {
+            position_id: position.key(),
+            trader: position.trader,
+            down_payment: position.down_payment,
+            principal: position.principal,
+            collateral_amount: position.collateral_amount,
+            fee: position.fees_to_be_paid,
+        }
+    }
+}
+
+#[event]
 pub struct PositionClosed {
     pub side: String,
     pub id: Pubkey,
