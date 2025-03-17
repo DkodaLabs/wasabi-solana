@@ -63,7 +63,7 @@ pub struct OpenShortPositionSetup<'info> {
     pub open_position_request: Box<Account<'info, OpenPositionRequest>>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = owner,
         seeds = [
             b"position",
@@ -230,29 +230,40 @@ impl<'info> OpenShortPositionSetup<'info> {
             position: self.position.key(),
             pool_key: self.pool.key(),
             min_target_amount,
-            max_amount_in: 0, // CHECK: Why isn't this being set - Close Position Request - set to
-            // collateral_amount - set to the `args.principal`
+            max_amount_in: 0,
             swap_cache: SwapCache {
                 taker_bal_before: self.collateral_vault.amount,
                 maker_bal_before: self.currency_vault.amount,
             },
         });
 
-        // Cache data on the `open_position_request` account. We use the value after the borrow in
-        // order to track the entire amount being swapped.
-        self.position.set_inner(Position {
-            trader: self.owner.key(),
-            currency: self.currency.key(),
-            collateral: self.collateral.key(),
-            down_payment,
-            principal,
-            collateral_vault: self.collateral_vault.key(),
-            collateral_amount: 0, // This doesn't seem right, check why
-            // this isn't being set - set after we do the swap
-            lp_vault: self.lp_vault.key(),
-            fees_to_be_paid: fee,
-            last_funding_timestamp: Clock::get()?.unix_timestamp,
-        });
+        if self.position.down_payment == 0 && self.position.principal == 0 {
+            // Cache data on the `open_position_request` account. We use the value after the borrow in
+            // order to track the entire amount being swapped.
+            self.position.set_inner(Position {
+                trader: self.owner.key(),
+                currency: self.currency.key(),
+                collateral: self.collateral.key(),
+                down_payment,
+                principal,
+                collateral_vault: self.collateral_vault.key(),
+                collateral_amount: 0,
+                lp_vault: self.lp_vault.key(),
+                fees_to_be_paid: fee,
+                last_funding_timestamp: Clock::get()?.unix_timestamp,
+            });
+        } else {
+            self.position.down_payment = self
+                .position
+                .down_payment
+                .checked_add(down_payment)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+            self.position.principal = self
+                .position
+                .principal
+                .checked_add(principal)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
 
         Ok(())
     }

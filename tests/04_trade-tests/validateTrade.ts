@@ -23,7 +23,7 @@ export const positionStates = async (ctx: TradeContext, isLong: boolean) => {
                 ctx.longPoolCollateralVault,
             ] : [
                 ctx.vault,
-                ctx.ownerCurrencyAta,
+                ctx.ownerCollateralAta,
                 ctx.shortPoolCurrencyVault,
                 ctx.shortPoolCollateralVault,
             ],
@@ -151,7 +151,7 @@ export const validateOpenShortPositionStates = async (
 
     assert.equal(
         after.position.collateral.toString(),
-        ctx.currency.toString(),
+        ctx.collateral.toString(),
         "Position collateral should match currency"
     );
 
@@ -163,7 +163,7 @@ export const validateOpenShortPositionStates = async (
 
     assert.equal(
         after.position.currency.toString(),
-        ctx.collateral.toString(),
+        ctx.currency.toString(),
         "Position currency should match collateral"
     );
 
@@ -192,10 +192,10 @@ export const validateOpenShortPositionStates = async (
         "Vault balance should decrease by principal amount"
     );
 
-    // Assert user balance decreased by downpayment + fee
+    // Assert user balance decreased by down-payment + fee
     assert.equal(
-        after.ownerToken.amount,
-        before.ownerToken.amount - downPayment - fee,
+        before.ownerToken.amount - after.ownerToken.amount,
+        downPayment + fee,
         "User balance should decrease by down payment + fee"
     );
 

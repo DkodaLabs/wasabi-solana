@@ -22,3 +22,4 @@ pub struct OpenPositionRequest {
     pub pool_key: Pubkey,
     pub position: Pubkey,
 }
+

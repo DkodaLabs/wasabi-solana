@@ -395,96 +395,97 @@ export const openShortPositionSetupWithoutCosigner = async (ctx: TradeContext, {
     }).instruction();
 };
 
-export const openShortPositionWithInvalidPosition = async (ctx: TradeContext, {
-    minOut,
-    downPayment,
-    principal,
-    fee,
-    swapIn,
-    swapOut,
-}: OpenPositionArgs = defaultOpenShortPositionArgs) => {
-    // First create a position to ensure it already exists
-    try {
-        // First run a successful position creation
-        await ctx.openShortPosition({
-            minOut:      minOut || defaultOpenShortPositionArgs.minOut,
-            downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
-            principal:   principal || defaultOpenShortPositionArgs.principal,
-            fee:         fee || defaultOpenShortPositionArgs.fee,
-            swapIn:      swapIn || defaultOpenShortPositionArgs.swapIn,
-            swapOut:     swapOut || defaultOpenShortPositionArgs.swapOut
-        });
-
-        // Now try to create it again, which should fail
-        const instructions = await Promise.all([
-            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
-            ctx.createABSwapIx({
-                swapIn:   swapIn || defaultOpenShortPositionArgs.swapIn,
-                swapOut:  swapOut || defaultOpenShortPositionArgs.swapOut,
-                poolAtaA: ctx.shortPoolCurrencyVault,
-                poolAtaB: ctx.shortPoolCollateralVault
-            }),
-            ctx.openShortPositionCleanup(),
-        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
-
-        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
-
-        assert.fail("Should have thrown an error");
-    } catch (err) {
-        if (/already in use/.test(err.toString())) {
-            assert.ok(true);
-        } else {
-            console.error(err);
-            assert.ok(false);
-        }
-    }
-};
-
-export const openLongPositionWithInvalidPosition = async (ctx: TradeContext, {
-    minOut,
-    downPayment,
-    principal,
-    fee,
-    swapIn,
-    swapOut,
-}: OpenPositionArgs = defaultOpenLongPositionArgs) => {
-    // First create a position to ensure it already exists
-    try {
-        // First run a successful position creation
-        await ctx.openLongPosition({
-            minOut:      minOut || defaultOpenLongPositionArgs.minOut,
-            downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
-            principal:   principal || defaultOpenLongPositionArgs.principal,
-            fee:         fee || defaultOpenLongPositionArgs.fee,
-            swapIn:      swapIn || defaultOpenLongPositionArgs.swapIn,
-            swapOut:     swapOut || defaultOpenLongPositionArgs.swapOut
-        });
-
-        // Now try to create it again, which should fail
-        const instructions = await Promise.all([
-            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
-            ctx.createABSwapIx({
-                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
-                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
-                poolAtaA: ctx.longPoolCurrencyVault,
-                poolAtaB: ctx.longPoolCollateralVault
-            }),
-            ctx.openLongPositionCleanup(),
-        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
-
-        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
-
-        assert.fail("Should have thrown an error");
-    } catch (err) {
-        if (/already in use/.test(err.toString())) {
-            assert.ok(true);
-        } else {
-            console.error(err);
-            assert.ok(false);
-        }
-    }
-};
-
+// NOTE: These tests are deprecated as of: Position Editing.
+//export const openShortPositionWithInvalidPosition = async (ctx: TradeContext, {
+//    minOut,
+//    downPayment,
+//    principal,
+//    fee,
+//    swapIn,
+//    swapOut,
+//}: OpenPositionArgs = defaultOpenShortPositionArgs) => {
+//    // First create a position to ensure it already exists
+//    try {
+//        // First run a successful position creation
+//        await ctx.openShortPosition({
+//            minOut:      minOut || defaultOpenShortPositionArgs.minOut,
+//            downPayment: downPayment || defaultOpenShortPositionArgs.downPayment,
+//            principal:   principal || defaultOpenShortPositionArgs.principal,
+//            fee:         fee || defaultOpenShortPositionArgs.fee,
+//            swapIn:      swapIn || defaultOpenShortPositionArgs.swapIn,
+//            swapOut:     swapOut || defaultOpenShortPositionArgs.swapOut
+//        });
+//
+//        // Now try to create it again, which should fail
+//        const instructions = await Promise.all([
+//            ctx.openShortPositionSetup({minOut, downPayment, principal, fee}),
+//            ctx.createABSwapIx({
+//                swapIn:   swapIn || defaultOpenShortPositionArgs.swapIn,
+//                swapOut:  swapOut || defaultOpenShortPositionArgs.swapOut,
+//                poolAtaA: ctx.shortPoolCurrencyVault,
+//                poolAtaB: ctx.shortPoolCollateralVault
+//            }),
+//            ctx.openShortPositionCleanup(),
+//        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+//
+//        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
+//
+//        assert.fail("Should have thrown an error");
+//    } catch (err) {
+//        if (/already in use/.test(err.toString())) {
+//            assert.ok(true);
+//        } else {
+//            console.error(err);
+//            assert.ok(false);
+//        }
+//    }
+//};
+//
+//export const openLongPositionWithInvalidPosition = async (ctx: TradeContext, {
+//    minOut,
+//    downPayment,
+//    principal,
+//    fee,
+//    swapIn,
+//    swapOut,
+//}: OpenPositionArgs = defaultOpenLongPositionArgs) => {
+//    // First create a position to ensure it already exists
+//    try {
+//        // First run a successful position creation
+//        await ctx.openLongPosition({
+//            minOut:      minOut || defaultOpenLongPositionArgs.minOut,
+//            downPayment: downPayment || defaultOpenLongPositionArgs.downPayment,
+//            principal:   principal || defaultOpenLongPositionArgs.principal,
+//            fee:         fee || defaultOpenLongPositionArgs.fee,
+//            swapIn:      swapIn || defaultOpenLongPositionArgs.swapIn,
+//            swapOut:     swapOut || defaultOpenLongPositionArgs.swapOut
+//        });
+//
+//        // Now try to create it again, which should fail
+//        const instructions = await Promise.all([
+//            ctx.openLongPositionSetup({minOut, downPayment, principal, fee}),
+//            ctx.createABSwapIx({
+//                swapIn:   swapIn || defaultOpenLongPositionArgs.swapIn,
+//                swapOut:  swapOut || defaultOpenLongPositionArgs.swapOut,
+//                poolAtaA: ctx.longPoolCurrencyVault,
+//                poolAtaB: ctx.longPoolCollateralVault
+//            }),
+//            ctx.openLongPositionCleanup(),
+//        ]).then(ixes => ixes.flatMap((ix: TransactionInstruction) => ix));
+//
+//        await ctx.send(instructions, ctx.SWAP_AUTHORITY);
+//
+//        assert.fail("Should have thrown an error");
+//    } catch (err) {
+//        if (/already in use/.test(err.toString())) {
+//            assert.ok(true);
+//        } else {
+//            console.error(err);
+//            assert.ok(false);
+//        }
+//    }
+//};
+//
 /**
  * Invalid Close Positions
  **/

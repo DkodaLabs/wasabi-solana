@@ -1,6 +1,9 @@
 use {
     crate::{
-        error::ErrorCode, events::PositionOpened, long_pool_signer_seeds, utils::get_function_hash,
+        error::ErrorCode,
+        events::{PositionIncreased, PositionOpened},
+        long_pool_signer_seeds,
+        utils::get_function_hash,
         BasePool, OpenPositionRequest, Position,
     },
     anchor_lang::prelude::*,
@@ -107,9 +110,21 @@ impl<'info> OpenLongPositionCleanup<'info> {
     pub fn open_long_position_cleanup(&mut self) -> Result<()> {
         self.validate()?;
         self.revoke_delegation()?;
-        self.position.collateral_amount = self.get_collateral_delta()?;
 
-        emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
+        // If the collateral amount is 0 then this is a new position, otherwise we are editing the
+        // position
+        if self.position.collateral_amount > 0 {
+            self.position
+                .collateral_amount
+                .checked_add(self.get_collateral_delta()?)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+            emit!(PositionIncreased::new(&self.position));
+        } else {
+            self.position.collateral_amount = self.get_collateral_delta()?;
+
+            emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
+        };
 
         Ok(())
     }
