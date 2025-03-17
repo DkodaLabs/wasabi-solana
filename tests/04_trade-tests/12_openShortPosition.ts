@@ -4,7 +4,6 @@ import {
     openShortPositionWithInvalidSetup,
     openShortPositionWithoutCleanup,
     openShortPositionWithInvalidPool,
-    openShortPositionWithInvalidPosition,
     openShortPositionWithoutCosigner,
 } from './invalidTrades';
 
@@ -37,12 +36,6 @@ describe("OpenShortPosition", () => {
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
                 await openShortPositionWithInvalidPool(ctx);
-            });
-        });
-
-        describe("with an incorrect position", () => {
-            it("should fail", async () => {
-                await openShortPositionWithInvalidPosition(ctx);
             });
         });
 

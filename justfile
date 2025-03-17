@@ -249,6 +249,12 @@ test suite:
     "strategy-close")
         TEST_PATH="tests/07_strategy-tests/21_closeStrategy.ts"
         ;;
+    "increase-positions")
+        TEST_PATH="tests/08_position-editing-tests/22_increasePosition.ts"
+        ;;
+    "decrease-positions")
+        TEST_PATH="tests/08_position-editing-tests/23_decreasePosition.ts"
+        ;;
     *)
         TEST_PATH="tests/**/*.ts"
         HOOK="$ROOT_HOOK"

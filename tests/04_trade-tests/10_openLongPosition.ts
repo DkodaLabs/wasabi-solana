@@ -2,7 +2,6 @@ import { TradeContext, defaultOpenLongPositionArgs } from "./tradeContext";
 import { validateOpenLongPosition } from "./validateTrade";
 import {
     openLongPositionWithInvalidPool,
-    openLongPositionWithInvalidPosition,
     openLongPositionWithInvalidSetup,
     openLongPositionWithoutCleanup,
     openLongPositionWithoutCosigner
@@ -37,12 +36,6 @@ describe("OpenLongPosition", () => {
         describe("with a different pool in the cleanup instruction", () => {
             it("should fail", async () => {
                 await openLongPositionWithInvalidPool(ctx, defaultOpenLongPositionArgs);
-            });
-        });
-
-        describe("with an incorrect position", () => {
-            it("should fail", async () => {
-                await openLongPositionWithInvalidPosition(ctx, defaultOpenLongPositionArgs);
             });
         });
 

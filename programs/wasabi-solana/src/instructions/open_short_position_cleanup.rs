@@ -1,6 +1,6 @@
 use {
     crate::{
-        debt_controller::LEVERAGE_DENOMINATOR, error::ErrorCode, events::PositionOpened,
+        debt_controller::LEVERAGE_DENOMINATOR, error::ErrorCode, events::{PositionIncreased, PositionOpened},
         short_pool_signer_seeds, utils::get_function_hash, BasePool, DebtController, LpVault,
         OpenPositionRequest, Position,
     },
@@ -180,11 +180,25 @@ impl<'info> OpenShortPositionCleanup<'info> {
         }
 
         self.position.principal = principal_used;
-        self.position.collateral_amount = collateral_received
-            .checked_add(self.position.down_payment)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if self.position.collateral_amount > 0 {
+            self.position.collateral_amount = self
+                .position
+                .collateral_amount
+                .checked_add(
+                    collateral_received
+                        .checked_add(self.position.down_payment)
+                        .ok_or(ErrorCode::ArithmeticOverflow)?,
+                )
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
 
-        emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
+            emit!(PositionIncreased::new(&self.position));
+        } else {
+            self.position.collateral_amount = collateral_received
+                .checked_add(self.position.down_payment)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+            emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
+        }
 
         Ok(())
     }
