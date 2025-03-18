@@ -261,6 +261,10 @@ impl<'info> OpenLongPositionSetup<'info> {
                 .principal
                 .checked_add(principal)
                 .ok_or(ErrorCode::ArithmeticOverflow)?;
+            self.position.fees_to_be_paid = self.position
+                .fees_to_be_paid
+                .checked_add(fee)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
         }
 
         Ok(())
