@@ -3,6 +3,7 @@ use {super::SwapCache, anchor_lang::prelude::*};
 /// An account that is used to cache data between the open position setup and cleanup instructions.
 #[account]
 pub struct ClosePositionRequest {
+    pub authority: Pubkey,
     pub swap_cache: SwapCache,
     pub interest: u64,
     pub min_target_amount: u64,

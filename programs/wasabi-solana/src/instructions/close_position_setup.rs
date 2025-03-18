@@ -102,6 +102,7 @@ impl<'info> ClosePositionSetup<'info> {
     ) -> Result<()> {
         // Create a close position request
         self.close_position_request.set_inner(ClosePositionRequest {
+            authority: self.authority.key(),
             swap_cache: SwapCache {
                 maker_bal_before: self.collateral_vault.amount,
                 taker_bal_before: self.currency_vault.amount,

@@ -169,6 +169,12 @@ impl<'info> ClosePositionCleanup<'info> {
             ErrorCode::MintMismatch,
         );
 
+        require_keys_eq!(
+            self.close_position_request.authority,
+            self.authority.key(),
+            ErrorCode::InvalidPermissions
+        );
+
         Ok(())
     }
 
