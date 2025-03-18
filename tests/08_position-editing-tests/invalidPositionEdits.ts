@@ -7,11 +7,10 @@ import {
     getAssociatedTokenAddressSync,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token";
-import {PublicKey} from "@solana/web3.js";
 
 export const increasePositionWithIncorrectUser = async (ctx: EditPositionContext) => {
     try {
-        const [{minOut, downPayment, principal, fee}, position, pool, currencyVault, collateralVault, asset] = ctx.isLongTest
+        const [{minOut, downPayment, principal, fee}, position, pool, currencyVault, collateralVault] = ctx.isLongTest
             ? [
                 defaultOpenLongPositionArgs,
                 ctx.longPosition,

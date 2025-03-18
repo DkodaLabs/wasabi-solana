@@ -51,6 +51,7 @@ impl NewVault {
     }
 }
 
+
 #[event]
 pub struct PositionOpened {
     pub side: String,
@@ -103,6 +104,39 @@ impl PositionIncreased {
             principal: position.principal,
             collateral_amount: position.collateral_amount,
             fee: position.fees_to_be_paid,
+        }
+    }
+}
+
+#[event]
+pub struct PositionDecreased {
+    pub id: Pubkey,
+    pub trader: Pubkey,
+    pub payout: u64,
+    pub principal_repaid: u64,
+    pub interest_paid: u64,
+    pub close_fee: u64,
+    pub past_fees: u64,
+    pub collateral_spent: u64,
+    pub adj_down_payment: u64,
+}
+
+impl PositionDecreased {
+    pub fn new(
+        position: &Account<'_, Position>,
+        close_amounts: &CloseAmounts,
+        collateral_spent: u64,
+    ) -> Self {
+        Self {
+            id: position.key(),
+            trader: position.trader,
+            payout: close_amounts.payout,
+            principal_repaid: close_amounts.principal_repaid,
+            interest_paid: close_amounts.interest_paid,
+            close_fee: close_amounts.close_fee,
+            past_fees: close_amounts.past_fees,
+            collateral_spent,
+            adj_down_payment: close_amounts.adj_down_payment,
         }
     }
 }

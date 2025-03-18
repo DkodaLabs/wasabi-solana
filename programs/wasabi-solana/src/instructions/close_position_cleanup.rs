@@ -1,7 +1,7 @@
 use {
     crate::{
         error::ErrorCode,
-        events::{PositionClosed, PositionClosedWithOrder, PositionLiquidated},
+        events::{PositionClosed, PositionClosedWithOrder, PositionLiquidated, PositionDecreased},
         long_pool_signer_seeds, short_pool_signer_seeds,
         utils::validate_difference,
         BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
@@ -16,6 +16,7 @@ pub enum CloseAction {
     Market,
     Liquidation,
     ExitOrder(u8),
+    Partial,
 }
 
 #[derive(Accounts)]
@@ -511,6 +512,13 @@ impl<'info> ClosePositionCleanup<'info> {
                     *order_type
                 ))
             }
+            CloseAction::Partial => {
+                emit!(PositionDecreased::new(
+                    &self.position,
+                    &close_amounts,
+                    collateral_spent
+                ))
+            }
         }
 
         Ok(close_amounts)
@@ -520,10 +528,11 @@ impl<'info> ClosePositionCleanup<'info> {
 #[derive(Default)]
 pub struct CloseAmounts {
     pub payout: u64,
-    pub collateral_spent: u64,
-    pub interest_paid: u64,
     pub principal_repaid: u64,
-    pub past_fees: u64,
+    pub interest_paid: u64,
     pub close_fee: u64,
+    pub past_fees: u64,
+    pub collateral_spent: u64,
+    pub adj_down_payment: u64,
     pub liquidation_fee: u64,
 }
