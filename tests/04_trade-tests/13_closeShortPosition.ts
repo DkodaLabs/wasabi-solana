@@ -1,95 +1,55 @@
-import { assert } from "chai";
+import {TradeContext} from './tradeContext';
+import {validateCloseShortPosition} from "./validateTrade";
 import {
-    defaultCloseShortPositionArgs,
-    validateCloseShortPosition,
     closeShortPositionWithIncorrectOwner,
     closeShortPositionWithoutCosigner,
     closeShortPositionWithInvalidSetup,
     closeShortPositionWithoutCleanup,
-} from '../hooks/tradeHook';
+    closeShortPositionWithBadDebt
+} from './invalidTrades';
 
+// Since all but the last test fail, there isn't a need to create a new test context
 describe("CloseShortPosition", () => {
-    describe("with owned short position", () => {
-        describe("with an incorrect owner", () => {
-            it("should fail", async () => {
-                try {
-                    await closeShortPositionWithIncorrectOwner(defaultCloseShortPositionArgs);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(true);
-                }
-            });
+    let ctx: TradeContext;
+
+    before(async () => {
+        ctx = await new TradeContext().generateShortTestWithDefaultPosition();
+        ctx.isCloseTest = true;
+    });
+
+    describe("with more than one setup instruction", () => {
+        it("should fail", async () => {
+            await closeShortPositionWithInvalidSetup(ctx);
         });
-        describe("without swap cosigner", () => {
-            it("should fail", async () => {
-                try {
-                    await closeShortPositionWithoutCosigner(defaultCloseShortPositionArgs);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(true);
-                }
-            });
+    });
+
+    describe("without a cleanup instruction", () => {
+        it("should fail", async () => {
+            await closeShortPositionWithoutCleanup(ctx);
         });
-        describe("with more than one setup instruction", () => {
-            it("should fail", async () => {
-                try {
-                    await closeShortPositionWithInvalidSetup(defaultCloseShortPositionArgs);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(true);
-                }
-            });
+    });
+
+    describe("with incorrect owner", () => {
+        it("should fail", async () => {
+            await closeShortPositionWithIncorrectOwner(ctx);
         });
-        describe("without a cleanup instruction", () => {
-            it("should fail", async () => {
-                try {
-                    await closeShortPositionWithoutCleanup(defaultCloseShortPositionArgs);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(true);
-                }
-            });
+    });
+
+    describe("without a swap co-signer", () => {
+        it("should fail", async () => {
+            await closeShortPositionWithoutCosigner(ctx);
         });
-        describe("correct setup", () => {
-            it("should close the position and return funds", async () => {
-                try {
-                    await validateCloseShortPosition(defaultCloseShortPositionArgs);
-                    assert.ok(false);
-                } catch (err) {
-                    assert.ok(true);
-                }
-            });
+    });
+
+    describe("with bad debt", () => {
+        it("should fail", async () => {
+            await closeShortPositionWithBadDebt(ctx);
+        });
+    });
+
+    describe("with the correct parameters", () => {
+        it("should correctly close the position", async () => {
+            await validateCloseShortPosition(ctx);
         });
     });
 });
-
-//                const [positionAfter, [vaultAfter, ownerTokenAAfter, ownerBAfter, feeBalanceAfter]] = await Promise.all([
-//                    program.account.position.fetchNullable(positionKey),
-//                    getMultipleTokenAccounts(program.provider.connection, [
-//                        vaultKey,
-//                        ownerTokenA,
-//                        ownerTokenB,
-//                        feeWallet,
-//                    ], TOKEN_PROGRAM_ID),
-//                ]);
-//                assert.isNull(positionAfter);
-//
-//                // should pay back interest + principal to LP Vault
-//                const expectedLpVaultDiff = positionBefore.principal.add(interestOwed);
-//                const vaultDiff = vaultAfter.amount - vaultBefore.amount;
-//                assert.equal(expectedLpVaultDiff.toString(), vaultDiff.toString());
-//
-//                // Assert user does not receive payout in tokenB
-//                const ownerBDiff = ownerBAfter.amount - ownerBBefore.amount;
-//                assert.equal(ownerBDiff, BigInt(0));
-//
-//                // Assert user receives payout in tokenA
-//                const ownerADiff = ownerTokenAAfter.amount - ownerTokenABefore.amount;
-//                assert.equal(ownerADiff, BigInt(954));
-//
-//                //const feeBalanceDiff = feeBalanceAfter.amount - feeBalanceBefore.amount;
-//                //assert.equal(feeBalanceDiff.toString(), closeExecutionFee.toString());
-//            });
-//        });
-//    });
-//});

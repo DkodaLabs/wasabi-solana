@@ -127,7 +127,6 @@ validator:
     solana-test-validator \
     --reset \
     --quiet \
-    --bpf-program SwapsVeCiPHMUAtzQWZw7RjsKjgCjhwU55QGu4U1Szw tests/deps/spl_token_swap.so \
     --bpf-program metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s tests/deps/token_metadata.so > validator.log 2>&1 &
 
     sleep 5
@@ -191,34 +190,70 @@ update C buffer_len="80000":
 
 test suite:
     #!/usr/bin/env bash
+    BASE_CMD="yarn run ts-mocha -p ./tsconfig.json -t 1000000"
+    HOOK="tests/hooks/initWasabi.ts"
+    ROOT_HOOK="tests/hooks/rootHook.ts"
     case "{{suite}}" in
-    "strategy-withdraw")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/21_strategyWithdraw.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+    "setup")
+        TEST_PATH="tests/01_setup-tests/*.ts"
+        HOOK="$ROOT_HOOK"
+        ;;
+    "vaults")
+        TEST_PATH="tests/02_vault-tests/*.ts"
+        ;;
+    "pools")
+        TEST_PATH="tests/03_pool-tests/*.ts"
+        ;;
+    "trades")
+        TEST_PATH="tests/04_trade-tests/*.ts"
+        ;;
+    "open-long")
+        TEST_PATH="tests/04_trade-tests/10_openLongPosition.ts"
+        ;;
+    "open-short")
+        TEST_PATH="tests/04_trade-tests/12_openShortPosition.ts"
+        ;;
+    "close-long")
+        TEST_PATH="tests/04_trade-tests/11_closeLongPosition.ts"
+        ;;
+    "close-short")
+        TEST_PATH="tests/04_trade-tests/13_closeShortPosition.ts"
+        ;;
+    "liquidations")
+        TEST_PATH="tests/05_liquidation-tests/14_liquidate.ts"
+        ;;
+    "orders")
+        TEST_PATH="tests/06_order-tests/*.ts"
+        ;;
+    "take-profit")
+        TEST_PATH="tests/06_order-tests/15_takeProfit.ts"
+        ;;
+    "stop-loss")
+        TEST_PATH="tests/06_order-tests/16_stopLoss.ts"
+        ;;
+    "strategies")
+        TEST_PATH="tests/07_strategy-tests/*.ts"
+        ;;
+    "strategy-init")
+        TEST_PATH="tests/07_strategy-tests/17_initStrategy.ts"
+        ;;
+    "strategy-deposit")
+        TEST_PATH="tests/07_strategy-tests/18_strategyDeposit.ts"
         ;;
     "strategy-claim")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/08_strategy-tests/20_strategyClaim.ts --require tests/hooks/strategyHook.ts"#' Anchor.toml
+        TEST_PATH="tests/07_strategy-tests/19_strategyClaim.ts"
         ;;
-    "setup")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/01_setup-tests/*.ts --require tests/hooks/rootHook.ts"#' Anchor.toml
+    "strategy-withdraw")
+        TEST_PATH="tests/07_strategy-tests/20_strategyWithdraw.ts"
         ;;
-    "vault")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/02_vault-tests/*.ts --require tests/hooks/vaultHook.ts"#' Anchor.toml
-        ;;
-    "pool")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/03_pool-tests/*.ts --require tests/hooks/poolHook.ts"#' Anchor.toml
-        ;;
-    "trade")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/04_trade-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
-        ;;
-    "liquidation")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/05_liquidation-tests/*.ts --require tests/hooks/liquidationHook.ts"#' Anchor.toml
-        ;;
-    "order")
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/06_order-tests/*.ts --require tests/hooks/tradeHook.ts"#' Anchor.toml
+    "strategy-close")
+        TEST_PATH="tests/07_strategy-tests/21_closeStrategy.ts"
         ;;
     *)
-        sed -i '' 's#test = ".*"#test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts --require tests/hooks/allHook.ts"#' Anchor.toml
+        TEST_PATH="tests/**/*.ts"
+        HOOK="$ROOT_HOOK"
         ;;
     esac
+    sed -i '' "s#test = \".*\"#test = \"$BASE_CMD $TEST_PATH --require $HOOK\"#" Anchor.toml
     sed -i '' 's#cluster = ".*#cluster = "localnet"#' Anchor.toml
     anchor test
