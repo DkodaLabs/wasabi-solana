@@ -10,4 +10,5 @@ pub struct ClosePositionRequest {
     pub pool_key: Pubkey,
     pub position: Pubkey,
     pub execution_fee: u64,
+    pub amount: u64, // amount_to_sell in longs, amount_to_buy in shorts
 }

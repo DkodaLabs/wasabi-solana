@@ -51,7 +51,6 @@ impl NewVault {
     }
 }
 
-
 #[event]
 pub struct PositionOpened {
     pub side: String,

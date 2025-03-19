@@ -195,7 +195,7 @@ impl<'info> OpenShortPositionCleanup<'info> {
         } else {
             self.position.collateral_amount = collateral_received
                 .checked_add(self.position.down_payment)
-                .ok_or(ErrorCode::ArithmeticOverflow)?;
+               .ok_or(ErrorCode::ArithmeticOverflow)?;
 
             emit!(PositionOpened::new(&self.position, self.pool.is_long_pool));
         }

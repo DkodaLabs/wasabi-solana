@@ -1,4 +1,4 @@
-import {OpenPositionArgs, TradeContext} from "../04_trade-tests/tradeContext";
+import {ClosePositionArgs, OpenPositionArgs, TradeContext} from "../04_trade-tests/tradeContext";
 
 export const defaultIncreaseLongPositionArgs = <OpenPositionArgs>{
     minOut:       BigInt(900),
@@ -18,13 +18,31 @@ export const defaultIncreaseShortPositionArgs = <OpenPositionArgs>{
     swapOut:     BigInt(500)
 };
 
+export const defaultDecreaseLongPositionArgs = <ClosePositionArgs>{
+    minOut:       BigInt(0),
+    interest:     BigInt(1),
+    executionFee: BigInt(11),
+    expiration:   BigInt(Math.floor(Date.now() / 1_000 + 60 * 60)),
+    swapIn:       BigInt(1_900),
+    swapOut:      BigInt(2_000),
+}
+
+export const defaultDecreaseShortPositionArgs = <ClosePositionArgs>{
+    minOut:       BigInt(0),
+    interest:     BigInt(1),
+    executionFee: BigInt(10),
+    expiration:   BigInt(Math.floor(Date.now() / 1_000 + 60 * 60)),
+    swapIn:       BigInt(100),
+    swapOut:      BigInt(1_001),
+}
+
 export class EditPositionContext extends TradeContext {
     increasePositionListener: number;
-    //decreasePositionListener: number;
+    decreasePositionListener: number;
 
     increasePositionEvent;
 
-    //decreasePositionEvent;
+    decreasePositionEvent;
 
     constructor() {
         super();
@@ -81,6 +99,38 @@ export class EditPositionContext extends TradeContext {
             fee,
             swapIn,
             swapOut,
+        });
+    }
+
+    async decreaseLongPosition({
+        minOut,
+        interest,
+        executionFee,
+        swapIn,
+        swapOut,
+    }: ClosePositionArgs) {
+        return await this.closeLongPosition({
+            minOut,
+            interest,
+            executionFee,
+            swapIn,
+            swapOut
+        });
+    }
+
+    async decreaseShortPosition({
+        minOut,
+        interest,
+        executionFee,
+        swapIn,
+        swapOut,
+    }: ClosePositionArgs) {
+        return await this.closeShortPosition({
+            minOut,
+            interest,
+            executionFee,
+            swapIn,
+            swapOut
         });
     }
 }

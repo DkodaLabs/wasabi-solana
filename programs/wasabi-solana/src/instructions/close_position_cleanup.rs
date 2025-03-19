@@ -1,9 +1,11 @@
+use anchor_lang::idl::IdlInstruction::Close;
+use anchor_lang::solana_program::bpf_loader_upgradeable::close;
 use {
     crate::{
         error::ErrorCode,
-        events::{PositionClosed, PositionClosedWithOrder, PositionLiquidated, PositionDecreased},
+        events::{PositionClosed, PositionClosedWithOrder, PositionDecreased, PositionLiquidated},
         long_pool_signer_seeds, short_pool_signer_seeds,
-        utils::validate_difference,
+        utils::{deduct, validate_difference},
         BasePool, ClosePositionRequest, DebtController, GlobalSettings, LpVault, Position,
     },
     anchor_lang::prelude::*,
@@ -17,6 +19,16 @@ pub enum CloseAction {
     Liquidation,
     ExitOrder(u8),
     Partial,
+}
+
+impl CloseAction {
+    pub fn into_partial(&mut self) {
+        *self = CloseAction::Partial
+    }
+
+    pub fn is_partial(&self) -> bool {
+        matches!(self, CloseAction::Partial)
+    }
 }
 
 #[derive(Accounts)]
@@ -59,7 +71,6 @@ pub struct ClosePositionCleanup<'info> {
 
     #[account(
         mut,
-        close = owner,
         has_one = collateral_vault,
         has_one = lp_vault,
     )]
@@ -327,7 +338,7 @@ impl<'info> ClosePositionCleanup<'info> {
         close_action: &CloseAction,
         close_amounts: &CloseAmounts,
     ) -> Result<()> {
-        if close_amounts.principal_repaid < self.position.principal {
+        if close_amounts.principal_repaid < self.position.principal && !close_action.is_partial() {
             // Revert if the close order is not a liquidation and is causing bad debt
             match close_action {
                 CloseAction::Market | CloseAction::ExitOrder(_) => {
@@ -361,15 +372,9 @@ impl<'info> ClosePositionCleanup<'info> {
         }
     }
 
-    pub fn close_position_cleanup(&mut self, close_action: &CloseAction) -> Result<CloseAmounts> {
-        self.validate()?;
+    #[inline]
+    fn compute_close_amounts(&self, close_action: &mut CloseAction) -> Result<CloseAmounts> {
         let mut close_amounts = CloseAmounts::default();
-
-        if self.pool.is_long_pool {
-            self.revoke_owner_delegation(&[long_pool_signer_seeds!(self.pool)])?;
-        } else {
-            self.revoke_owner_delegation(&[short_pool_signer_seeds!(self.pool)])?;
-        }
 
         let collateral_spent = self.get_collateral_delta()?;
         let principal_payout = self.get_principal_delta()?;
@@ -396,35 +401,108 @@ impl<'info> ClosePositionCleanup<'info> {
             interest
         };
 
+        require_gte!(
+            self.close_position_request.amount,
+            collateral_spent,
+            ErrorCode::TooMuchCollateralSpent
+        );
+
         close_amounts.payout = if self.pool.is_long_pool {
+            if collateral_spent.eq(&self.position.collateral_amount) {
+                close_amounts.past_fees = self.position.fees_to_be_paid;
+                close_amounts.adj_down_payment = self.position.down_payment;
+            } else {
+                close_amounts.past_fees = self
+                    .position
+                    .fees_to_be_paid
+                    .checked_mul(close_amounts.collateral_spent)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(self.position.collateral_amount)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+                close_amounts.adj_down_payment = self
+                    .position
+                    .down_payment
+                    .checked_mul(close_amounts.collateral_spent)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(self.position.collateral_amount)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+            }
+
             // Deduct principal
             let (principal_payout, principal_repaid) =
-                crate::utils::deduct(principal_payout, self.position.principal);
+                deduct(principal_payout, self.position.principal);
             close_amounts.principal_repaid = principal_repaid;
 
             // Deduct interest
-            let (principal_payout, interest_paid) =
-                crate::utils::deduct(principal_payout, interest);
+            let (principal_payout, interest_paid) = deduct(principal_payout, interest);
             close_amounts.interest_paid = interest_paid;
 
             principal_payout
         } else {
-            // Deduct principal
-            let (principal_payout, principal_repaid) =
-                crate::utils::deduct(principal_payout, self.position.principal);
-            close_amounts.principal_repaid = principal_repaid;
+            // Deduct interest
+            (close_amounts.interest_paid, close_amounts.principal_repaid) =
+                deduct(principal_payout, self.close_position_request.amount);
 
-            // The remaining amount is principal
-            close_amounts.interest_paid = principal_payout;
+            let payout = if self
+                .close_position_request
+                .amount
+                .eq(&self.position.collateral_amount)
+            {
+                close_amounts.past_fees = self.position.fees_to_be_paid;
+                close_amounts.adj_down_payment = self.position.down_payment;
+                close_amounts.adj_collateral = self.position.collateral_amount;
+
+                //payout
+                deduct(self.position.collateral_amount, collateral_spent).0
+            } else {
+                close_amounts.adj_collateral = self
+                    .position
+                    .collateral_amount
+                    .checked_mul(close_amounts.principal_repaid)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(self.position.principal)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+                close_amounts.adj_down_payment = self
+                    .position
+                    .down_payment
+                    .checked_mul(close_amounts.principal_repaid)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(self.position.principal)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+                close_amounts.past_fees = self
+                    .position
+                    .fees_to_be_paid
+                    .checked_mul(close_amounts.principal_repaid)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?
+                    .checked_div(self.position.principal)
+                    .ok_or(ErrorCode::ArithmeticOverflow)?;
+
+                //payout
+                deduct(close_amounts.adj_collateral, close_amounts.collateral_spent).0
+            };
 
             if close_amounts.interest_paid > 0 {
                 validate_difference(interest, close_amounts.interest_paid, 3)?;
             }
 
-            // Payout and fees are paid in collateral
-            let (payout, _) =
-                crate::utils::deduct(self.position.collateral_amount, collateral_spent);
             payout
+            // // Deduct principal
+            // let (principal_payout, principal_repaid) =
+            //     deduct(principal_payout, self.position.principal);
+            // close_amounts.principal_repaid = principal_repaid;
+            //
+            // // The remaining amount is principal
+            // close_amounts.interest_paid = principal_payout;
+            //
+            // if close_amounts.interest_paid > 0 {
+            //     validate_difference(interest, close_amounts.interest_paid, 3)?;
+            // }
+            //
+            // // Payout and fees are paid in collateral
+            // let (payout, _) = deduct(self.position.collateral_amount, collateral_spent);
+            // payout
         };
 
         let close_fee = self
@@ -432,7 +510,7 @@ impl<'info> ClosePositionCleanup<'info> {
             .compute_close_fee(close_amounts.payout, self.pool.is_long_pool)?;
 
         // Deduct fees
-        let (mut payout, close_fee) = crate::utils::deduct(
+        let (mut payout, close_fee) = deduct(
             close_amounts.payout,
             close_fee
                 .checked_add(self.close_position_request.execution_fee)
@@ -454,8 +532,7 @@ impl<'info> ClosePositionCleanup<'info> {
                     .ok_or(ErrorCode::ArithmeticOverflow)?;
 
                 // Deduct from the payout
-                let (liquidation_payout, actual_liquidation_fee) =
-                    crate::utils::deduct(payout, liquidation_fee);
+                let (liquidation_payout, actual_liquidation_fee) = deduct(payout, liquidation_fee);
 
                 // Transfer liquidation fee
                 self.transfer_liquidation_fee(actual_liquidation_fee)?;
@@ -471,6 +548,23 @@ impl<'info> ClosePositionCleanup<'info> {
         close_amounts.collateral_spent = collateral_spent;
         close_amounts.past_fees = self.position.fees_to_be_paid;
 
+        Ok(close_amounts)
+    }
+
+    pub fn close_position_cleanup(
+        &mut self,
+        close_action: &mut CloseAction,
+    ) -> Result<CloseAmounts> {
+        self.validate()?;
+
+        if self.pool.is_long_pool {
+            self.revoke_owner_delegation(&[long_pool_signer_seeds!(self.pool)])?;
+        } else {
+            self.revoke_owner_delegation(&[short_pool_signer_seeds!(self.pool)])?;
+        }
+
+        let close_amounts = self.compute_close_amounts(close_action)?;
+
         // Update the value of `lp_vault.total_assets` based on `close_action`
         self.update_total_assets(&close_action, &close_amounts)?;
 
@@ -483,41 +577,66 @@ impl<'info> ClosePositionCleanup<'info> {
         )?;
 
         // Pay fees
-        self.transfer_fees(close_fee)?;
+        self.transfer_fees(close_amounts.close_fee)?;
 
         // Transfer payout
         self.transfer_payout_from_pool_to_user(close_amounts.payout)?;
 
-        // Emit close event
-        match close_action {
-            CloseAction::Market => {
-                emit!(PositionClosed::new(
-                    &self.position,
-                    &close_amounts,
-                    self.pool.is_long_pool
-                ))
-            }
-            CloseAction::Liquidation => {
-                emit!(PositionLiquidated::new(
-                    &self.position,
-                    &close_amounts,
-                    self.pool.is_long_pool
-                ))
-            }
-            CloseAction::ExitOrder(order_type) => {
-                emit!(PositionClosedWithOrder::new(
-                    &self.position,
-                    &close_amounts,
-                    self.pool.is_long_pool,
-                    *order_type
-                ))
-            }
-            CloseAction::Partial => {
-                emit!(PositionDecreased::new(
-                    &self.position,
-                    &close_amounts,
-                    collateral_spent
-                ))
+        if let CloseAction::Partial = close_action {
+            self.position.down_payment = self
+                .position
+                .down_payment
+                .checked_sub(close_amounts.adj_down_payment)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            self.position.principal = self
+                .position
+                .principal
+                .checked_sub(close_amounts.principal_repaid)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            self.position.collateral_amount = self
+                .position
+                .collateral_amount
+                .checked_sub(close_amounts.collateral_spent)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+            self.position.fees_to_be_paid = self
+                .position
+                .fees_to_be_paid
+                .checked_sub(close_amounts.past_fees)
+                .ok_or(ErrorCode::ArithmeticUnderflow)?;
+
+            emit!(PositionDecreased::new(
+                &self.position,
+                &close_amounts,
+                close_amounts.collateral_spent
+            ))
+        } else {
+            // Close the position and return rent to the trader
+            self.position.close(self.owner.to_account_info())?;
+
+            match close_action {
+                CloseAction::Market => {
+                    emit!(PositionClosed::new(
+                        &self.position,
+                        &close_amounts,
+                        self.pool.is_long_pool
+                    ))
+                }
+                CloseAction::Liquidation => {
+                    emit!(PositionLiquidated::new(
+                        &self.position,
+                        &close_amounts,
+                        self.pool.is_long_pool
+                    ))
+                }
+                CloseAction::ExitOrder(order_type) => {
+                    emit!(PositionClosedWithOrder::new(
+                        &self.position,
+                        &close_amounts,
+                        self.pool.is_long_pool,
+                        *order_type
+                    ))
+                }
+                CloseAction::Partial => unreachable!(), // handled in the preceding if let block
             }
         }
 
@@ -535,4 +654,5 @@ pub struct CloseAmounts {
     pub collateral_spent: u64,
     pub adj_down_payment: u64,
     pub liquidation_fee: u64,
+    pub adj_collateral: u64,
 }

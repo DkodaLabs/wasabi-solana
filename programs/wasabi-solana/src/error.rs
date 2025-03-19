@@ -76,4 +76,6 @@ pub enum ErrorCode {
     DestionationOverflow, // 6035
     #[msg("Strategy cannot be closed if the collateral vault is not empty")]
     VaultNotEmpty, // 6036
+    #[msg("Too much collateral spent")]
+    TooMuchCollateralSpent,
 }
